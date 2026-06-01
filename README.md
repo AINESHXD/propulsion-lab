@@ -399,5 +399,9 @@ chemistry through the whole cycle, and optimisation are the main planned steps.
 
 ## License
 
-Currently developed closed-source while the project is evaluated. A license decision
-(open-core vs closed) is pending; see `ROADMAP.md`.
+Released under the [MIT License](LICENSE).
+
+## Sponsor
+
+If PropulsionLab is useful to you, you can support its development:
+[💛 Sponsor @AINESHXD on GitHub](https://github.com/sponsors/AINESHXD)
