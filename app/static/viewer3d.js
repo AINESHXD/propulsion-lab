@@ -105,6 +105,7 @@ class Viewer {
     this._initLights();
     this._initControls();
     this._initUI();
+    this._initKeys();
     this._resize();
     window.addEventListener("resize", () => this._resize());
     this._animate();
@@ -188,16 +189,25 @@ class Viewer {
     if (blurb) blurb.textContent = cfg.blurb;
     const info = document.getElementById("info");
     this._buildLabels(cfg);
+    this._syncUrl(engine);
+    this._hideTip();
 
-    if (this.models[engine]) {
-      this.models[engine].scene.visible = true;
-      this._frame(this.models[engine]);
-      if (info) info.innerHTML = `<b>${cfg.label}</b> · hover a label to learn each stage`;
-      return;
-    }
-    if (this._loading[engine]) return;
-    this._loading[engine] = true;
-    if (info) info.innerHTML = `Loading ${cfg.label}…`;
+    if (!this.models[engine] && info) info.innerHTML = `Loading ${cfg.label}…`;
+    this._loadModel(engine, (rec) => {
+      if (this.engine !== engine) return;        // user switched away while loading
+      rec.scene.visible = true;
+      this._frame(rec);
+      if (info) info.innerHTML = `<b>${cfg.label}</b> · hover a label · <span style="opacity:.7">←/→ to switch</span>`;
+      this._preloadRest();                       // warm the rest once the first is on screen
+    });
+  }
+
+  // Load (or reuse) a model. Callbacks queue so concurrent requests share one fetch.
+  _loadModel(engine, onReady) {
+    const cfg = ENGINES[engine];
+    if (this.models[engine]) { if (onReady) onReady(this.models[engine]); return; }
+    if (this._loading[engine]) { if (onReady) this._loading[engine].push(onReady); return; }
+    this._loading[engine] = onReady ? [onReady] : [];
     new GLTFLoader().load(cfg.url + MODEL_VERSION, (gltf) => {
       const s = gltf.scene;
       const slim = (engine === "ramjet" || engine === "scramjet"); // slim dark bodies read dark — lift them
@@ -212,6 +222,7 @@ class Viewer {
           if (m.roughness != null) m.roughness = Math.max(m.roughness, 0.5);
         }
       });
+      s.visible = false;
       this.scene.add(s);
       s.updateMatrixWorld(true);
       s.position.sub(new THREE.Box3().setFromObject(s).getCenter(new THREE.Vector3()));
@@ -219,16 +230,28 @@ class Viewer {
       const b = new THREE.Box3().setFromObject(s);
       const rec = { scene: s, span: b.max.x - b.min.x, maxY: b.max.y };
       this.models[engine] = rec;
-      this._loading[engine] = false;
-      if (this.engine === engine) {
-        s.visible = true; this._frame(rec);
-        if (info) info.innerHTML = `<b>${cfg.label}</b> · hover a label to learn each stage`;
-      } else { s.visible = false; }
+      const cbs = this._loading[engine] || []; this._loading[engine] = null;
+      cbs.forEach((cb) => cb && cb(rec));
     }, undefined, (err) => {
-      this._loading[engine] = false;
       console.error(err);
-      if (info) info.innerHTML = `${cfg.label} model failed to load.`;
+      this._loading[engine] = null;
+      const info = document.getElementById("info");
+      if (info && this.engine === engine) info.innerHTML = `${cfg.label} model failed to load.`;
     });
+  }
+
+  // After the first visible model, quietly warm the other engines so switching is instant.
+  _preloadRest() {
+    if (this.embed || this._preloaded) return;
+    this._preloaded = true;
+    const rest = Object.keys(ENGINES).filter((k) => k !== this.engine);
+    const next = () => { const k = rest.shift(); if (!k) return; this._loadModel(k, () => setTimeout(next, 150)); };
+    (window.requestIdleCallback || ((f) => setTimeout(f, 900)))(() => next());
+  }
+
+  _syncUrl(engine) {
+    if (this.embed) return;
+    try { const u = new URL(location.href); u.searchParams.set("engine", engine); history.replaceState(null, "", u); } catch { /* ignore */ }
   }
 
   _frame(rec) {
@@ -270,7 +293,7 @@ class Viewer {
       el.addEventListener("focus", () => this._showTip(st, el));
       el.addEventListener("mouseleave", () => this._hideTip());
       el.addEventListener("blur", () => this._hideTip());
-      el.addEventListener("click", () => this._focus(st));
+      el.addEventListener("click", () => { this._showTip(st, el); this._focus(st); }); // tap = explain + fly-to (touch)
       cont.appendChild(el);
       return { el, st };
     });
@@ -283,11 +306,13 @@ class Viewer {
     tip.querySelector("[data-tip-body]").textContent = st.text;
     tip.style.display = "block";
     const r = el.getBoundingClientRect();
-    const tw = tip.offsetWidth || 260;
+    const tw = tip.offsetWidth || 260, th = tip.offsetHeight || 96;
     let left = r.left + r.width / 2 - tw / 2;
     left = Math.max(12, Math.min(left, window.innerWidth - tw - 12));
+    let top = r.bottom + 8;
+    if (top + th > window.innerHeight - 12) top = Math.max(12, r.top - th - 8); // flip above when it would clip the bottom
     tip.style.left = `${left}px`;
-    tip.style.top = `${r.bottom + 8}px`;
+    tip.style.top = `${top}px`;
   }
 
   _hideTip() { const tip = document.getElementById("tooltip"); if (tip) tip.style.display = "none"; }
@@ -326,6 +351,24 @@ class Viewer {
       this.controls.autoRotate = !this.reduceMotion;
       this.ui.present.classList.toggle("on", this.controls.autoRotate);
       this._frame(rec);
+    });
+    // Tapping/clicking the model (anywhere but a label) dismisses an open tooltip.
+    this.canvas.addEventListener("pointerdown", () => this._hideTip());
+  }
+
+  // Keyboard: ←/→ (or ↑/↓) cycle engines, 1–5 jump directly, R resets the view.
+  _initKeys() {
+    if (this.embed) return;
+    const keys = Object.keys(ENGINES);
+    window.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return; // let form controls keep their keys
+      const i = keys.indexOf(this.engine);
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); this.select(keys[(i + 1) % keys.length]); }
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); this.select(keys[(i - 1 + keys.length) % keys.length]); }
+      else if (/^[1-9]$/.test(e.key)) { const k = keys[parseInt(e.key, 10) - 1]; if (k) { e.preventDefault(); this.select(k); } }
+      else if (e.key === "r" || e.key === "R") { if (this.ui.reset) this.ui.reset.click(); }
     });
   }
 

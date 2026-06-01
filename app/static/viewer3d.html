@@ -76,6 +76,28 @@
         align-items:center; justify-content:center; text-align:center; padding:40px; background:var(--bg); }
       #fallback h2 { font-weight:600; }
       #fallback p { color:var(--dim); max-width:440px; }
+
+      /* --- Phones / narrow screens: stack the chrome so nothing overlaps --- */
+      @media (max-width: 640px) {
+        .topbar { padding:11px 14px; }
+        .topbar .brand { font-size:11.5px; }
+        /* Panel becomes a full-width bar pinned under the topbar (the engine frames below it). */
+        .panel { top:48px; left:12px; right:12px; width:auto; padding:13px 15px; }
+        .panel h1 { font-size:0.95rem; margin-bottom:10px; }
+        #engineBlurb { font-size:0.78rem; margin-top:10px; }
+        /* The hover hint is desktop-only; the panel already carries the engine name + blurb. */
+        #info { display:none; }
+        .toolbar { bottom:14px; gap:6px; padding:8px 9px; }
+        .btn { padding:7px 11px; font-size:0.78rem; }
+        .station-label { font-size:0.64rem; padding:3px 9px; }
+        #tooltip { width:auto; max-width:calc(100vw - 24px); }
+      }
+      /* Short landscape (phones turned sideways): keep the panel from eating the view. */
+      @media (max-height: 460px) {
+        .panel { top:44px; padding:11px 13px; max-height:calc(100vh - 96px); overflow:auto; }
+        .panel h1 { margin-bottom:8px; }
+        #engineBlurb { margin-top:8px; }
+      }
     </style>
     <script type="importmap">
       { "imports": { "three": "/lab/vendor/three/three.module.js" } }
@@ -128,7 +150,7 @@
     </div>
 
     <script type="module">
-      import { startViewer } from "/lab/viewer3d.js?v=20260601o";
+      import { startViewer } from "/lab/viewer3d.js?v=20260601p";
       startViewer();
     </script>
   </body>
