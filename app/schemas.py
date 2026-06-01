@@ -705,3 +705,94 @@ class PythonExportInput(BaseModel):
         "ramjet", "scramjet",
     ]
     inputs: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Combustor emissions: reactor-network NOx / CO + ICAO LTO (Month-4 feature)
+# ---------------------------------------------------------------------------
+
+
+class EmissionsInput(BaseModel):
+    """Combustor-inlet state + fuel-air ratio for an emissions calculation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    combustor_inlet_temperature_K: float = Field(default=820.0, gt=200.0, le=1200.0)
+    combustor_inlet_pressure_Pa: float = Field(default=3.0e6, gt=1.0e4)
+    fuel_air_ratio: float = Field(default=0.022, gt=0.0, le=0.075)
+    fuel: str = Field(default="CH4", max_length=12)
+    phi_primary: float = Field(default=0.73, ge=0.3, le=1.6)
+    tau_primary_s: float = Field(default=0.002, gt=0.0, le=0.05)
+    tau_secondary_s: float = Field(default=0.004, gt=0.0, le=0.05)
+    n_dilution: int = Field(default=6, ge=1, le=30)
+
+
+class AxialEmissionPoint(BaseModel):
+    """One axial station in the combustor emissions profile."""
+
+    x_fraction: float
+    temperature_K: float
+    no_ppm: float
+    co_ppm: float
+
+
+class EmissionsOutput(BaseModel):
+    """Emission indices (g pollutant / kg fuel) and supporting detail."""
+
+    ei_nox_g_per_kg: float
+    ei_co_g_per_kg: float
+    ei_hc_g_per_kg: float
+    ei_co2_g_per_kg: float
+    ei_h2o_g_per_kg: float
+    soot_proxy: float
+    primary_zone_temperature_K: float | None = None
+    phi_primary: float
+    phi_overall: float
+    fuel: str
+    source: str
+    axial_profile: list[AxialEmissionPoint] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class TurbojetLTOInput(BaseModel):
+    """Turbojet deck + rated thrust for an ICAO landing–takeoff NOx estimate.
+
+    The four ICAO modes (take-off / climb-out / approach / idle) are evaluated
+    sea-level static by throttling the turbine-inlet temperature to hit each
+    thrust setting, then the reactor-network EINOx and fuel flow at each mode are
+    aggregated into Dp(NOx) and the Dp/Foo certification metric.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    design: TurbojetInput = Field(default_factory=TurbojetInput)
+    fuel: str = Field(default="CH4", max_length=12)
+    phi_primary: float = Field(default=0.73, ge=0.3, le=1.6)
+
+
+class LTOModeOutput(BaseModel):
+    """One ICAO LTO mode result."""
+
+    name: str
+    thrust_fraction: float
+    thrust_kN: float | None = None
+    turbine_inlet_temperature_K: float | None = None
+    combustor_inlet_temperature_K: float | None = None
+    combustor_inlet_pressure_Pa: float | None = None
+    fuel_air_ratio: float | None = None
+    ei_nox_g_per_kg: float
+    fuel_flow_kg_s: float
+    time_in_mode_s: float
+    nox_g: float
+
+
+class TurbojetLTOOutput(BaseModel):
+    """Aggregated ICAO LTO NOx result for a turbojet deck."""
+
+    engine_type: str = "turbojet"
+    rated_thrust_kN: float | None = None
+    dp_nox_g: float
+    fuel_burn_kg: float
+    dp_foo_g_per_kN: float | None = None
+    modes: list[LTOModeOutput]
+    notes: list[str] = Field(default_factory=list)

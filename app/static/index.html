@@ -9,7 +9,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20260601-embed4" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20260601-emis" />
   </head>
   <body>
 
@@ -444,6 +444,22 @@
                 <ul id="cycleInsights">
                   <li>Run a cycle to populate plain-English interpretations of the numbers above.</li>
                 </ul>
+              </section>
+
+              <!-- Reactor-network combustor emissions (Cantera NOx / CO). -->
+              <section class="insights-panel" id="emissionsPanel" aria-labelledby="emissionsHeading">
+                <p id="emissionsHeading" class="insight-heading">COMBUSTOR EMISSIONS · REACTOR NETWORK</p>
+                <div class="metric-grid" id="emissionsMetrics">
+                  <div class="metric"><span>EI&nbsp;NOx [g/kg]</span><strong id="eiNoxValue">—</strong></div>
+                  <div class="metric"><span>EI&nbsp;CO [g/kg]</span><strong id="eiCoValue">—</strong></div>
+                  <div class="metric"><span>Flame T [K]</span><strong id="flameTempValue">—</strong></div>
+                  <div class="metric"><span>φ overall</span><strong id="phiOverallValue">—</strong></div>
+                </div>
+                <p id="emissionsNote" class="insight-sub">Run a cycle to compute Cantera reactor-network emission indices.</p>
+                <div class="emissions-actions">
+                  <button type="button" id="ltoButton" class="ghost-button">Estimate ICAO LTO NOx →</button>
+                </div>
+                <div id="ltoResult" class="table-wrap" hidden></div>
               </section>
 
               <div class="visual-row">
@@ -1145,7 +1161,7 @@
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260531-3d"></script>
+    <script src="/lab/app.js?v=20260601-emis"></script>
     <script src="/lab/casestudies.js?v=20260531-3d"></script>
   </body>
 </html>

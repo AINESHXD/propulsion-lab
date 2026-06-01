@@ -37,6 +37,11 @@ JS + Canvas/SVG with no build step, served by FastAPI from `app/static/`.
 - **Optional real-gas hot section** — a frozen-composition, variable-cp correction to
   turbine-exit and nozzle-exit temperatures using Cantera when it is installed. It is
   additive and off by default; the constant-cp station table is never altered.
+- **Combustor emissions** — a two-zone Cantera reactor network (equilibrate the primary
+  zone, then grow Zeldovich NO kinetically; an axially-discretised dilution PFR for CO
+  burnout) reports NOx / CO / HC emission indices in g/kg fuel, plus an engine-coupled
+  ICAO landing–takeoff NOx estimate (`Dp/Foo`). NOx is calibrated to modern-combustor
+  take-off levels; it degrades to a P3–T3 correlation without Cantera.
 - **Tooling** — single-parameter sweeps, engine comparison, T-s / P-v and performance
   charts, a branded PDF report, a stdlib-only Python API-client export, and shareable
   URLs that encode the full input deck.
@@ -281,6 +286,10 @@ Full, always-current list at `GET /` and `GET /docs`. Highlights:
 - `GET /maps/compressor` — synthetic compressor characteristic for the map viewer
 - `POST /mission/turbojet` · `POST /mission/turbofan`
 
+**Emissions**
+- `POST /emissions/combustor` — reactor-network NOx / CO / HC emission indices
+- `POST /emissions/turbojet/lto` — engine-coupled ICAO landing–takeoff NOx (`Dp/Foo`)
+
 **Profiles, presets, exports**
 - `POST /simulate/turbojet/from-profile`
 - `POST /simulate/{engine_type}/from-preset/{preset_name}`
@@ -394,8 +403,9 @@ the real-gas path degrades gracefully without it.
 
 See [`ROADMAP.md`](ROADMAP.md) for what is done, in progress, and planned. In short: the
 five engine families, off-design matching, mission integration, the optional real-gas
-hot section, and the reporting/export tooling are in place; component maps, full real-gas
-chemistry through the whole cycle, and optimisation are the main planned steps.
+hot section, reactor-network combustor emissions (NOx / CO + ICAO LTO), and the
+reporting/export tooling are in place; component maps, full real-gas chemistry through
+the whole cycle, and optimisation are the main planned steps.
 
 ## License
 

@@ -1965,8 +1965,74 @@ async function runSimulation() {
   updateGraphCanvases();
   updateHeroTelemetry(result, inputs);
   updateCycleInsights(result, inputs);
+  updateEmissions(result);
   $("#caseLabel").textContent = "Latest run";
   return result;
+}
+
+/* ---------------- Reactor-network combustor emissions ----------------
+ * After each turbojet run, post the combustor-inlet state (station 3) and the
+ * core fuel-air ratio to /emissions/combustor and show the Cantera NOx / CO
+ * emission indices. The "Estimate ICAO LTO NOx" button runs the engine-coupled
+ * landing-takeoff aggregation off the current deck. */
+async function updateEmissions(result) {
+  const note = document.getElementById("emissionsNote");
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const t3 = result?.station_table?.[3];
+  const far = result?.core_fuel_air_ratio ?? result?.fuel_air_ratio;
+  if (!t3 || !far) return;
+  try {
+    const emis = await postJson("/emissions/combustor", {
+      combustor_inlet_temperature_K: t3.stagnation_temperature_K,
+      combustor_inlet_pressure_Pa: t3.stagnation_pressure_Pa,
+      fuel_air_ratio: Math.min(0.074, Math.max(1e-4, far)),
+    });
+    const fmt = (v, d = 1) =>
+      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+    set("eiNoxValue", fmt(emis.ei_nox_g_per_kg, 1));
+    set("eiCoValue", fmt(emis.ei_co_g_per_kg, 2));
+    set("flameTempValue", emis.primary_zone_temperature_K ? fmt(emis.primary_zone_temperature_K, 0) : "—");
+    set("phiOverallValue", fmt(emis.phi_overall, 2));
+    if (note) {
+      const src = emis.source === "reactor-network"
+        ? "Two-zone Cantera reactor network (Zeldovich NO)."
+        : "P3–T3 correlation (Cantera unavailable).";
+      note.textContent = `${src} EI = grams pollutant per kg fuel.`;
+    }
+  } catch (err) {
+    if (note) note.textContent = `Emissions unavailable: ${err.message}`;
+  }
+}
+
+async function estimateLtoNox() {
+  const host = document.getElementById("ltoResult");
+  const button = document.getElementById("ltoButton");
+  if (!host) return;
+  const inputs = readFormInput();
+  if (button) { button.disabled = true; button.textContent = "Estimating…"; }
+  try {
+    const out = await postJson("/emissions/turbojet/lto", { design: inputs });
+    const fmt = (v, d = 1) =>
+      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+    const rows = out.modes.map((m) =>
+      `<tr><td>${m.name}</td><td>${fmt(m.thrust_fraction * 100, 0)}%</td>` +
+      `<td>${fmt(m.combustor_inlet_temperature_K, 0)}</td>` +
+      `<td>${fmt(m.ei_nox_g_per_kg, 1)}</td><td>${fmt(m.fuel_flow_kg_s, 2)}</td>` +
+      `<td>${fmt(m.nox_g, 0)}</td></tr>`).join("");
+    host.innerHTML =
+      `<p class="insight-sub">Rated thrust <strong>${fmt(out.rated_thrust_kN, 1)} kN</strong> · ` +
+      `Dp(NOx) <strong>${fmt(out.dp_nox_g, 0)} g</strong> · ` +
+      `Dp/Foo <strong>${fmt(out.dp_foo_g_per_kN, 1)} g/kN</strong></p>` +
+      `<table><thead><tr><th>Mode</th><th>F00</th><th>T₃ [K]</th><th>EI NOx</th>` +
+      `<th>Wf [kg/s]</th><th>NOx [g]</th></tr></thead><tbody>${rows}</tbody></table>` +
+      (out.notes?.length ? `<p class="insight-sub">${out.notes[0]}</p>` : "");
+    host.hidden = false;
+  } catch (err) {
+    host.innerHTML = `<p class="insight-sub">LTO estimate failed: ${err.message}</p>`;
+    host.hidden = false;
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "Estimate ICAO LTO NOx →"; }
+  }
 }
 
 /* ---------------- Live cycle-insights interpreter ----------------
@@ -2435,6 +2501,9 @@ presetSelect.addEventListener("change", async () => {
   await runSimulation();
   await runSweep();
 });
+
+const ltoButtonEl = document.getElementById("ltoButton");
+if (ltoButtonEl) ltoButtonEl.addEventListener("click", () => { estimateLtoNox(); });
 
 $("#saveProfileButton").addEventListener("click", () => { saveCurrentProfile(); });
 $("#loadProfileButton").addEventListener("click", async () => {

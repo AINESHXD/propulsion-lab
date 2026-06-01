@@ -45,6 +45,12 @@ from app.engine_core.off_design import (
     solve_turbofan_off_design,
     solve_turbojet_off_design,
 )
+from app.engine_core.emissions import (
+    ICAO_LTO_MODES,
+    LTOModePoint,
+    combustor_emissions,
+    icao_lto_nox,
+)
 from app.engine_core.compressor_maps import synthetic_compressor_map
 from app.engine_core.map_matching import (
     default_maps_for_reference,
@@ -73,6 +79,12 @@ from app.schemas import (
     OffDesignPointOutput,
     OffDesignSummary,
     PythonExportInput,
+    AxialEmissionPoint,
+    EmissionsInput,
+    EmissionsOutput,
+    LTOModeOutput,
+    TurbojetLTOInput,
+    TurbojetLTOOutput,
     TurbofanMissionInput,
     TurbojetMissionInput,
     RamjetInput,
@@ -169,6 +181,8 @@ def root() -> dict[str, Any]:
             "POST /simulate/turbofan/off-design",
             "POST /mission/turbojet",
             "POST /mission/turbofan",
+            "POST /emissions/combustor",
+            "POST /emissions/turbojet/lto",
             "POST /export/python",
             "GET /maps/compressor",
             "POST /simulate/turboprop",
@@ -247,6 +261,171 @@ def simulate_turbojet_from_profile(
         profile_name=profile.name,
         engine_type=profile.engine_type,
         output=run_turbojet_simulation(profile_inputs),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Combustor emissions: reactor-network NOx / CO + ICAO LTO (Month-4 feature)
+# ---------------------------------------------------------------------------
+
+
+def _emissions_to_schema(result: Any) -> EmissionsOutput:
+    """Map an engine-core EmissionResult onto the API schema."""
+
+    pz = result.primary_zone_temperature_K
+    return EmissionsOutput(
+        ei_nox_g_per_kg=result.ei_nox_g_per_kg,
+        ei_co_g_per_kg=result.ei_co_g_per_kg,
+        ei_hc_g_per_kg=result.ei_hc_g_per_kg,
+        ei_co2_g_per_kg=result.ei_co2_g_per_kg,
+        ei_h2o_g_per_kg=result.ei_h2o_g_per_kg,
+        soot_proxy=result.soot_proxy,
+        primary_zone_temperature_K=None if (pz != pz) else pz,   # drop NaN
+        phi_primary=result.phi_primary,
+        phi_overall=result.phi_overall,
+        fuel=result.fuel,
+        source=result.source,
+        axial_profile=[
+            AxialEmissionPoint(
+                x_fraction=p.x_fraction,
+                temperature_K=p.temperature_K,
+                no_ppm=p.no_ppm,
+                co_ppm=p.co_ppm,
+            )
+            for p in result.axial_profile
+        ],
+        notes=result.notes,
+    )
+
+
+@app.post("/emissions/combustor", response_model=EmissionsOutput)
+def emissions_combustor(inputs: EmissionsInput) -> EmissionsOutput:
+    """Reactor-network emission indices for a combustor at a given inlet state."""
+
+    try:
+        result = combustor_emissions(
+            inputs.combustor_inlet_temperature_K,
+            inputs.combustor_inlet_pressure_Pa,
+            inputs.fuel_air_ratio,
+            fuel=inputs.fuel,
+            phi_primary=inputs.phi_primary,
+            tau_primary_s=inputs.tau_primary_s,
+            tau_secondary_s=inputs.tau_secondary_s,
+            n_dilution=inputs.n_dilution,
+        )
+    except (ValueError, CycleCalculationError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _emissions_to_schema(result)
+
+
+def _turbojet_combustor_inlet(result: dict[str, Any]) -> tuple[float, float, float, float, float]:
+    """Pull (T3, P3, FAR, fuel_flow, thrust_kN) from a turbojet cycle result."""
+
+    station3 = result["station_table"][3]
+    t3 = float(station3["stagnation_temperature_K"])
+    p3 = float(station3["stagnation_pressure_Pa"])
+    far = float(result.get("core_fuel_air_ratio") or result["fuel_air_ratio"])
+    return t3, p3, far, float(result["fuel_flow_kg_s"]), float(result["thrust_kN"])
+
+
+@app.post("/emissions/turbojet/lto", response_model=TurbojetLTOOutput)
+def emissions_turbojet_lto(inputs: TurbojetLTOInput) -> TurbojetLTOOutput:
+    """Engine-coupled ICAO landing-takeoff NOx estimate for a turbojet deck.
+
+    Evaluates the four ICAO modes sea-level static by throttling the
+    turbine-inlet temperature to each thrust setting, computes the
+    reactor-network EINOx and fuel flow at each, then aggregates Dp(NOx) and the
+    Dp/Foo certification metric.
+    """
+
+    # ICAO LTO is defined sea-level static — pin altitude and Mach there.
+    base = inputs.design.model_copy(update={"altitude_m": 0.0, "mach": 0.0})
+    design_tit = base.turbine_inlet_temperature_K
+    design_pr = base.compressor_pressure_ratio
+
+    # Throttle schedule. A real spool slows at part power, dropping the overall
+    # pressure ratio, the turbine-inlet temperature, AND the inducted air mass
+    # flow together — that joint lapse both makes the combustor-inlet state (and
+    # hence EINOx) fall toward idle and lets thrust reach the low idle setting.
+    # The educational cycle holds all three fixed, so we impose a simple combined
+    # schedule parametrised by s in [0, 1] (s = 1 is the design point):
+    #   OPR(s) = 1 + (OPR_des - 1) * (0.12 + 0.88 s)
+    #   Tt4(s) = Tt4_idle + (Tt4_des - Tt4_idle) * s
+    #   Wair(s) = Wair_des * sqrt((OPR(s) - 1) / (OPR_des - 1))   [spool-speed proxy]
+    # Documented as a schedule, not a matched off-design solution.
+    tit_idle = max(800.0, min(design_tit - 50.0, 950.0))
+    design_air = base.mass_flow_air_kg_s
+    samples: list[dict[str, float]] = []
+    n_sweep = 36
+    for k in range(n_sweep + 1):
+        s = k / n_sweep
+        pr = 1.0 + (design_pr - 1.0) * (0.12 + 0.88 * s)
+        tit = tit_idle + (design_tit - tit_idle) * s
+        air = design_air * ((pr - 1.0) / (design_pr - 1.0)) ** 0.5
+        if tit <= 0.0 or pr <= 1.0 or air <= 0.0:
+            continue
+        case = base.model_copy(update={
+            "compressor_pressure_ratio": pr,
+            "turbine_inlet_temperature_K": tit,
+            "mass_flow_air_kg_s": air,
+        })
+        try:
+            res = simulate_turbojet_cycle(case.to_cycle_inputs())
+            t3, p3, far, wf, thr = _turbojet_combustor_inlet(res)
+        except CycleCalculationError:
+            continue
+        samples.append({"tit": tit, "pr": pr, "t3": t3, "p3": p3, "far": far, "wf": wf, "thr": thr})
+
+    if not samples:
+        raise HTTPException(status_code=400, detail="Could not evaluate any throttle setting.")
+
+    rated_thrust_kN = max(s["thr"] for s in samples)
+    notes: list[str] = []
+    mode_points: list[LTOModePoint] = []
+    mode_rows: list[LTOModeOutput] = []
+    for name, frac, time_s in ICAO_LTO_MODES:
+        target = frac * rated_thrust_kN
+        pick = min(samples, key=lambda s: abs(s["thr"] - target))
+        achieved_frac = pick["thr"] / max(rated_thrust_kN, 1e-9)
+        if abs(pick["thr"] - target) / max(rated_thrust_kN, 1e-9) > 0.06:
+            notes.append(
+                f"{name}: nearest achievable throttle is "
+                f"{achieved_frac * 100:.0f}% F00 (target {frac * 100:.0f}%)."
+            )
+        emis = combustor_emissions(
+            pick["t3"], pick["p3"], pick["far"],
+            fuel=inputs.fuel, phi_primary=inputs.phi_primary,
+        )
+        mode_points.append(LTOModePoint(
+            name=name, thrust_fraction=frac, time_in_mode_s=time_s,
+            ei_nox_g_per_kg=emis.ei_nox_g_per_kg, fuel_flow_kg_s=pick["wf"],
+        ))
+        mode_rows.append(LTOModeOutput(
+            name=name, thrust_fraction=frac, thrust_kN=pick["thr"],
+            turbine_inlet_temperature_K=pick["tit"],
+            combustor_inlet_temperature_K=pick["t3"],
+            combustor_inlet_pressure_Pa=pick["p3"],
+            fuel_air_ratio=pick["far"],
+            ei_nox_g_per_kg=emis.ei_nox_g_per_kg, fuel_flow_kg_s=pick["wf"],
+            time_in_mode_s=time_s,
+            nox_g=emis.ei_nox_g_per_kg * pick["wf"] * time_s,
+        ))
+
+    agg = icao_lto_nox(mode_points, rated_thrust_kN=rated_thrust_kN)
+    notes.insert(0, (
+        "Estimate: reactor-network EINOx on a simplified throttle schedule "
+        "(no off-design spool match, single primary-zone equivalence ratio, no "
+        "fuel staging). The take-off EINOx is calibrated to modern combustors; "
+        "part-power NOx is under-predicted, so Dp/Foo is order-of-magnitude, not "
+        "a certification value."
+    ))
+    return TurbojetLTOOutput(
+        rated_thrust_kN=rated_thrust_kN,
+        dp_nox_g=agg.dp_nox_g,
+        fuel_burn_kg=agg.fuel_burn_kg,
+        dp_foo_g_per_kN=agg.dp_foo_g_per_kN,
+        modes=mode_rows,
+        notes=notes,
     )
 
 
