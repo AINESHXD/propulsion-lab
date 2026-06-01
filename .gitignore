@@ -28,3 +28,6 @@ node_modules/
 
 # internal planning doc (kept local, not shipped)
 PLAN_AND_CV.md
+
+# AI-workflow notes (kept local)
+CLAUDE.md
