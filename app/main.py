@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -51,6 +52,7 @@ from app.engine_core.emissions import (
     combustor_emissions,
     icao_lto_nox,
 )
+from app.engine_core.optimization import TurbojetDesignProblem, nsga2
 from app.engine_core.compressor_maps import synthetic_compressor_map
 from app.engine_core.map_matching import (
     default_maps_for_reference,
@@ -83,8 +85,11 @@ from app.schemas import (
     EmissionsInput,
     EmissionsOutput,
     LTOModeOutput,
+    ParetoPoint,
     TurbojetLTOInput,
     TurbojetLTOOutput,
+    TurbojetOptimizeInput,
+    TurbojetOptimizeOutput,
     TurbofanMissionInput,
     TurbojetMissionInput,
     RamjetInput,
@@ -183,6 +188,7 @@ def root() -> dict[str, Any]:
             "POST /mission/turbofan",
             "POST /emissions/combustor",
             "POST /emissions/turbojet/lto",
+            "POST /optimize/turbojet",
             "POST /export/python",
             "GET /maps/compressor",
             "POST /simulate/turboprop",
@@ -425,6 +431,93 @@ def emissions_turbojet_lto(inputs: TurbojetLTOInput) -> TurbojetLTOOutput:
         fuel_burn_kg=agg.fuel_burn_kg,
         dp_foo_g_per_kN=agg.dp_foo_g_per_kN,
         modes=mode_rows,
+        notes=notes,
+    )
+
+
+# ---------------------------------------------------------------------------
+# NSGA-II multi-objective design optimisation (Month-5 feature)
+# ---------------------------------------------------------------------------
+
+
+@app.post("/optimize/turbojet", response_model=TurbojetOptimizeOutput)
+def optimize_turbojet(inputs: TurbojetOptimizeInput) -> TurbojetOptimizeOutput:
+    """Trace the Pareto front of competing turbojet design objectives with NSGA-II.
+
+    Decision variables are the compressor pressure ratio and turbine-inlet
+    temperature; the flight condition comes from the base deck. Objectives (all
+    framed as minimisation; specific thrust is maximised) trade off against one
+    another subject to a compressor-exit temperature cap and a fuel-air band.
+    """
+
+    if inputs.pr_min >= inputs.pr_max:
+        raise HTTPException(status_code=400, detail="pr_min must be below pr_max.")
+    if inputs.tit_min_K >= inputs.tit_max_K:
+        raise HTTPException(status_code=400, detail="tit_min_K must be below tit_max_K.")
+    if inputs.far_min >= inputs.far_max:
+        raise HTTPException(status_code=400, detail="far_min must be below far_max.")
+
+    base = inputs.design.to_cycle_inputs()
+    problem = TurbojetDesignProblem(
+        base=base,
+        pr_bounds=(inputs.pr_min, inputs.pr_max),
+        tit_bounds=(inputs.tit_min_K, inputs.tit_max_K),
+        objectives=tuple(inputs.objectives),
+        tt3_max_K=inputs.tt3_max_K,
+        far_min=inputs.far_min,
+        far_max=inputs.far_max,
+    )
+    result = nsga2(
+        problem,
+        pop_size=inputs.population_size,
+        n_gen=inputs.generations,
+        seed=inputs.seed,
+    )
+
+    # Re-run each Pareto design once to attach full display metrics, and sort the
+    # front by the first objective so the curve plots cleanly.
+    pts: list[ParetoPoint] = []
+    for idx in result.pareto_indices:
+        pr, tit = float(result.X[idx, 0]), float(result.X[idx, 1])
+        try:
+            r = simulate_turbojet_cycle(
+                replace(base, compressor_pressure_ratio=pr,
+                        turbine_inlet_temperature_K=tit)
+            )
+        except CycleCalculationError:
+            continue
+        pts.append(ParetoPoint(
+            compressor_pressure_ratio=pr,
+            turbine_inlet_temperature_K=tit,
+            objective_values=[float(v) for v in result.F[idx]],
+            thrust_kN=float(r["thrust_kN"]),
+            TSFC_kg_per_kN_hr=float(r["TSFC_kg_per_kN_hr"]),
+            specific_thrust_N_per_kg_s=float(r["specific_thrust_N_per_kg_s"]),
+            compressor_exit_temperature_K=float(r["station_table"][3]["stagnation_temperature_K"]),
+            fuel_air_ratio=float(r.get("core_fuel_air_ratio") or r["fuel_air_ratio"]),
+            overall_efficiency_estimate=float(r["overall_efficiency_estimate"]),
+        ))
+    pts.sort(key=lambda p: p.objective_values[0])
+
+    notes = [
+        "Self-contained NSGA-II (non-dominated sort + crowding distance + SBX + "
+        "polynomial mutation), constraint-dominated. Decision variables: "
+        "compressor pressure ratio and turbine-inlet temperature.",
+    ]
+    if result.feasible_fraction < 1.0:
+        notes.append(
+            f"{result.feasible_fraction * 100:.0f}% of the final population is feasible "
+            "(within the Tt3 cap and fuel-air band)."
+        )
+
+    return TurbojetOptimizeOutput(
+        objective_keys=list(inputs.objectives),
+        objective_labels=problem.objective_labels,
+        pareto_front=pts,
+        population_size=inputs.population_size,
+        generations=inputs.generations,
+        evaluations=result.n_evaluations,
+        feasible_fraction=result.feasible_fraction,
         notes=notes,
     )
 

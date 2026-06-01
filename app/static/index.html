@@ -9,7 +9,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20260601-emis" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20260601-opt" />
   </head>
   <body>
 
@@ -241,6 +241,7 @@
           <button type="button" class="tab-button" data-tab="offdesign">Off-design</button>
           <button type="button" class="tab-button" data-tab="mission">Mission</button>
           <button type="button" class="tab-button" data-tab="compressormap">Compressor map</button>
+          <button type="button" class="tab-button" data-tab="optimize">Optimize</button>
           <button type="button" class="tab-button" data-tab="casestudies">Case studies</button>
           <button type="button" class="tab-button" data-tab="manual">User manual</button>
         </nav>
@@ -1060,6 +1061,64 @@
           </section>
         </div>
 
+        <!-- ============== OPTIMIZE TAB ============== -->
+        <div id="optimizeTab" class="tab-panel" data-tab-panel="optimize">
+          <section class="panel od-panel">
+            <div class="panel-heading">
+              <h2>Multi-objective design optimization · NSGA-II</h2>
+            </div>
+            <p class="report-copy">
+              A genetic algorithm (NSGA-II — non-dominated sorting, crowding
+              distance, simulated-binary crossover and polynomial mutation,
+              implemented from scratch) searches the design space of
+              <strong>compressor pressure ratio</strong> and
+              <strong>turbine-inlet temperature</strong> at the flight condition
+              from the Cycle tab. It traces the <strong>Pareto front</strong> —
+              the set of designs where you cannot improve one objective without
+              giving up another — subject to a compressor-exit (material)
+              temperature cap and a fuel-air band.
+            </p>
+
+            <div class="od-controls">
+              <label>
+                <span>Tt₃ cap <span class="unit">K</span></span>
+                <input id="optTt3Max" type="number" step="any" value="950" />
+              </label>
+              <label>
+                <span>Population</span>
+                <input id="optPop" type="number" step="1" value="40" min="8" max="120" />
+              </label>
+              <label>
+                <span>Generations</span>
+                <input id="optGen" type="number" step="1" value="40" min="5" max="120" />
+              </label>
+              <button type="button" id="optRun" class="primary-button">Run optimization</button>
+            </div>
+
+            <p id="optStatus" class="od-status">Press “Run optimization” to trace the Pareto front.</p>
+
+            <div class="od-body">
+              <div class="od-chart-wrap">
+                <canvas id="optimizeCanvas" width="560" height="320"></canvas>
+              </div>
+              <div class="od-readout">
+                <dl class="od-metrics">
+                  <div class="od-metric"><dt>Front size</dt><dd id="optFrontSize">—</dd></div>
+                  <div class="od-metric"><dt>Evaluations</dt><dd id="optEvals">—</dd></div>
+                  <div class="od-metric"><dt>Min TSFC</dt><dd id="optMinTsfc">—</dd></div>
+                  <div class="od-metric"><dt>Max specific thrust</dt><dd id="optMaxSpec">—</dd></div>
+                </dl>
+                <p class="od-note">
+                  Each point is a non-dominated design: hover the front to read it.
+                  Lower-TSFC designs push pressure ratio up until the Tt₃ cap binds;
+                  higher specific-thrust designs run the turbine hotter. The search
+                  is deterministic for a fixed seed.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
         <!-- ============== CASE STUDIES TAB ============== -->
         <div id="caseStudiesTab" class="tab-panel" data-tab-panel="casestudies">
           <section class="panel case-study-panel">
@@ -1161,7 +1220,7 @@
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260601-emis"></script>
+    <script src="/lab/app.js?v=20260601-opt"></script>
     <script src="/lab/casestudies.js?v=20260531-3d"></script>
   </body>
 </html>

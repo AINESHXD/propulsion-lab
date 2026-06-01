@@ -796,3 +796,59 @@ class TurbojetLTOOutput(BaseModel):
     dp_foo_g_per_kN: float | None = None
     modes: list[LTOModeOutput]
     notes: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# NSGA-II multi-objective design optimisation (Month-5 feature)
+# ---------------------------------------------------------------------------
+
+OptimizationObjective = Literal["tsfc", "specific_thrust", "compressor_exit_temperature"]
+
+
+class TurbojetOptimizeInput(BaseModel):
+    """Design-space + algorithm settings for an NSGA-II turbojet optimisation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    design: TurbojetInput = Field(default_factory=TurbojetInput)
+    objectives: list[OptimizationObjective] = Field(
+        default_factory=lambda: ["tsfc", "specific_thrust"], min_length=2, max_length=3
+    )
+    pr_min: float = Field(default=6.0, gt=1.0, le=60.0)
+    pr_max: float = Field(default=40.0, gt=1.0, le=60.0)
+    tit_min_K: float = Field(default=1100.0, ge=700.0, le=2300.0)
+    tit_max_K: float = Field(default=1800.0, ge=700.0, le=2300.0)
+    tt3_max_K: float = Field(default=950.0, ge=600.0, le=1400.0)
+    far_min: float = Field(default=0.005, ge=0.0, le=0.05)
+    far_max: float = Field(default=0.05, ge=0.005, le=0.075)
+    population_size: int = Field(default=40, ge=8, le=120)
+    generations: int = Field(default=40, ge=5, le=120)
+    seed: int | None = Field(default=0)
+
+
+class ParetoPoint(BaseModel):
+    """One non-dominated design on the Pareto front."""
+
+    compressor_pressure_ratio: float
+    turbine_inlet_temperature_K: float
+    objective_values: list[float]
+    thrust_kN: float
+    TSFC_kg_per_kN_hr: float
+    specific_thrust_N_per_kg_s: float
+    compressor_exit_temperature_K: float
+    fuel_air_ratio: float
+    overall_efficiency_estimate: float
+
+
+class TurbojetOptimizeOutput(BaseModel):
+    """Pareto front + run metadata from an NSGA-II turbojet optimisation."""
+
+    engine_type: str = "turbojet"
+    objective_keys: list[str]
+    objective_labels: list[str]
+    pareto_front: list[ParetoPoint]
+    population_size: int
+    generations: int
+    evaluations: int
+    feasible_fraction: float
+    notes: list[str] = Field(default_factory=list)

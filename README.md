@@ -42,6 +42,12 @@ JS + Canvas/SVG with no build step, served by FastAPI from `app/static/`.
   burnout) reports NOx / CO / HC emission indices in g/kg fuel, plus an engine-coupled
   ICAO landing–takeoff NOx estimate (`Dp/Foo`). NOx is calibrated to modern-combustor
   take-off levels; it degrades to a P3–T3 correlation without Cantera.
+- **Multi-objective design optimisation** — a from-scratch NSGA-II (non-dominated
+  sorting, crowding distance, simulated-binary crossover, polynomial mutation,
+  constraint domination) traces the Pareto front of competing turbojet objectives
+  (minimise TSFC vs maximise specific thrust) over compressor pressure ratio and
+  turbine-inlet temperature, subject to a material-temperature cap and a fuel-air band.
+  Deterministic under a fixed seed; no third-party optimiser dependency.
 - **Tooling** — single-parameter sweeps, engine comparison, T-s / P-v and performance
   charts, a branded PDF report, a stdlib-only Python API-client export, and shareable
   URLs that encode the full input deck.
@@ -290,6 +296,9 @@ Full, always-current list at `GET /` and `GET /docs`. Highlights:
 - `POST /emissions/combustor` — reactor-network NOx / CO / HC emission indices
 - `POST /emissions/turbojet/lto` — engine-coupled ICAO landing–takeoff NOx (`Dp/Foo`)
 
+**Optimisation**
+- `POST /optimize/turbojet` — NSGA-II Pareto front of competing design objectives
+
 **Profiles, presets, exports**
 - `POST /simulate/turbojet/from-profile`
 - `POST /simulate/{engine_type}/from-preset/{preset_name}`
@@ -403,9 +412,10 @@ the real-gas path degrades gracefully without it.
 
 See [`ROADMAP.md`](ROADMAP.md) for what is done, in progress, and planned. In short: the
 five engine families, off-design matching, mission integration, the optional real-gas
-hot section, reactor-network combustor emissions (NOx / CO + ICAO LTO), and the
-reporting/export tooling are in place; component maps, full real-gas chemistry through
-the whole cycle, and optimisation are the main planned steps.
+hot section, reactor-network combustor emissions (NOx / CO + ICAO LTO), NSGA-II
+multi-objective design optimisation, and the reporting/export tooling are in place;
+component maps, full real-gas chemistry through the whole cycle, and an ML surrogate are
+the main planned steps.
 
 ## License
 

@@ -2035,6 +2035,98 @@ async function estimateLtoNox() {
   }
 }
 
+/* ---------------- NSGA-II design optimization ----------------
+ * Trace the Pareto front of (min TSFC, max specific thrust) over compressor
+ * pressure ratio and turbine-inlet temperature, at the Cycle-tab flight
+ * condition, and draw it as a scatter on the optimize canvas. */
+let lastPareto = null;
+
+async function runOptimization() {
+  const status = document.getElementById("optStatus");
+  const button = document.getElementById("optRun");
+  const num = (id, d) => { const v = Number(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  if (button) { button.disabled = true; button.textContent = "Optimizing…"; }
+  if (status) status.textContent = "Running NSGA-II… (this evaluates the cycle thousands of times)";
+  try {
+    const out = await postJson("/optimize/turbojet", {
+      design: readFormInput(),
+      tt3_max_K: num("optTt3Max", 950),
+      population_size: Math.round(num("optPop", 40)),
+      generations: Math.round(num("optGen", 40)),
+      seed: 0,
+    });
+    lastPareto = out;
+    const fmt = (v, d = 1) =>
+      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+    const front = out.pareto_front;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("optFrontSize", String(front.length));
+    set("optEvals", fmt(out.evaluations, 0));
+    set("optMinTsfc", `${fmt(Math.min(...front.map((p) => p.TSFC_kg_per_kN_hr)), 1)} kg/kN·h`);
+    set("optMaxSpec", `${fmt(Math.max(...front.map((p) => p.specific_thrust_N_per_kg_s)), 0)} N·s/kg`);
+    drawParetoFront(out);
+    if (status) status.textContent =
+      `Pareto front: ${front.length} non-dominated designs from ${fmt(out.evaluations, 0)} cycle evaluations.`;
+  } catch (err) {
+    if (status) status.textContent = `Optimization failed: ${err.message}`;
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "Run optimization"; }
+  }
+}
+
+function drawParetoFront(out) {
+  const canvas = document.getElementById("optimizeCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const front = out.pareto_front;
+  if (!front.length) return;
+
+  const pad = { l: 64, r: 18, t: 18, b: 48 };
+  const xs = front.map((p) => p.TSFC_kg_per_kN_hr);
+  const ys = front.map((p) => p.specific_thrust_N_per_kg_s);
+  let xmin = Math.min(...xs), xmax = Math.max(...xs);
+  let ymin = Math.min(...ys), ymax = Math.max(...ys);
+  const xpad = (xmax - xmin) * 0.08 || 1, ypad = (ymax - ymin) * 0.08 || 1;
+  xmin -= xpad; xmax += xpad; ymin -= ypad; ymax += ypad;
+  const px = (v) => pad.l + ((v - xmin) / (xmax - xmin)) * (W - pad.l - pad.r);
+  const py = (v) => H - pad.b - ((v - ymin) / (ymax - ymin)) * (H - pad.t - pad.b);
+
+  // Axes
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.lineTo(W - pad.r, H - pad.b);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.font = "11px ui-monospace, monospace";
+  ctx.fillText("TSFC  [kg/kN·h]  →", pad.l, H - 16);
+  ctx.save();
+  ctx.translate(16, pad.t + 8); ctx.rotate(-Math.PI / 2);
+  ctx.fillText("Specific thrust  [N·s/kg]  →", 0, 0);
+  ctx.restore();
+
+  // Connecting line (front is sorted by TSFC ascending).
+  ctx.strokeStyle = "rgba(123,167,235,0.45)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  front.forEach((p, i) => {
+    const X = px(p.TSFC_kg_per_kN_hr), Y = py(p.specific_thrust_N_per_kg_s);
+    if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+  });
+  ctx.stroke();
+
+  // Points coloured by turbine-inlet temperature (cool→hot).
+  front.forEach((p) => {
+    const X = px(p.TSFC_kg_per_kN_hr), Y = py(p.specific_thrust_N_per_kg_s);
+    const t = (p.turbine_inlet_temperature_K - 1100) / (1800 - 1100);
+    const hue = 210 - Math.max(0, Math.min(1, t)) * 190;   // blue → red
+    ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+    ctx.beginPath(); ctx.arc(X, Y, 3.4, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
 /* ---------------- Live cycle-insights interpreter ----------------
  * Turns the raw simulation numbers into 4-6 plain-English bullet points the
  * student can use to actually learn what is going on in the cycle. Updates
@@ -2504,6 +2596,9 @@ presetSelect.addEventListener("change", async () => {
 
 const ltoButtonEl = document.getElementById("ltoButton");
 if (ltoButtonEl) ltoButtonEl.addEventListener("click", () => { estimateLtoNox(); });
+
+const optRunEl = document.getElementById("optRun");
+if (optRunEl) optRunEl.addEventListener("click", () => { runOptimization(); });
 
 $("#saveProfileButton").addEventListener("click", () => { saveCurrentProfile(); });
 $("#loadProfileButton").addEventListener("click", async () => {
