@@ -1,0 +1,18 @@
+# Production runtime dependencies (no dev tooling).
+# Pinned to compatible lower bounds; the lockfile is the image build itself.
+fastapi>=0.115.0
+pydantic>=2.8.0
+numpy>=1.26.0
+scipy>=1.11.0
+uvicorn[standard]>=0.30.0
+gunicorn>=22.0.0
+
+# Optional, activated only when SENTRY_DSN is set at runtime. Safe to install;
+# the app no-ops error reporting when the DSN is absent.
+sentry-sdk[fastapi]>=2.0.0
+
+# NOT installed in the hosted image to keep it small and the build reliable:
+#   cantera>=3.0
+# The Cantera-backed equilibrium combustor and real-gas hot-section correction
+# degrade gracefully to the constant-cp model when Cantera is absent, so the
+# deployed app runs fully without it. Add the line above to enable them.

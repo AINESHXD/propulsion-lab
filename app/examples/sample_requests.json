@@ -1,0 +1,55 @@
+{
+  "default_turbojet": {
+    "altitude_m": 10000.0,
+    "mach": 0.8,
+    "mass_flow_air_kg_s": 50.0,
+    "compressor_pressure_ratio": 12.0,
+    "compressor_efficiency": 0.86,
+    "turbine_inlet_temperature_K": 1400.0,
+    "turbine_efficiency": 0.88,
+    "combustor_efficiency": 0.99,
+    "combustor_pressure_loss_fraction": 0.05,
+    "mechanical_efficiency": 0.99,
+    "nozzle_efficiency": 0.95,
+    "inlet_pressure_recovery": 0.98,
+    "fuel_heating_value_J_kg": 43000000.0,
+    "nozzle_exit_area_m2": null,
+    "include_pressure_thrust": true
+  },
+  "static_small_turbojet": {
+    "altitude_m": 0.0,
+    "mach": 0.0,
+    "mass_flow_air_kg_s": 20.0,
+    "compressor_pressure_ratio": 8.3,
+    "turbine_inlet_temperature_K": 1250.0
+  },
+  "preset_override": {
+    "mach": 0.85,
+    "altitude_m": 9000.0,
+    "turbine_inlet_temperature_K": 1450.0
+  },
+  "compressor_pressure_ratio_sweep": {
+    "base_input": {
+      "altitude_m": 10000.0,
+      "mach": 0.8,
+      "mass_flow_air_kg_s": 50.0,
+      "compressor_pressure_ratio": 12.0,
+      "turbine_inlet_temperature_K": 1400.0
+    },
+    "sweep_parameter": "compressor_pressure_ratio",
+    "values": [6.0, 10.0, 14.0, 18.0]
+  },
+  "custom_afterburning_profile": {
+    "name": "My Custom Reheat Jet",
+    "engine_type": "afterburning_turbojet",
+    "default_inputs": {
+      "engine_variant": "afterburning_turbojet",
+      "altitude_m": 6000.0,
+      "mach": 0.85,
+      "mass_flow_air_kg_s": 42.0,
+      "compressor_pressure_ratio": 10.0,
+      "turbine_inlet_temperature_K": 1350.0,
+      "afterburner_exit_temperature_K": 1800.0
+    }
+  }
+}

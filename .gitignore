@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Rust / WASM build artifacts
+wasm/**/target/
+
+# Generated knowledge graph (regenerable via graphify)
+graphify-out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Node (if ever added)
+node_modules/
+
+# Blender autosave backups
+*.blend1
+
+# scratch
+.git_commit_msg.tmp

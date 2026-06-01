@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "propulsionlab",
+      "runtimeExecutable": "C:\\Users\\Ainesh Das\\Downloads\\PropulsionLab_DASLABS\\propulsion_lab\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--port", "8000"],
+      "port": 8000
+    }
+  ]
+}

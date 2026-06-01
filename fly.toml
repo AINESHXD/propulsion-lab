@@ -1,0 +1,33 @@
+# Fly.io configuration for PropulsionLab.
+# Rename `app` to your own globally-unique Fly app name before first deploy,
+# or run `fly launch` and let it generate one (it will rewrite this file).
+
+app = "propulsionlab"
+primary_region = "lhr"   # London Heathrow — change to your nearest region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true            # redirect all HTTP to HTTPS
+  auto_stop_machines = "stop"   # scale to zero when idle (free-tier friendly)
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 40
+    hard_limit = 60
+
+  # Liveness/readiness — the root endpoint returns API metadata JSON.
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

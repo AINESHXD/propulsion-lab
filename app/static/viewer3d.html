@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0b0e" />
+    <meta name="description" content="PropulsionLab 3D engine viewing suite — physically based, interactive turbofan, turbojet, ramjet and scramjet cutaways built in Blender, with hover-to-explain station labels." />
+    <title>PropulsionLab — engine viewer</title>
+    <style>
+      :root {
+        --bg:#0a0b0e; --panel:rgba(16,18,22,0.72); --line:rgba(255,255,255,0.09);
+        --line-2:rgba(255,255,255,0.16); --text:#f3f4f6; --dim:#9197a1; --accent:#7ba7eb;
+        --mono:"SF Mono",ui-monospace,"Cascadia Code",monospace;
+      }
+      * { box-sizing: border-box; }
+      html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--text);
+        font:14px/1.55 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif; }
+      #scene { position:fixed; inset:0; display:block; }
+      a { color:var(--accent); text-decoration:none; }
+      ::selection { background:rgba(123,167,235,0.3); }
+
+      .topbar { position:fixed; top:0; left:0; right:0; z-index:6; display:flex; justify-content:space-between;
+        align-items:center; padding:14px 22px; pointer-events:none;
+        background:linear-gradient(#0a0b0ecc,#0a0b0e00); }
+      .topbar .brand { font-weight:700; letter-spacing:0.14em; font-size:12.5px; text-transform:uppercase; }
+      .topbar a { pointer-events:auto; font-size:0.85rem; color:var(--dim); }
+      .topbar a:hover { color:var(--text); }
+
+      .panel { position:fixed; top:58px; left:22px; z-index:6; width:268px; padding:18px;
+        background:var(--panel); border:1px solid var(--line); border-radius:16px;
+        backdrop-filter:blur(16px) saturate(1.1); -webkit-backdrop-filter:blur(16px) saturate(1.1);
+        box-shadow:0 12px 40px rgba(0,0,0,0.4); }
+      .panel .eyebrow { font-family:var(--mono); font-size:0.62rem; letter-spacing:0.18em;
+        text-transform:uppercase; color:var(--dim); margin:0 0 4px; }
+      .panel h1 { font-size:1rem; margin:0 0 14px; letter-spacing:-0.01em; font-weight:600; }
+      .row { margin:13px 0 0; }
+      .row > label { display:block; font-size:0.7rem; color:var(--dim); text-transform:uppercase;
+        letter-spacing:0.07em; margin-bottom:5px; }
+      select { width:100%; background:#15171c; color:var(--text); border:1px solid var(--line-2);
+        border-radius:9px; padding:8px 9px; font:inherit; }
+      #engineBlurb { margin:14px 0 0; font-size:0.82rem; color:var(--dim); line-height:1.5; }
+
+      .toolbar { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:6;
+        display:flex; gap:8px; align-items:center; padding:9px 11px; background:var(--panel);
+        border:1px solid var(--line); border-radius:14px; backdrop-filter:blur(16px);
+        -webkit-backdrop-filter:blur(16px); box-shadow:0 12px 40px rgba(0,0,0,0.4); }
+      .btn { font:inherit; font-size:0.8rem; color:var(--text); background:#16181d;
+        border:1px solid var(--line-2); border-radius:9px; padding:7px 13px; cursor:pointer;
+        transition:border-color .15s,color .15s,background .15s; white-space:nowrap; }
+      .btn:hover { border-color:var(--line-2); color:#fff; }
+      .btn.on { border-color:var(--accent); color:var(--accent); background:rgba(123,167,235,0.1); }
+
+      #info { position:fixed; top:64px; right:22px; z-index:6; font-size:0.8rem; color:var(--dim);
+        background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 13px;
+        backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); max-width:280px; text-align:right; }
+      #info b { color:var(--text); }
+
+      #labels { position:fixed; inset:0; z-index:4; pointer-events:none; }
+      .station-label { position:fixed; transform:translate(-50%,-50%); pointer-events:auto;
+        font:inherit; font-size:0.68rem; letter-spacing:0.03em; color:var(--text);
+        background:rgba(12,14,18,0.82); border:1px solid var(--line-2); border-radius:999px;
+        padding:3px 11px; cursor:pointer; white-space:nowrap;
+        transition:border-color .15s,color .15s,background .15s; }
+      .station-label:hover,.station-label:focus { border-color:var(--accent); color:var(--accent);
+        background:rgba(123,167,235,0.14); outline:none; }
+
+      #tooltip { position:fixed; z-index:8; display:none; width:260px; padding:12px 14px;
+        background:rgba(14,16,20,0.94); border:1px solid var(--line-2); border-radius:12px;
+        box-shadow:0 14px 44px rgba(0,0,0,0.5); pointer-events:none;
+        backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+      #tooltip [data-tip-title] { font-size:0.78rem; font-weight:600; color:var(--text);
+        letter-spacing:0.02em; margin-bottom:5px; }
+      #tooltip [data-tip-body] { font-size:0.74rem; color:var(--dim); line-height:1.5; }
+
+      #fallback { position:fixed; inset:0; z-index:9; display:none; flex-direction:column; gap:14px;
+        align-items:center; justify-content:center; text-align:center; padding:40px; background:var(--bg); }
+      #fallback h2 { font-weight:600; }
+      #fallback p { color:var(--dim); max-width:440px; }
+    </style>
+    <script type="importmap">
+      { "imports": { "three": "/lab/vendor/three/three.module.js" } }
+    </script>
+    <!-- GSAP (cinematic camera) — classic script loads before the deferred module. -->
+    <script src="/lab/vendor/gsap/gsap.min.js"></script>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <header class="topbar">
+      <span class="brand">DAS&nbsp;LABS</span>
+      <a href="/lab/">← Console</a>
+    </header>
+
+    <section class="panel" id="panel">
+      <p class="eyebrow">PropulsionLab · Viewer</p>
+      <h1>Engine viewing suite</h1>
+      <div class="row">
+        <label for="engine">Architecture</label>
+        <select id="engine">
+          <option value="turbofan">Turbofan</option>
+          <option value="turbojet">Turbojet</option>
+          <option value="ramjet">Ramjet</option>
+          <option value="scramjet">Scramjet</option>
+          <option value="turboprop">Turboprop</option>
+        </select>
+      </div>
+      <p id="engineBlurb">High-bypass turbofan.</p>
+    </section>
+
+    <div id="info">Initialising viewer…</div>
+
+    <div class="toolbar" id="toolbar">
+      <button class="btn" id="present">Auto-rotate</button>
+      <button class="btn" id="reset">Reset view</button>
+    </div>
+
+    <div id="labels"></div>
+
+    <div id="tooltip">
+      <div data-tip-title></div>
+      <div data-tip-body></div>
+    </div>
+
+    <div id="fallback">
+      <h2>3D viewer unavailable</h2>
+      <p data-reason>Your browser or device doesn't expose WebGL.</p>
+      <a href="/lab/">Open the 2D console →</a>
+    </div>
+
+    <script type="module">
+      import { startViewer } from "/lab/viewer3d.js?v=20260601o";
+      startViewer();
+    </script>
+  </body>
+</html>

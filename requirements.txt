@@ -1,0 +1,13 @@
+fastapi>=0.115.0
+pydantic>=2.8.0
+numpy>=1.26.0
+scipy>=1.11.0
+pytest>=8.0.0
+uvicorn[standard]>=0.30.0
+ruff>=0.6.0
+
+# Optional — enables Cantera-backed equilibrium combustor
+# (TurbojetInput.use_equilibrium_combustion). The educational
+# constant-cp model continues to work without this installed.
+# cantera>=3.0
+

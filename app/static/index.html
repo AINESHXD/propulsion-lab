@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <title>PropulsionLab — DAS LABS</title>
+    <!-- Privacy-friendly, cookieless analytics (Plausible). Activate at launch
+         by uncommenting and setting data-domain to your production domain. Left
+         inert here so no third-party script loads before you opt in. -->
+    <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
+    <link rel="stylesheet" href="/lab/styles.css?v=20260601-embed4" />
+  </head>
+  <body>
+
+    <!-- ============================================
+         BOOT SCREEN  (≈1s DAS LABS intro, then fades)
+         ============================================ -->
+    <div id="bootScreen" class="boot-screen" role="presentation" aria-hidden="true">
+      <div class="boot-logo">
+        <!-- Real wordmark artwork. Drop the file at
+             app/static/assets/das_labs_wordmark.png and it shows automatically.
+             Until then, the SVG fallback below is revealed via onerror. -->
+        <img class="boot-logo-img" src="/lab/assets/das_labs_logo_dark.png?v=20260529-2"
+             alt="DAS LABS" width="822" height="116"
+             onerror="this.style.display='none';var f=document.getElementById('bootLogoFallback');if(f)f.style.display='flex';" />
+        <div id="bootLogoFallback" class="boot-fallback" style="display:none">
+          <svg class="boot-mark" viewBox="0 0 96 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line class="boot-trail" x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            <path d="M30 29 L86 8 L52 29 Z" fill="currentColor" />
+            <path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity="0.6" />
+          </svg>
+          <span class="boot-word">DAS LABS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top navigation -->
+    <header class="mission-bar" role="banner">
+      <div class="mission-bar-left">
+        <a class="brand" href="/lab/" aria-label="DAS LABS · PropulsionLab">
+          <span class="brand-mark">DAS&nbsp;LABS</span>
+          <span class="brand-dot"></span>
+          <span class="brand-product">PropulsionLab</span>
+        </a>
+      </div>
+      <div class="mission-bar-right">
+        <span id="apiStatus" class="status-pill">Linking</span>
+        <a class="mission-link" href="/lab/viewer3d.html">3D viewer</a>
+        <a class="mission-link" href="#creator">Creator</a>
+        <a class="mission-link" href="/docs" target="_blank" rel="noopener">API</a>
+      </div>
+    </header>
+
+    <main class="app-shell" role="main">
+
+      <!-- ============================================
+           HERO
+           ============================================ -->
+      <section class="hero-band" aria-label="Mission briefing">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="num">01</span> PropulsionLab · v2.6</p>
+
+          <h1 class="hero-title">
+            Gas-turbine cycle analysis,<br />
+            <span class="accent">station by station.</span>
+          </h1>
+
+          <p class="hero-sub">
+            A browser tool for turbojet, turbofan, turboprop, ramjet and scramjet
+            cycles. Set the design point, read every station, sweep a parameter,
+            compare engines, and export the results. The physics is reduced-order
+            and every assumption is shown.
+          </p>
+
+          <div class="hero-cta-row">
+            <button type="button" class="primary-button" id="heroLaunchButton">Open console</button>
+            <button type="button" class="ghost-button" id="heroSweepButton">Run a sweep</button>
+          </div>
+
+          <div class="hero-stats" aria-label="Capability summary">
+            <div class="hero-stat">
+              <div class="hero-stat-label">Engine families</div>
+              <div class="hero-stat-value" data-counter="5">5</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-label">Stations tracked</div>
+              <div class="hero-stat-value" data-counter="9">9</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-label">Solver parameters</div>
+              <div class="hero-stat-value" data-counter="22">22</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-label">Mach envelope</div>
+              <div class="hero-stat-value">
+                0 <span class="hero-stat-unit">→ 8</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================
+             PRESSURE CONTOUR VISUALIZATION
+             Stylized reduced-order propulsion contour:
+             pressure/temperature gradient along the engine axis,
+             ultra-thin isobar lines, slowly drifting streamlines,
+             faint station ticks, telemetry ghost readouts.
+             All animation under a reduced-motion guard.
+             ============================================ -->
+        <!-- Hero visual — live auto-rotating 3D engine cutaway (embedded viewer). -->
+        <aside class="hero-reserved">
+          <div class="hero-embed">
+            <iframe src="/lab/viewer3d.html?engine=turbofan&embed=1" title="Live 3D engine cutaway" loading="lazy"></iframe>
+            <a class="hero-embed-link" href="/lab/viewer3d.html">Explore in 3D →</a>
+          </div>
+        </aside>
+
+      </section>
+
+      <!-- ============================================
+           ARCHITECTURE
+           ============================================ -->
+      <section class="section" aria-labelledby="archHeading">
+        <div class="section-header">
+          <p class="eyebrow"><span class="num">02</span> Architecture <span class="rule"></span> <span id="engineModeLabel">Turbojet</span></p>
+          <h2 class="section-title" id="archHeading">Select an engine architecture.</h2>
+          <p class="section-sub">
+            Switch architecture to load the matching educational solver. Validated turbojet
+            includes parameter sweep and dry/reheat compare.
+          </p>
+        </div>
+
+        <!-- Educational concept strip — orients new users in one line. -->
+        <div class="concept-strip" role="note">
+          <div>
+            <span class="concept-eyebrow">CONCEPT · ENGINE FAMILIES</span>
+            <div class="concept-body">
+              All five families breathe air and burn fuel — they differ in how they
+              compress, how they expand, and whether they extract shaft work.
+              A <b>turbojet</b> has only a turbine to drive its compressor; a
+              <b>turbofan</b> adds a fan and a bypass stream; a <b>turboprop</b>
+              extracts shaft power for a propeller; a <b>ramjet</b> compresses with
+              the flight Mach alone; a <b>scramjet</b> burns at supersonic combustor
+              flow.
+            </div>
+          </div>
+          <a class="concept-cta" data-jump-tab="manual">Read manual →</a>
+        </div>
+
+        <div class="engine-card-grid" role="list">
+          <button type="button" class="engine-card active" data-engine="turbojet">
+            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 11 L12 5 L52 5 L60 11 L52 17 L12 17 Z" stroke="currentColor" stroke-width="0.8"/>
+              <line x1="22" y1="6" x2="22" y2="16" stroke="currentColor" stroke-width="0.7"/>
+              <line x1="32" y1="6" x2="32" y2="16" stroke="currentColor" stroke-width="0.7"/>
+              <line x1="42" y1="6" x2="42" y2="16" stroke="currentColor" stroke-width="0.7"/>
+            </svg>
+            <span class="ec-code">PL-01 · Stations 0-2-3-4-5-9</span>
+            <span class="ec-name">Turbojet</span>
+            <span class="ec-desc">Validated educational core. Sweep, reheat, and nozzle module.</span>
+          </button>
+
+          <button type="button" class="engine-card" data-engine="turbofan">
+            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 11 L10 3 L52 5 L60 11 L52 17 L10 19 Z" stroke="currentColor" stroke-width="0.8"/>
+              <circle cx="10" cy="11" r="5" stroke="currentColor" stroke-width="0.7" fill="none"/>
+              <line x1="32" y1="5.5" x2="32" y2="16.5" stroke="currentColor" stroke-width="0.7"/>
+              <line x1="42" y1="6" x2="42" y2="16" stroke="currentColor" stroke-width="0.7"/>
+            </svg>
+            <span class="ec-code">PL-02 · Fan + bypass</span>
+            <span class="ec-name">Turbofan</span>
+            <span class="ec-desc">Separate-flow educational solver. BPR and FPR exposed.</span>
+          </button>
+
+          <button type="button" class="engine-card" data-engine="turboprop">
+            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="6" y1="1" x2="6" y2="21" stroke="currentColor" stroke-width="0.8"/>
+              <path d="M10 11 L20 5 L52 7 L60 11 L52 15 L20 17 Z" stroke="currentColor" stroke-width="0.8"/>
+              <line x1="30" y1="7" x2="30" y2="15" stroke="currentColor" stroke-width="0.7"/>
+              <line x1="42" y1="8" x2="42" y2="14" stroke="currentColor" stroke-width="0.7"/>
+            </svg>
+            <span class="ec-code">PL-03 · Shaft power</span>
+            <span class="ec-name">Turboprop</span>
+            <span class="ec-desc">Gas-generator core with propeller extraction.</span>
+          </button>
+
+          <button type="button" class="engine-card" data-engine="ramjet">
+            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 11 L18 4 L48 4 L60 11 L48 18 L18 18 Z" stroke="currentColor" stroke-width="0.8"/>
+            </svg>
+            <span class="ec-code">PL-04 · Ram compression</span>
+            <span class="ec-name">Ramjet</span>
+            <span class="ec-desc">Subsonic combustion. No rotating machinery.</span>
+          </button>
+
+          <button type="button" class="engine-card" data-engine="scramjet">
+            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 4 L22 11 L2 18 Z" stroke="currentColor" stroke-width="0.8"/>
+              <path d="M22 6 L62 9 L62 13 L22 16 Z" stroke="currentColor" stroke-width="0.8"/>
+              <line x1="42" y1="8" x2="42" y2="14" stroke="currentColor" stroke-width="0.7"/>
+            </svg>
+            <span class="ec-code">PL-05 · Hypersonic</span>
+            <span class="ec-name">Scramjet</span>
+            <span class="ec-desc">Supersonic-combustion educational solver.</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CROSS-SECTION VIEWER
+           ============================================ -->
+      <section class="section" aria-labelledby="viewerHeading">
+        <div class="section-header">
+          <p class="eyebrow"><span class="num">03</span> Cross-section</p>
+          <h2 class="section-title" id="viewerHeading">Hover any section to inspect the local state.</h2>
+        </div>
+        <div class="panel viewer-panel">
+          <canvas id="engineViewerCanvas" width="1180" height="280"
+                  aria-label="Selected engine cross-section"></canvas>
+          <div id="stationInspector" class="station-inspector">
+            Hover a station or section to inspect the local cycle state.
+          </div>
+          <div id="engineViewerLegend" class="viewer-legend"></div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CONSOLE TABS
+           ============================================ -->
+      <section class="section" aria-labelledby="consoleHeading">
+        <div class="section-header">
+          <p class="eyebrow"><span class="num">04</span> Console</p>
+          <h2 class="section-title" id="consoleHeading">Configure the cycle and inspect results.</h2>
+        </div>
+
+        <nav class="console-tabs" aria-label="Console sections">
+          <button type="button" class="tab-button active" data-tab="dashboard">Cycle</button>
+          <button type="button" class="tab-button" data-tab="graphs">Graphs &amp; reports</button>
+          <button type="button" class="tab-button" data-tab="compare">Engine compare</button>
+          <button type="button" class="tab-button" data-tab="offdesign">Off-design</button>
+          <button type="button" class="tab-button" data-tab="mission">Mission</button>
+          <button type="button" class="tab-button" data-tab="compressormap">Compressor map</button>
+          <button type="button" class="tab-button" data-tab="casestudies">Case studies</button>
+          <button type="button" class="tab-button" data-tab="manual">User manual</button>
+        </nav>
+
+        <!-- ============== DASHBOARD TAB ============== -->
+        <div id="dashboardTab" class="tab-panel active" data-tab-panel="dashboard">
+
+          <!-- Turbojet workspace -->
+          <section id="turbojetWorkspace" class="workspace">
+            <form id="simulationForm" class="panel controls-panel">
+              <div class="panel-heading">
+                <h2>Parameters</h2>
+                <button type="button" id="resetButton" class="ghost-button">Reset</button>
+              </div>
+
+              <label class="preset-control">
+                <span>Built-in preset</span>
+                <select id="presetSelect">
+                  <option value="">Loading…</option>
+                </select>
+              </label>
+
+              <div class="profile-tools">
+                <label>
+                  <span>Custom profile</span>
+                  <select id="customProfileSelect">
+                    <option value="">No saved profiles</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Profile name</span>
+                  <input id="profileNameInput" type="text" maxlength="80" value="My Custom Jet" />
+                </label>
+                <button type="button" id="saveProfileButton" class="secondary-button">Save</button>
+                <button type="button" id="loadProfileButton" class="ghost-button">Load</button>
+                <button type="button" id="deleteProfileButton" class="danger-button">Delete</button>
+              </div>
+
+              <div class="input-sections">
+                <details class="input-section" open>
+                  <summary>Flight conditions</summary>
+                  <div class="input-grid">
+                    <label>
+                      <span>Variant</span>
+                      <select name="engine_variant">
+                        <option value="turbojet">Turbojet</option>
+                        <option value="afterburning_turbojet">Afterburning turbojet</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Altitude <span class="unit">m</span></span>
+                      <input name="altitude_m" type="number" step="any" min="-500" max="25000" />
+                    </label>
+                    <label>
+                      <span>Mach<span class="info-pop" tabindex="0"
+                            data-tip="Flight Mach number — aircraft speed divided by local speed of sound. Sets the ram compression and the freestream stagnation state at station 0.">?</span></span>
+                      <input name="mach" type="number" step="any" min="0" max="3" />
+                      <span class="field-hint">Inlet recovery drops harder as Mach rises.</span>
+                    </label>
+                    <label>
+                      <span>Air mass flow <span class="unit">kg/s</span></span>
+                      <input name="mass_flow_air_kg_s" type="number" step="any" min="0.1" />
+                    </label>
+                    <label>
+                      <span>Inlet capture area <span class="unit">m²</span></span>
+                      <input name="inlet_capture_area_m2" type="number" step="any" min="0.01" max="25" />
+                    </label>
+                    <label>
+                      <span>Inlet recovery<span class="info-pop" tabindex="0"
+                            data-tip="Total-pressure recovery of the inlet diffuser — Pt2 / Pt0. Captures shock and friction losses between freestream and compressor face. Real subsonic inlets sit at 0.96–0.99; supersonic inlets drop sharply with Mach.">?</span></span>
+                      <input name="inlet_pressure_recovery" type="number" step="any" min="0.01" max="1" />
+                      <span class="field-hint">Typical clean subsonic value: 0.96–0.99.</span>
+                    </label>
+                  </div>
+                </details>
+
+                <details class="input-section" open>
+                  <summary>Engine core</summary>
+                  <div class="input-grid">
+                    <label>
+                      <span>Compressor PR<span class="info-pop" tabindex="0"
+                            data-tip="Compressor pressure ratio — Pt3 / Pt2. Higher PR raises thermal efficiency but needs more turbine work to drive it, and pushes Tt3 toward the material limit.">?</span></span>
+                      <input name="compressor_pressure_ratio" type="number" step="any" min="1.01" />
+                      <span class="field-hint">Simple turbojet study range: 5–15.</span>
+                    </label>
+                    <label>
+                      <span>Compressor η</span>
+                      <input name="compressor_efficiency" type="number" step="any" min="0.01" max="1" />
+                    </label>
+                    <label>
+                      <span>Turbine inlet T <span class="unit">K</span><span class="info-pop" tabindex="0"
+                            data-tip="Tt4 — gas total temperature at the turbine inlet. The single biggest driver of thrust and TSFC. Limited by turbine blade material + cooling: uncooled ~1200 K, modern cooled blades 1700–1900 K.">?</span></span>
+                      <input name="turbine_inlet_temperature_K" type="number" step="any" min="700" max="2300" />
+                      <span class="field-hint">Material / cooling limited.</span>
+                    </label>
+                    <label>
+                      <span>Turbine η</span>
+                      <input name="turbine_efficiency" type="number" step="any" min="0.01" max="1" />
+                    </label>
+                    <label>
+                      <span>Mechanical η</span>
+                      <input name="mechanical_efficiency" type="number" step="any" min="0.01" max="1" />
+                    </label>
+                  </div>
+                </details>
+
+                <details class="input-section">
+                  <summary>Combustor</summary>
+                  <div class="input-grid">
+                    <label>
+                      <span>Combustor η</span>
+                      <input name="combustor_efficiency" type="number" step="any" min="0.01" max="1" />
+                    </label>
+                    <label>
+                      <span>Combustor ΔP / P<span class="info-pop" tabindex="0"
+                            data-tip="Fractional drop in total pressure across the combustor — captures friction, dilution mixing, and heat addition (Rayleigh) losses. Real cans sit at 3–8%.">?</span></span>
+                      <input name="combustor_pressure_loss_fraction" type="number" step="any" min="0" max="0.3" />
+                      <span class="field-hint">Typical: 0.03–0.08.</span>
+                    </label>
+                    <label>
+                      <span>Fuel LHV <span class="unit">J/kg</span></span>
+                      <input name="fuel_heating_value_J_kg" type="number" step="any" min="1000000" />
+                    </label>
+                  </div>
+                </details>
+
+                <details class="input-section" open>
+                  <summary>Nozzle</summary>
+                  <div class="input-grid">
+                    <label>
+                      <span>Nozzle η<span class="info-pop" tabindex="0"
+                            data-tip="Nozzle adiabatic efficiency — ratio of actual to ideal kinetic energy at the exit. Captures friction losses through the convergent passage. Modern nozzles 0.95–0.98.">?</span></span>
+                      <input name="nozzle_efficiency" type="number" step="any" min="0.01" max="1" />
+                      <span class="field-hint">Typical: 0.90–0.98.</span>
+                    </label>
+                    <label>
+                      <span>Exit area <span class="unit">m²</span></span>
+                      <input name="nozzle_exit_area_m2" type="number" step="any" min="0.0001" max="25" />
+                    </label>
+                    <label>
+                      <span>Throat area <span class="unit">m²</span></span>
+                      <input name="nozzle_throat_area_m2" type="number" step="any" min="0.0001" max="25" />
+                    </label>
+                  </div>
+                </details>
+
+                <details class="input-section">
+                  <summary>Afterburner</summary>
+                  <div class="input-grid">
+                    <label>
+                      <span>Afterburner exit T <span class="unit">K</span></span>
+                      <input name="afterburner_exit_temperature_K" type="number" step="any" min="900" max="2400" />
+                    </label>
+                    <label>
+                      <span>Afterburner η</span>
+                      <input name="afterburner_efficiency" type="number" step="any" min="0.01" max="1" />
+                    </label>
+                    <label>
+                      <span>Afterburner ΔP / P</span>
+                      <input name="afterburner_pressure_loss_fraction" type="number" step="any" min="0" max="0.25" />
+                    </label>
+                  </div>
+                </details>
+              </div>
+
+              <div class="form-footer">
+                <label class="checkbox-line">
+                  <input name="include_pressure_thrust" type="checkbox" />
+                  Pressure thrust
+                </label>
+                <label class="checkbox-line">
+                  <input name="use_inlet_area_mass_flow" type="checkbox" />
+                  Estimate ṁ from inlet area
+                </label>
+                <button type="submit" class="primary-button" id="runSimulationButton">Run cycle</button>
+              </div>
+            </form>
+
+            <section class="panel results-panel">
+              <div class="panel-heading">
+                <h2>Results</h2>
+                <div class="panel-actions">
+                  <span id="caseLabel" class="case-label">Default case</span>
+                  <button type="button" id="shareLinkButton" class="ghost-button">Share link</button>
+                  <button type="button" id="exportStationCsvButton" class="ghost-button">Export CSV</button>
+                </div>
+              </div>
+
+              <div class="metric-grid">
+                <div class="metric"><span>Net thrust</span><strong id="thrustValue">—</strong></div>
+                <div class="metric"><span>TSFC</span><strong id="tsfcValue">—</strong></div>
+                <div class="metric"><span>Fuel-air ratio</span><strong id="farValue">—</strong></div>
+                <div class="metric"><span>Nozzle</span><strong id="nozzleValue">—</strong></div>
+                <div class="metric"><span>Variant</span><strong id="variantValue">—</strong></div>
+                <div class="metric"><span>Overall η</span><strong id="overallEtaValue">—</strong></div>
+              </div>
+
+              <!-- Live plain-English interpretation of the latest run. -->
+              <section class="insights-panel" aria-labelledby="insightHeading">
+                <p id="insightHeading" class="insight-heading">CYCLE INSIGHTS · UPDATED EACH RUN</p>
+                <ul id="cycleInsights">
+                  <li>Run a cycle to populate plain-English interpretations of the numbers above.</li>
+                </ul>
+              </section>
+
+              <div class="visual-row">
+                <canvas id="stationCanvas" width="820" height="260"
+                        aria-label="Station temperature and pressure chart"></canvas>
+              </div>
+
+              <div id="warnings" class="warnings" hidden></div>
+              <div id="nozzlePanel" class="nozzle-panel"></div>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Stn</th>
+                      <th>Name</th>
+                      <th>Tt [K]</th>
+                      <th>Pt [kPa]</th>
+                      <th>Static T [K]</th>
+                      <th>Static P [kPa]</th>
+                      <th>Mach</th>
+                      <th>V [m/s]</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="stationTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <!-- Advanced engine workspace -->
+          <section id="advancedEngineWorkspace" class="workspace hidden">
+            <form id="advancedEngineForm" class="panel controls-panel">
+              <div class="panel-heading">
+                <h2 id="advancedFormTitle">Parameters</h2>
+                <button type="button" id="advancedResetButton" class="ghost-button">Reset</button>
+              </div>
+              <div id="advancedInputGrid" class="input-grid"></div>
+              <div class="form-footer">
+                <span id="advancedRouteLabel" class="case-label">/simulate/turbofan</span>
+                <button type="submit" id="runAdvancedButton" class="primary-button">Run cycle</button>
+              </div>
+            </form>
+
+            <section class="panel results-panel">
+              <div class="panel-heading">
+                <h2>Results</h2>
+                <div class="panel-actions">
+                  <span id="advancedCaseLabel" class="case-label">Awaiting run</span>
+                  <button type="button" id="shareAdvancedLinkButton" class="ghost-button">Share link</button>
+                  <button type="button" id="exportAdvancedStationCsvButton" class="ghost-button">Export CSV</button>
+                </div>
+              </div>
+
+              <div class="metric-grid">
+                <div class="metric"><span>Net thrust</span><strong id="advancedThrustValue">—</strong></div>
+                <div class="metric"><span>TSFC</span><strong id="advancedTsfcValue">—</strong></div>
+                <div class="metric"><span>Fuel-air ratio</span><strong id="advancedFarValue">—</strong></div>
+                <div class="metric"><span>Nozzle</span><strong id="advancedNozzleValue">—</strong></div>
+                <div class="metric"><span>Specific thrust</span><strong id="advancedSpecificThrustValue">—</strong></div>
+                <div class="metric"><span>Overall η</span><strong id="advancedOverallEtaValue">—</strong></div>
+              </div>
+
+              <div id="advancedDetail" class="detail-grid"></div>
+
+              <div class="visual-row">
+                <canvas id="advancedStationCanvas" width="820" height="260"
+                        aria-label="Advanced cycle station chart"></canvas>
+              </div>
+
+              <div id="advancedWarnings" class="warnings" hidden></div>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Stn</th>
+                      <th>Name</th>
+                      <th>Tt [K]</th>
+                      <th>Pt [kPa]</th>
+                      <th>Static T [K]</th>
+                      <th>Static P [kPa]</th>
+                      <th>Mach</th>
+                      <th>V [m/s]</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="advancedStationTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <!-- Advanced-engine sweep (visible only when an advanced engine is selected) -->
+          <section class="panel advanced-sweep-panel hidden" style="margin-top:24px">
+            <div class="panel-heading">
+              <h2>Advanced-engine sweep</h2>
+              <button id="runAdvancedSweepButton" type="button" class="secondary-button">Run sweep</button>
+            </div>
+            <div class="sweep-grid">
+              <label>
+                <span>Parameter</span>
+                <select id="advancedSweepParameter"></select>
+              </label>
+              <label>
+                <span>Values <span class="unit">comma-separated</span></span>
+                <input id="advancedSweepValues" type="text" />
+              </label>
+            </div>
+            <div class="visual-row">
+              <canvas id="advancedSweepCanvas" width="1040" height="260"
+                      aria-label="Advanced-engine sweep chart"></canvas>
+            </div>
+            <div id="advancedSweepSummary" class="summary-line"></div>
+          </section>
+
+          <!-- Sweep (turbojet) -->
+          <section class="panel sweep-panel" style="margin-top:24px">
+            <div class="panel-heading">
+              <h2>Parameter sweep</h2>
+              <button id="runSweepButton" type="button" class="secondary-button">Run sweep</button>
+            </div>
+            <div class="sweep-grid">
+              <label>
+                <span>Parameter</span>
+                <select id="sweepParameter">
+                  <option value="compressor_pressure_ratio">Compressor PR</option>
+                  <option value="turbine_inlet_temperature_K">Turbine inlet T</option>
+                  <option value="mach">Mach</option>
+                  <option value="altitude_m">Altitude</option>
+                  <option value="mass_flow_air_kg_s">Air mass flow</option>
+                  <option value="inlet_capture_area_m2">Inlet area</option>
+                  <option value="compressor_efficiency">Compressor η</option>
+                  <option value="turbine_efficiency">Turbine η</option>
+                  <option value="nozzle_efficiency">Nozzle η</option>
+                  <option value="inlet_pressure_recovery">Inlet recovery</option>
+                  <option value="afterburner_exit_temperature_K">Afterburner exit T</option>
+                </select>
+              </label>
+              <label>
+                <span>Values <span class="unit">comma-separated</span></span>
+                <input id="sweepValues" type="text" value="6, 10, 14, 18" />
+              </label>
+            </div>
+            <div class="visual-row">
+              <canvas id="sweepCanvas" width="1040" height="260"
+                      aria-label="Sweep thrust and TSFC chart"></canvas>
+            </div>
+            <div id="sweepSummary" class="summary-line"></div>
+            <div id="sweepExplanation" class="explanation-panel"></div>
+          </section>
+
+          <!-- Assumptions -->
+          <section class="panel assumptions-panel" style="margin-top:24px">
+            <div class="panel-heading">
+              <h2>Assumptions</h2>
+            </div>
+            <ul class="assumption-list">
+              <li>Steady, one-dimensional gas turbine cycle.</li>
+              <li>Perfect gas with constant cp / γ in each gas region; separate properties for air and combustion gas.</li>
+              <li>Educational, preliminary-performance analysis. Not certified design software.</li>
+              <li>No compressor maps, blade-row CFD, equilibrium chemistry, or transient spool dynamics yet.</li>
+              <li>Inlet capture-area mass flow is a first-order ρ·V·A estimate; no distortion or boundary-layer model.</li>
+            </ul>
+          </section>
+        </div>
+
+        <!-- ============== GRAPHS TAB ============== -->
+        <div id="graphsTab" class="tab-panel" data-tab-panel="graphs">
+          <section class="panel" style="margin-bottom:16px">
+            <div class="panel-heading">
+              <h2>Performance report</h2>
+              <div class="report-actions">
+                <button id="exportPythonButton" type="button" class="ghost-button">Export Python</button>
+                <button id="downloadReportButton" type="button" class="primary-button">Download PDF</button>
+              </div>
+            </div>
+            <p id="reportCopy" class="report-copy">
+              Builds a branded DAS LABS performance brief with the current input deck,
+              full station table, choking state, efficiencies, and warnings. “Export
+              Python” downloads a standalone, dependency-free script that reproduces
+              the current run against the API.
+            </p>
+            <div id="reportStatus" class="summary-line"></div>
+          </section>
+
+          <section class="graphs-grid">
+            <article class="panel graph-card">
+              <h2>Station stagnation temperature</h2>
+              <canvas id="graphStationTemp" width="520" height="260"></canvas>
+            </article>
+            <article class="panel graph-card">
+              <h2>Station stagnation pressure</h2>
+              <canvas id="graphStationPressure" width="520" height="260"></canvas>
+            </article>
+            <article class="panel graph-card">
+              <h2>T-s diagram</h2>
+              <canvas id="graphTsDiagram" width="520" height="260"></canvas>
+              <p class="graph-note">Stagnation-property cycle diagram. Entropy is on a
+                relative datum (cp steps from air to combustion gas across the burner),
+                so the cycle <em>shape</em> is meaningful but the absolute entropy zero
+                is qualitative.</p>
+            </article>
+            <article class="panel graph-card">
+              <h2>P-v diagram</h2>
+              <canvas id="graphPvDiagram" width="520" height="260"></canvas>
+              <p class="graph-note">Stagnation P–v (<code>v = R·Tt/Pt</code>), consistent
+                across all stations — not a static-state diagram.</p>
+            </article>
+            <article class="panel graph-card">
+              <h2>Sweep · thrust</h2>
+              <canvas id="graphSweepThrust" width="520" height="260"></canvas>
+            </article>
+            <article class="panel graph-card">
+              <h2>Sweep · TSFC</h2>
+              <canvas id="graphSweepTsfc" width="520" height="260"></canvas>
+            </article>
+            <article class="panel graph-card">
+              <h2>Efficiency estimates</h2>
+              <canvas id="graphEfficiency" width="520" height="260"></canvas>
+            </article>
+            <article class="panel graph-card">
+              <h2>Thrust breakdown</h2>
+              <canvas id="graphThrustBreakdown" width="520" height="260"></canvas>
+            </article>
+          </section>
+        </div>
+
+        <!-- ============== COMPARE TAB ============== -->
+        <div id="compareTab" class="tab-panel" data-tab-panel="compare">
+          <section class="panel compare-panel">
+            <div class="panel-heading">
+              <h2>Engine compare</h2>
+              <button type="button" id="runCompareButton" class="primary-button">Run compare</button>
+            </div>
+            <p class="report-copy">
+              Side-by-side run of multiple engine specs at their own design points using
+              <code>/compare/engines</code>. Default deck compares the active turbojet input
+              against representative turbofan, turboprop, ramjet, and scramjet baselines.
+              Use the controls below to add or remove rows.
+            </p>
+            <div class="compare-controls">
+              <label class="checkbox-line">
+                <input type="checkbox" id="compareIncludeTurbojet" checked />
+                Current turbojet input
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" id="compareIncludeTurbofan" checked />
+                Turbofan baseline
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" id="compareIncludeTurboprop" checked />
+                Turboprop baseline
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" id="compareIncludeRamjet" />
+                Ramjet baseline
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" id="compareIncludeScramjet" />
+                Scramjet baseline
+              </label>
+            </div>
+            <div id="compareCards" class="compare-grid"></div>
+            <div id="compareWarnings" class="summary-line"></div>
+            <div class="visual-row" style="margin-top:18px">
+              <canvas id="compareCanvas" width="1040" height="280"
+                      aria-label="Engine comparison chart"></canvas>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============== USER MANUAL TAB ============== -->
+        <div id="manualTab" class="tab-panel" data-tab-panel="manual">
+          <section class="panel manual-panel">
+            <div class="panel-heading">
+              <h2>User manual</h2>
+            </div>
+            <p class="report-copy">
+              PropulsionLab is an educational, station-based 1-D cycle simulator. The
+              physics is reduced-order: perfect-gas thermodynamics, no maps, no
+              transient dynamics, and only the chemistry that each engine module
+              explicitly states. Every preset is labelled as an educational
+              approximation based on public-estimated values.
+            </p>
+
+            <details class="manual-block" open>
+              <summary>Turbojet</summary>
+              <p><strong>Working principle.</strong> Single-spool gas turbine cycle.
+                Inlet decelerates air; compressor raises Pt; combustor adds heat at
+                approximately constant pressure; turbine extracts the work to drive
+                the compressor; convergent nozzle accelerates the hot gas. Net thrust
+                comes from momentum + pressure terms.</p>
+              <p><strong>Stations.</strong> 0 freestream · 2 inlet exit · 3 compressor
+                exit · 4 combustor exit / turbine inlet · 5 turbine exit · 7 afterburner
+                exit (when used) · 9 nozzle exit.</p>
+              <p><strong>Key assumptions.</strong> Steady 1-D flow; constant cp/γ in air
+                and combustion-gas regions; energy-balance fuel-air ratio (or Cantera
+                equilibrium when enabled). No compressor or turbine maps, no
+                blade-row CFD.</p>
+            </details>
+
+            <details class="manual-block">
+              <summary>Turbofan</summary>
+              <p><strong>Working principle.</strong> Two-spool architecture. The fan
+                pressurises both core and bypass streams. The HP spool drives the HP
+                compressor. The LP spool drives the fan via the LP turbine. Thrust comes
+                from a core nozzle (post-LPT) and a bypass nozzle (post-fan) — or, in
+                mixed-flow mode, from a single nozzle after a constant-pressure mixer.
+                Optional afterburner reheats the core (separate flow) or the mixed
+                stream (mixed flow).</p>
+              <p><strong>Stations.</strong> 0 / 2 / 13 fan exit / 19 bypass nozzle exit /
+                3 HPC exit / 4 combustor exit / 45 HPT exit / 5 LPT exit / 7 AB or
+                mixer exit / 9 core or mixed nozzle exit.</p>
+              <p><strong>Key assumptions.</strong> No fan / compressor / turbine maps;
+                fixed pressure ratios. Mixer is a constant-pressure mass-weighted
+                blend with a small total-pressure loss. No bleed, no cooling flow.</p>
+              <p><strong>Limitations.</strong> No geared-fan gearbox loss; no variable
+                cycle; no fan distortion model.</p>
+            </details>
+
+            <details class="manual-block">
+              <summary>Turboprop</summary>
+              <p><strong>Working principle.</strong> Gas-generator core (compressor /
+                combustor / HP turbine) plus a free power turbine that drives the
+                propeller through a reduction gearbox. Residual nozzle produces a
+                small jet thrust on top of the propeller thrust.</p>
+              <p><strong>Stations.</strong> 0 / 2 / 3 / 4 / 45 gas-gen exit / 5 power
+                turbine exit / 9 residual nozzle exit.</p>
+              <p><strong>Propeller.</strong> Efficiency comes from a Gaussian-shaped
+                advance-ratio curve peaked at <em>J*</em>, with a compressibility derate
+                above tip Mach 0.85. Below ~5 m/s freestream the model falls back to an
+                actuator-disk static thrust estimate.</p>
+              <p><strong>Outputs.</strong> Shaft power (SHP), equivalent shaft power
+                (ESHP = SHP + jet thrust × V₀), BSFC in kg/(kW·h), propeller and
+                residual jet thrust components.</p>
+            </details>
+
+            <details class="manual-block">
+              <summary>Ramjet</summary>
+              <p><strong>Working principle.</strong> No rotating machinery. Inlet
+                converts kinetic energy into compression. Combustor heats the gas at
+                subsonic combustor Mach. Convergent nozzle accelerates the hot gas
+                to choking and beyond.</p>
+              <p><strong>Stations.</strong> 0 / 2 inlet exit / 3 diffuser exit
+                / 4 combustor exit / 9 nozzle exit.</p>
+              <p><strong>Inlet recovery.</strong> Either user value or the MIL-E-5008B
+                curve (whichever is smaller). Above ~M5 the curve drops below ~0.5
+                and the model emits a fidelity warning.</p>
+              <p><strong>Thermal choking.</strong> The combustor uses a Rayleigh-style
+                downstream-Mach estimate; if heat addition pushes the flow to M ≈ 1 the
+                model emits a critical thermal-choke warning.</p>
+            </details>
+
+            <details class="manual-block">
+              <summary>Scramjet (reduced-order)</summary>
+              <p><strong>Working principle.</strong> Multi-shock inlet sets the supersonic
+                combustor inlet state. Combustor adds heat at approximately constant
+                Mach with a Rayleigh-style total-pressure loss. Convergent nozzle
+                expands the products. Fuel input is given as an equivalence ratio φ.</p>
+              <p><strong>Stations.</strong> 0 / 2 / 3 supersonic combustor inlet / 4
+                combustor exit / 9 nozzle exit.</p>
+              <p><strong>Honest limitations.</strong> No isolator pressure recovery
+                curve, no finite-rate chemistry, no real-gas dissociation above
+                ~2500 K. The model is an <em>educational reduced-order scramjet
+                approximation</em> — not a CFD or design tool. Warnings flag temperatures
+                above 3000 K and below-Mach-4 operation.</p>
+            </details>
+
+            <details class="manual-block">
+              <summary>Efficiency definitions</summary>
+              <p><strong>Thermal η</strong> — useful jet power (Δjet KE + pressure
+                power) divided by fuel chemical power.</p>
+              <p><strong>Propulsive η</strong> — thrust × V₀ divided by useful jet power.
+                Tends to zero at static conditions by definition.</p>
+              <p><strong>Overall η</strong> — thrust × V₀ divided by fuel chemical power.
+                For pure-jet engines overall ≈ thermal × propulsive. For turboprop
+                engines the overall metric includes the propeller shaft thrust, so the
+                product rule does not hold.</p>
+            </details>
+
+            <details class="manual-block">
+              <summary>Glossary — quick definitions</summary>
+              <dl class="glossary-grid">
+                <dt>Station</dt>
+                <dd>A numbered location along the engine axis (0 freestream → 9 nozzle exit). Each station carries a thermodynamic state.</dd>
+                <dt>Stagnation (total) state</dt>
+                <dd>Properties the flow would have if brought to rest isentropically — Tt, Pt. Useful because Tt is conserved across adiabatic devices and Pt only drops where there is loss.</dd>
+                <dt>Static state</dt>
+                <dd>Local thermodynamic state of the moving gas — T, P. Differ from stagnation by the kinetic-energy term.</dd>
+                <dt>Mach number</dt>
+                <dd>Local flow speed divided by local speed of sound. Sets compressibility behaviour.</dd>
+                <dt>Pressure ratio (PR)</dt>
+                <dd>Pt at exit over Pt at inlet of a component — compressor, fan, turbine all have one.</dd>
+                <dt>Bypass ratio (BPR)</dt>
+                <dd>Mass flow through the fan bypass divided by mass flow through the core. Higher BPR → quieter, more efficient at subsonic cruise.</dd>
+                <dt>Fuel-air ratio (f)</dt>
+                <dd>Fuel mass flow divided by air mass flow through the combustor. Typically 0.015–0.04 in a lean turbojet.</dd>
+                <dt>Equivalence ratio (φ)</dt>
+                <dd>Actual fuel-air ratio divided by stoichiometric — φ &lt; 1 is lean, φ = 1 stoichiometric, φ &gt; 1 rich. Used for scramjets.</dd>
+                <dt>TSFC</dt>
+                <dd>Thrust-specific fuel consumption — fuel mass flow per unit thrust. Lower is better. Reported here in kg/(kN·hr).</dd>
+                <dt>BSFC</dt>
+                <dd>Brake-specific fuel consumption — fuel mass flow per unit shaft power. Used for turboprops.</dd>
+                <dt>Thermal efficiency</dt>
+                <dd>Useful jet power divided by fuel chemical power. Captures how well the cycle converts heat into kinetic energy.</dd>
+                <dt>Propulsive efficiency</dt>
+                <dd>Thrust × V₀ divided by useful jet power. Captures how well kinetic energy is turned into propulsive work.</dd>
+                <dt>Overall efficiency</dt>
+                <dd>Thermal × propulsive (for pure-jet engines). What the aircraft actually gets per unit fuel.</dd>
+                <dt>Choked nozzle</dt>
+                <dd>Nozzle throat at Mach 1, fixed mass-flow-per-area. Happens when the nozzle pressure ratio exceeds the critical value (~1.89 for hot gas).</dd>
+                <dt>Pressure thrust</dt>
+                <dd>Force from the exit-static minus ambient-static pressure times exit area. Important when the nozzle is under- or over-expanded.</dd>
+                <dt>Adiabatic flame temperature</dt>
+                <dd>Temperature reached if combustion happened with no heat loss — the thermodynamic ceiling for combustor exit temperature.</dd>
+              </dl>
+            </details>
+
+            <details class="manual-block">
+              <summary>Comparison framework</summary>
+              <p>Use <code>/compare/engines</code> or the "Engine compare" tab to run 2-5
+                engine specs side by side at their own design points. The output is a
+                table with thrust, TSFC, fuel-air ratio, and the three efficiency
+                metrics. Comparing across engine families is informative but be
+                careful: thrust definitions and design Mach envelopes differ.</p>
+            </details>
+          </section>
+        </div>
+
+        <!-- ============== OFF-DESIGN TAB ============== -->
+        <div id="offDesignTab" class="tab-panel" data-tab-panel="offdesign">
+          <section class="panel od-panel">
+            <div class="panel-heading">
+              <h2>Off-design matching</h2>
+            </div>
+            <p class="report-copy">
+              Pick an engine and fix the flight condition, then compute the matched
+              operating line. At each throttle the solver balances the spool work and
+              choked-flow continuity to find the self-consistent point — the engine
+              spins up and down as a fixed-geometry machine actually would. Drag the
+              throttle to scrub thrust and TSFC along the line.
+            </p>
+
+            <div class="od-controls">
+              <label>
+                <span>Engine</span>
+                <select id="odEngine">
+                  <option value="turbojet">Turbojet — single spool</option>
+                  <option value="turbofan">Turbofan — two spool</option>
+                </select>
+              </label>
+              <label>
+                <span>Altitude <span class="unit">m</span></span>
+                <input id="odAltitude" type="number" step="any" value="10000" />
+              </label>
+              <label>
+                <span>Mach</span>
+                <input id="odMach" type="number" step="any" value="0.8" />
+              </label>
+              <button type="button" id="odCompute" class="primary-button">Compute envelope</button>
+            </div>
+
+            <p id="odStatus" class="od-status">Press “Compute envelope” to match the operating line.</p>
+
+            <div class="od-body">
+              <div class="od-chart-wrap">
+                <canvas id="offDesignCanvas" width="560" height="280"></canvas>
+              </div>
+              <div class="od-readout">
+                <div class="od-throttle">
+                  <label for="odThrottle">Throttle — turbine inlet T <span class="unit">K</span></label>
+                  <input id="odThrottle" type="range" min="0" max="100" value="100" step="0.1" disabled />
+                  <output id="odThrottleValue">—</output>
+                </div>
+                <dl class="od-metrics">
+                  <div class="od-metric"><dt>Thrust</dt><dd id="odThrust">—</dd></div>
+                  <div class="od-metric"><dt>TSFC</dt><dd id="odTsfc">—</dd></div>
+                  <div class="od-metric"><dt id="odPrLabel">Pressure ratio</dt><dd id="odPr">—</dd></div>
+                  <div class="od-metric"><dt>Matched</dt><dd id="odConverged">—</dd></div>
+                </dl>
+                <p class="od-note">
+                  Bypass ratio (turbofan) is held at its design value; a real
+                  bypass-ratio shift needs a fan map. Low-throttle / high-Mach
+                  corners where a nozzle unchokes are dropped from the line.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============== MISSION TAB ============== -->
+        <div id="missionTab" class="tab-panel" data-tab-panel="mission">
+          <section class="panel mission-panel">
+            <div class="panel-heading">
+              <h2>Mission profile</h2>
+            </div>
+            <p class="report-copy">
+              Build a flight as a sequence of legs — each held at a fixed altitude,
+              Mach, and throttle for a set duration. The engine is matched off-design
+              at every leg and fuel burn is integrated across the mission. Edit any
+              cell, add or remove legs, and the totals update automatically.
+            </p>
+
+            <div class="mn-controls">
+              <label>
+                <span>Engine</span>
+                <select id="mnEngine">
+                  <option value="turbojet">Turbojet — single spool</option>
+                  <option value="turbofan">Turbofan — two spool</option>
+                </select>
+              </label>
+              <button type="button" id="mnAddSegment" class="ghost-button">+ Add leg</button>
+              <button type="button" id="mnFly" class="primary-button">Fly mission</button>
+            </div>
+
+            <div class="table-wrap mn-table-wrap">
+              <table class="mn-table">
+                <thead>
+                  <tr>
+                    <th>Leg</th>
+                    <th>Altitude <span class="unit">m</span></th>
+                    <th>Mach</th>
+                    <th>Throttle — turbine inlet T <span class="unit">K</span></th>
+                    <th>Duration <span class="unit">s</span></th>
+                    <th>Fuel <span class="unit">kg</span></th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="mnTableBody"></tbody>
+              </table>
+            </div>
+
+            <p id="mnStatus" class="mn-status"></p>
+
+            <div class="mn-results">
+              <dl class="mn-totals">
+                <div class="mn-total"><dt>Total fuel</dt><dd id="mnTotalFuel">—</dd></div>
+                <div class="mn-total"><dt>Total time</dt><dd id="mnTotalTime">—</dd></div>
+                <div class="mn-total"><dt>Legs matched</dt><dd id="mnMatched">—</dd></div>
+              </dl>
+              <div class="mn-chart-wrap">
+                <canvas id="missionCanvas" width="560" height="260"></canvas>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============== COMPRESSOR MAP TAB ============== -->
+        <div id="compressorMapTab" class="tab-panel" data-tab-panel="compressormap">
+          <section class="panel od-panel">
+            <div class="panel-heading">
+              <h2>Compressor map</h2>
+            </div>
+            <p class="report-copy">
+              Pressure ratio against corrected mass flow, with constant
+              corrected-speed lines, surge and choke boundaries, and the matched
+              off-design <strong>running line</strong>. The operating point is
+              converged on the map at each throttle — drag the throttle to move
+              it along the line. The map is sized to the deck on the Cycle tab;
+              change the deck and recompute to resize it.
+            </p>
+
+            <div class="od-controls">
+              <p id="cmStatus" class="od-status">Matching the running line…</p>
+              <button type="button" id="cmRecenter" class="ghost-button">Recompute from current cycle</button>
+            </div>
+
+            <div class="od-body">
+              <div class="od-chart-wrap">
+                <canvas id="compressorMapCanvas" width="560" height="320"></canvas>
+              </div>
+              <div class="od-readout">
+                <div class="od-throttle">
+                  <label for="cmThrottle">Throttle — turbine inlet T <span class="unit">K</span></label>
+                  <input id="cmThrottle" type="range" min="0" max="100" value="0" step="0.1" disabled />
+                  <output id="cmThrottleValue">—</output>
+                </div>
+                <dl class="od-metrics">
+                  <div class="od-metric"><dt>Pressure ratio</dt><dd id="cmPr">—</dd></div>
+                  <div class="od-metric"><dt>Corrected mass flow</dt><dd id="cmMdot">—</dd></div>
+                  <div class="od-metric"><dt>Map efficiency</dt><dd id="cmEff">—</dd></div>
+                  <div class="od-metric"><dt>Surge margin</dt><dd id="cmSurge">—</dd></div>
+                  <div class="od-metric"><dt>Thrust</dt><dd id="cmThrust">—</dd></div>
+                  <div class="od-metric"><dt>On map</dt><dd id="cmInRange">—</dd></div>
+                </dl>
+                <p class="od-note">
+                  This characteristic is a <strong>synthetic, illustrative</strong>
+                  map — correct trends, not measured manufacturer data. A verified
+                  dataset can be loaded into the same viewer later. Corrected mass
+                  flow is referenced to 288.15 K / 101.325 kPa at the compressor
+                  face; efficiency and surge margin are read off the map at the
+                  matched point.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============== CASE STUDIES TAB ============== -->
+        <div id="caseStudiesTab" class="tab-panel" data-tab-panel="casestudies">
+          <section class="panel case-study-panel">
+            <div class="panel-heading">
+              <h2>Real-engine case studies</h2>
+            </div>
+            <p class="report-copy">
+              Ten production gas-turbine engines, from the 1960s low-bypass
+              JT8D to today's geared and three-spool high-bypass fans. Each
+              entry gives a technical overview of the engine's architecture and
+              cycle alongside its key specifications. All figures are
+              public-estimated and approximate; exact numbers vary by sub-model
+              and rating. <a class="cs-fullpage-link" href="/lab/case-studies/">Browse all long-form case studies →</a>
+            </p>
+
+            <div class="cs-layout">
+              <nav class="cs-rail" id="caseStudyRail" aria-label="Engine list"></nav>
+              <article class="cs-detail panel" id="caseStudyDetail"></article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CREATOR
+           ============================================ -->
+      <section class="section" id="creator" aria-labelledby="creatorHeading">
+        <div class="section-header">
+          <p class="eyebrow"><span class="num">05</span> Creator</p>
+          <h2 class="section-title" id="creatorHeading">Built by Ainesh Das.</h2>
+        </div>
+
+        <article class="creator-card panel">
+          <div class="creator-avatar" aria-hidden="true">AD</div>
+          <div class="creator-body">
+            <p class="creator-name">Ainesh Das</p>
+            <p class="creator-role">Mechanical engineering undergraduate · propulsion &amp; simulation</p>
+            <p class="creator-blurb">
+              I'm a second-year mechanical engineering student. I built
+              PropulsionLab to actually understand how gas-turbine cycles work,
+              by making every station and every assumption visible instead of
+              hiding them behind a black box. Each number comes from a real
+              calculation, and where the model is simplified I say so. The
+              backend is FastAPI, Pydantic and NumPy/SciPy (with optional Cantera
+              for real-gas chemistry); the visuals are hand-written vanilla JS
+              and SVG, no framework.
+            </p>
+            <div class="creator-links">
+              <a class="creator-link primary-link"
+                 href="https://www.linkedin.com/in/ainesh-das/"
+                 target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                  <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.8 0 0 .77 0 1.73v20.54C0 23.23.8 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/>
+                </svg>
+                LinkedIn
+              </a>
+              <a class="creator-link"
+                 href="https://www.linkedin.com/in/ainesh-das/"
+                 target="_blank" rel="noopener noreferrer">in/ainesh-das</a>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <h1 id="appTitle" class="hidden">PropulsionLab</h1>
+    </main>
+
+    <!-- ============================================
+         FOOTER
+         ============================================ -->
+    <footer class="mission-footer" role="contentinfo">
+      <div class="mission-footer-grid">
+        <div class="footer-block">
+          <strong>DAS LABS · PropulsionLab</strong>
+          Station-resolved gas turbine and high-speed airbreathing simulator.
+          Educational thermodynamic envelope. Operate within disclosed assumptions.
+        </div>
+        <div class="footer-block">
+          <strong>Build</strong>
+          v2.6.0<br />
+          FastAPI · Pydantic v2 · NumPy
+        </div>
+        <div class="footer-block">
+          <strong>Resources</strong>
+          <a href="/docs" target="_blank" rel="noopener">API reference</a><br />
+          <a href="/lab/pro/">PropulsionLab Pro</a>
+        </div>
+        <div class="footer-block">
+          <strong>Support</strong>
+          PropulsionLab is free and solo-built.<br />
+          <!-- Set this to your GitHub Sponsors URL before launch. -->
+          <a class="footer-sponsor" href="https://github.com/sponsors/" target="_blank" rel="noopener noreferrer">♥ Sponsor on GitHub</a>
+        </div>
+        <div class="footer-block">
+          <strong>Creator</strong>
+          Ainesh Das<br />
+          <a href="https://www.linkedin.com/in/ainesh-das/" target="_blank" rel="noopener noreferrer">LinkedIn — in/ainesh-das</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="/lab/app.js?v=20260531-3d"></script>
+    <script src="/lab/casestudies.js?v=20260531-3d"></script>
+  </body>
+</html>

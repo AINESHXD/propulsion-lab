@@ -1,0 +1,17 @@
+{
+  "name": "propulsion-core",
+  "type": "module",
+  "description": "WASM port of the PropulsionLab reduced-order cycle core (Day 61+).",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "propulsion_core_bg.wasm",
+    "propulsion_core.js",
+    "propulsion_core.d.ts"
+  ],
+  "main": "propulsion_core.js",
+  "types": "propulsion_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

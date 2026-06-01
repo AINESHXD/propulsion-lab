@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PropulsionLab WASM smoke test</title>
+    <style>
+      body { font: 14px/1.6 system-ui, sans-serif; background: #08090b; color: #f4f4f5; padding: 40px; }
+      h1 { font-size: 1.2rem; }
+      table { border-collapse: collapse; margin-top: 16px; }
+      th, td { text-align: left; padding: 6px 18px 6px 0; }
+      .ok { color: #6ee7a8; } .bad { color: #f08c8c; }
+      code { color: #7ba7eb; }
+    </style>
+  </head>
+  <body>
+    <h1>PropulsionLab WASM core — load &amp; parity smoke test</h1>
+    <p>Loads <code>propulsion_core.js</code> (Day 61-62 build) and compares the
+       Rust/WASM ISA atmosphere against the Python reference values.</p>
+    <div id="status">Loading WASM module…</div>
+    <table id="results"></table>
+
+    <script type="module">
+      import init, { isa_atmosphere, core_version, turbojet_cycle } from
+        "/lab/wasm/propulsion-core/propulsion_core.js";
+
+      // Python reference values (app/engine_core/atmosphere.py).
+      const REF = {
+        0:     { pressure_pa: 101325.0,          density_kg_m3: 1.2252256827617731 },
+        10000: { pressure_pa: 26429.700111057547, density_kg_m3: 0.4126800243122905 },
+        20000: { pressure_pa: 5471.9350719501235, density_kg_m3: 0.08800358116987489 },
+      };
+      const rel = (a, b) => Math.abs(a - b) / Math.max(Math.abs(b), 1e-300);
+
+      try {
+        await init();
+        const status = document.getElementById("status");
+        status.innerHTML = `WASM module loaded — core v<code>${core_version()}</code>.`;
+        const rows = [["Altitude [m]", "P [Pa] (WASM)", "ρ [kg/m³] (WASM)", "max rel. error vs Python"]];
+        let worst = 0;
+        for (const alt of [0, 10000, 20000]) {
+          const a = isa_atmosphere(Number(alt));
+          const e = Math.max(rel(a.pressure_pa, REF[alt].pressure_pa),
+                             rel(a.density_kg_m3, REF[alt].density_kg_m3));
+          worst = Math.max(worst, e);
+          rows.push([alt, a.pressure_pa.toFixed(4), a.density_kg_m3.toFixed(8), e.toExponential(2)]);
+        }
+        const table = document.getElementById("results");
+        table.innerHTML = rows.map((r, i) =>
+          "<tr>" + r.map((c) => (i === 0 ? `<th>${c}</th>` : `<td>${c}</td>`)).join("") + "</tr>"
+        ).join("");
+        status.innerHTML += worst < 1e-9
+          ? ` <span class="ok">Atmosphere parity OK (worst ${worst.toExponential(2)} &lt; 1e-9).</span>`
+          : ` <span class="bad">Atmosphere parity FAIL (worst ${worst.toExponential(2)}).</span>`;
+
+        // Full default turbojet cycle vs Python (thrust 36.04 kN, TSFC 128.45).
+        const cyc = turbojet_cycle(10000, 0.8, 50, 12, 0.86, 1400, 0.88, 0.99, 0.05, 0.99, 0.95, 0.98, 43e6);
+        const cycErr = Math.max(rel(cyc.thrust_kn, 36.04016868643273),
+                                rel(cyc.tsfc_kg_per_kn_hr, 128.45123910270928));
+        const cycLine = document.createElement("p");
+        cycLine.innerHTML =
+          `Default turbojet cycle (WASM): thrust <code>${cyc.thrust_kn.toFixed(3)} kN</code>, ` +
+          `TSFC <code>${cyc.tsfc_kg_per_kn_hr.toFixed(2)} kg/kN/hr</code> — ` +
+          (cycErr < 1e-6
+            ? `<span class="ok">cycle parity OK (${cycErr.toExponential(2)} &lt; 1e-6).</span>`
+            : `<span class="bad">cycle parity FAIL (${cycErr.toExponential(2)}).</span>`);
+        document.body.appendChild(cycLine);
+      } catch (err) {
+        document.getElementById("status").innerHTML =
+          `<span class="bad">Failed to load WASM: ${err}</span>`;
+      }
+    </script>
+  </body>
+</html>

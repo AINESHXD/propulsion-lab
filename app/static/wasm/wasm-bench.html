@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PropulsionLab — WASM vs Python benchmark</title>
+    <style>
+      body { font: 14px/1.6 system-ui, sans-serif; background: #08090b; color: #f4f4f5; padding: 40px; max-width: 820px; }
+      h1 { font-size: 1.25rem; } h2 { font-size: 1rem; margin-top: 28px; }
+      .controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+      select, button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid #2a2d34; background: #131418; color: #f4f4f5; }
+      button { cursor: pointer; }
+      table { border-collapse: collapse; margin-top: 12px; width: 100%; }
+      th, td { text-align: left; padding: 6px 14px 6px 0; border-bottom: 1px solid #1c1e24; }
+      .ok { color: #6ee7a8; } .bad { color: #f08c8c; } .dim { color: #8b8f98; }
+      code { color: #7ba7eb; }
+      .big { font-size: 1.8rem; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <h1>WASM vs Python — switchable compute &amp; latency benchmark</h1>
+    <p class="dim">
+      The same cycle runs locally in WebAssembly or on the FastAPI Python solver.
+      The benchmark times mean per-call latency for each and reports the parity
+      error between them. "Speed-up" is end-to-end latency (local WASM vs API
+      round-trip) — the win is eliminating the network round trip.
+    </p>
+
+    <div class="controls">
+      <label>Engine
+        <select id="engine">
+          <option value="turbojet">Turbojet</option>
+          <option value="turbofan">Turbofan</option>
+        </select>
+      </label>
+      <label>Compute
+        <select id="mode">
+          <option value="wasm">WASM (local)</option>
+          <option value="api">Server (Python)</option>
+        </select>
+      </label>
+      <button id="runOne">Run once</button>
+      <button id="runBench">Run benchmark</button>
+      <span id="status" class="dim"></span>
+    </div>
+
+    <div id="single"></div>
+    <h2>Benchmark</h2>
+    <div id="bench"><span class="dim">Press “Run benchmark”.</span></div>
+
+    <script type="module">
+      import { runCycle, benchmark, loadWasm } from "/lab/wasm/wasm-engine.js";
+
+      const DECKS = {
+        turbojet: {
+          engine_variant: "turbojet", altitude_m: 10000, mach: 0.8, mass_flow_air_kg_s: 50,
+          compressor_pressure_ratio: 12, compressor_efficiency: 0.86,
+          turbine_inlet_temperature_K: 1400, turbine_efficiency: 0.88,
+          combustor_efficiency: 0.99, combustor_pressure_loss_fraction: 0.05,
+          mechanical_efficiency: 0.99, nozzle_efficiency: 0.95,
+          inlet_pressure_recovery: 0.98, fuel_heating_value_J_kg: 43e6,
+        },
+        turbofan: {
+          nozzle_configuration: "separate", altitude_m: 10000, mach: 0.78,
+          total_mass_flow_air_kg_s: 220, bypass_ratio: 5, fan_pressure_ratio: 1.55,
+          fan_efficiency: 0.89, core_compressor_pressure_ratio: 18, compressor_efficiency: 0.88,
+          turbine_inlet_temperature_K: 1550, hp_turbine_efficiency: 0.9, lp_turbine_efficiency: 0.9,
+          combustor_efficiency: 0.99, combustor_pressure_loss_fraction: 0.05,
+          mechanical_efficiency: 0.99, core_nozzle_efficiency: 0.95, bypass_nozzle_efficiency: 0.94,
+          inlet_pressure_recovery: 0.98, fuel_heating_value_J_kg: 43e6,
+        },
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const fmt = (v, d = 2) => Number(v).toLocaleString(undefined, { maximumFractionDigits: d });
+      loadWasm().then((m) => { $("status").textContent = m ? "WASM ready." : "WASM unavailable — API only."; });
+
+      $("runOne").addEventListener("click", async () => {
+        const family = $("engine").value;
+        const preferWasm = $("mode").value === "wasm";
+        const r = await runCycle(family, DECKS[family], { preferWasm });
+        $("single").innerHTML =
+          `<table>
+            <tr><th>Source</th><td><code>${r._source}</code></td></tr>
+            <tr><th>Thrust</th><td>${fmt(r.thrust_kN, 3)} kN</td></tr>
+            <tr><th>TSFC</th><td>${fmt(r.TSFC_kg_per_kN_hr, 2)} kg/kN/hr</td></tr>
+            <tr><th>Fuel-air ratio</th><td>${fmt(r.fuel_air_ratio, 4)}</td></tr>
+            <tr><th>Overall η</th><td>${fmt(r.overall_efficiency_estimate * 100, 1)} %</td></tr>
+          </table>`;
+      });
+
+      $("runBench").addEventListener("click", async () => {
+        const family = $("engine").value;
+        $("bench").innerHTML = "<span class='dim'>Running…</span>";
+        const b = await benchmark(family, DECKS[family]);
+        if (!b.supported) {
+          $("bench").innerHTML = "<span class='bad'>This config is not supported by WASM; API only.</span>";
+          return;
+        }
+        const parityOk = b.parityError < 1e-6;
+        $("bench").innerHTML =
+          `<p class="big">${fmt(b.speedup, 0)}× <span class="dim" style="font-size:1rem">lower latency (local WASM vs API round-trip)</span></p>
+           <table>
+             <tr><th>WASM (local)</th><td>${fmt(b.wasmMsPerCall, 5)} ms/call</td></tr>
+             <tr><th>API (round-trip)</th><td>${fmt(b.apiMsPerCall, 3)} ms/call</td></tr>
+             <tr><th>Thrust parity (WASM vs API)</th>
+                 <td>${fmt(b.wasmResult.thrust_kN, 4)} vs ${fmt(b.apiResult.thrust_kN, 4)} kN —
+                 <span class="${parityOk ? "ok" : "bad"}">rel err ${b.parityError.toExponential(2)}</span></td></tr>
+           </table>`;
+      });
+    </script>
+  </body>
+</html>

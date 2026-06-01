@@ -1,0 +1,25 @@
+[package]
+name = "propulsion-core"
+version = "0.1.0"
+edition = "2021"
+description = "WASM port of the PropulsionLab reduced-order cycle core (Day 61+)."
+license = "MIT"
+publish = false
+
+[lib]
+# cdylib -> the .wasm module loaded by the browser; rlib -> native unit tests.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+
+# Skip the optional wasm-opt (binaryen) post-process step so the build does not
+# depend on a separate binaryen download. Can be re-enabled once binaryen is
+# available locally.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
