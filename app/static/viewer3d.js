@@ -12,7 +12,7 @@ import { OrbitControls } from "/lab/vendor/three/OrbitControls.js";
 import { GLTFLoader } from "/lab/vendor/three/GLTFLoader.js";
 
 const gsap = window.gsap;
-const MODEL_VERSION = "?m=5";   // bump when a .glb is re-exported (cache-bust)
+const MODEL_VERSION = "?m=7";   // bump when a .glb is re-exported (cache-bust)
 
 // Engine catalogue: model + station labels with hover explanations.
 const ENGINES = {
