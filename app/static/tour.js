@@ -153,6 +153,12 @@
 
   function start() {
     if (active) return;
+    // The tour's anchors live in the Cycle tab's turbojet workspace. If the user
+    // opens it from another tab/engine, switch back so every step has a target.
+    const dash = document.querySelector('.tab-button[data-tab="dashboard"]');
+    if (dash && !dash.classList.contains("active")) dash.click();
+    const tj = document.querySelector('.engine-card[data-engine="turbojet"]');
+    if (tj && !tj.classList.contains("active")) tj.click();
     injectStyles();
     els = buildDom();
     active = true;
