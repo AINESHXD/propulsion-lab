@@ -1240,9 +1240,23 @@ function animateStationChart(result, targetCanvas = stationCanvas) {
   requestAnimationFrame(step);
 }
 
+/* Order stations by physical flow position, not raw number, so charts read
+ * inlet → exhaust. Standard SAE numbering puts the inter-turbine station 45
+ * between the burner (4) and the LP-turbine exit (5), and the bypass stations
+ * (13, 19) form a cold tail after the core — sorting numerically would scatter
+ * them and make the traces look broken. */
+const STATION_FLOW_RANK = {
+  0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 41: 4.3, 44: 4.6, 45: 5, 49: 5.5, 5: 6, 55: 6.5,
+  6: 7, 7: 7.5, 8: 7.8, 9: 8, 13: 9, 16: 9.3, 18: 9.6, 19: 10, 21: 11, 25: 12,
+};
+function stationFlowKey(n) {
+  return STATION_FLOW_RANK[n] !== undefined ? STATION_FLOW_RANK[n] : 100 + Number(n);
+}
+function byFlowOrder(a, b) { return stationFlowKey(a.station) - stationFlowKey(b.station); }
+
 function drawStationChart(result, targetCanvas = stationCanvas, progress = 1) {
   const { context: ctx, width, height } = canvasScale(targetCanvas);
-  const stations = Object.values(result.station_table).sort((a, b) => a.station - b.station);
+  const stations = Object.values(result.station_table).sort(byFlowOrder);
   ctx.clearRect(0, 0, width, height);
 
   const pad = 40;
@@ -1609,7 +1623,7 @@ function updateGraphCanvases() {
     });
     return;
   }
-  const stations = Object.values(lastResult.station_table).sort((a, b) => a.station - b.station);
+  const stations = Object.values(lastResult.station_table).sort(byFlowOrder);
   const stationLabels = stations.map((s) => s.station);
 
   drawLineGraph($("#graphStationTemp"), stationLabels,
