@@ -155,6 +155,7 @@
     els = buildDom();
     active = true;
     addEventListener("resize", reposition);
+    addEventListener("scroll", reposition, true);   // keep the ring on the element when the user scrolls
     document.addEventListener("keydown", onKey, true);
     go(0);
   }
@@ -163,6 +164,7 @@
     if (!active) return;
     active = false;
     removeEventListener("resize", reposition);
+    removeEventListener("scroll", reposition, true);
     document.removeEventListener("keydown", onKey, true);
     if (els) {
       els.backdrop.classList.remove("in");
