@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0b0e" />
+    <meta name="description" content="DASLAB ML Suite — a from-scratch neural-net surrogate of the turbojet cycle. Move the sliders and read instant, in-browser performance predictions, verified live against the exact physics solver." />
+    <title>PropulsionLab — DASLAB ML Suite</title>
+    <style>
+      :root{
+        --bg:#0a0b0e; --panel:rgba(16,18,22,.72); --line:rgba(255,255,255,.09);
+        --line-2:rgba(255,255,255,.16); --text:#f3f4f6; --dim:#9197a1; --accent:#7ba7eb;
+        --good:#37d39a; --warn:#e7b964; --mono:"SF Mono",ui-monospace,"Cascadia Code",monospace;
+      }
+      *{box-sizing:border-box}
+      html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+        font:14px/1.55 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+      a{color:var(--accent);text-decoration:none}
+      .topbar{position:sticky;top:0;z-index:6;display:flex;justify-content:space-between;align-items:center;
+        padding:14px 22px;background:linear-gradient(#0a0b0eee,#0a0b0ecc);border-bottom:1px solid var(--line);
+        backdrop-filter:blur(10px)}
+      .brand{display:flex;align-items:center;gap:12px}
+      .brand svg{width:46px;height:23px;color:var(--text)}
+      .brand .word{font-weight:700;letter-spacing:.16em;font-size:13px}
+      .brand .product{color:var(--dim);font-size:12px;letter-spacing:.04em}
+      .topbar a{color:var(--dim);font-size:.85rem}
+      .topbar a:hover{color:var(--text)}
+
+      .wrap{max-width:1100px;margin:0 auto;padding:28px 22px 60px}
+      .eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+      h1{font-size:1.5rem;letter-spacing:-.01em;margin:0 0 8px;font-weight:650}
+      .lede{color:var(--dim);max-width:64ch;margin:0 0 8px}
+      .badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:999px;
+        padding:5px 12px;font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+      .dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good)}
+
+      .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:22px;margin-top:24px}
+      .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;
+        backdrop-filter:blur(14px)}
+      .card h2{font-size:.82rem;font-weight:600;letter-spacing:.02em;margin:0 0 16px;text-transform:uppercase;color:var(--dim)}
+
+      .slider-row{margin:0 0 18px}
+      .slider-row .lab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+      .slider-row .lab span{font-size:.82rem}
+      .slider-row .lab strong{font-family:var(--mono);font-size:.9rem;color:var(--accent);font-weight:500}
+      input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:4px;
+        background:linear-gradient(90deg,var(--accent) var(--pct,50%),rgba(255,255,255,.14) var(--pct,50%));outline:none}
+      input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+        background:#fff;cursor:pointer;border:3px solid var(--accent)}
+      input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;cursor:pointer;border:3px solid var(--accent)}
+
+      .outs{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+      .out{padding:16px 16px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+      .out .k{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;min-height:2.2em}
+      .out .v{font-family:var(--mono);font-size:1.5rem;letter-spacing:-.01em}
+      .out .truth{font-size:.7rem;color:var(--dim);margin-top:6px;min-height:1.2em}
+      .out .err.good{color:var(--good)} .out .err.warn{color:var(--warn)}
+
+      .infer{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+      .infer .t{font-family:var(--mono);font-size:.74rem;color:var(--dim)}
+      .btn{font:inherit;font-size:.8rem;color:var(--text);background:#16181d;border:1px solid var(--line-2);
+        border-radius:9px;padding:8px 14px;cursor:pointer;transition:border-color .15s,color .15s}
+      .btn:hover{border-color:var(--accent);color:#fff}
+      .btn.primary{background:rgba(123,167,235,.12);border-color:var(--accent);color:var(--accent)}
+
+      .modelcard{margin-top:22px}
+      .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+      .metric{padding:14px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+      .metric .k{font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;min-height:2.4em}
+      .metric .r2{font-family:var(--mono);font-size:1.1rem}
+      .metric .mape{font-size:.7rem;color:var(--dim);margin-top:4px}
+      .spec{font-family:var(--mono);font-size:.72rem;color:var(--dim);line-height:1.7;margin-top:14px}
+      .note{font-size:.78rem;color:var(--dim);line-height:1.55;margin-top:14px;border-left:2px solid var(--line-2);padding-left:12px}
+      #status{color:var(--dim);font-size:.8rem}
+      @media(max-width:820px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 96 48" fill="none"><line x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M30 29 L86 8 L52 29 Z" fill="currentColor"/><path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity=".6"/></svg>
+        <span class="word">DAS&nbsp;LABS</span><span class="product">· ML&nbsp;Suite</span>
+      </div>
+      <a href="/lab/">← Console</a>
+    </header>
+
+    <main class="wrap">
+      <p class="eyebrow">PropulsionLab · Neural surrogate</p>
+      <h1>Turbojet performance, predicted in-browser.</h1>
+      <p class="lede">
+        A small neural network — trained from scratch on thousands of solver
+        evaluations — approximates the turbojet cycle. Move the sliders for
+        instant predictions with no server round-trip, then verify any point
+        against the exact physics.
+      </p>
+      <span class="badge" id="readyBadge"><span class="dot"></span> Loading model…</span>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Design &amp; flight inputs</h2>
+          <div id="sliders"></div>
+        </section>
+
+        <section class="card">
+          <h2>Predicted performance</h2>
+          <div class="outs" id="outs"></div>
+          <div class="infer">
+            <span class="t" id="inferTime">—</span>
+            <button class="btn primary" id="verifyBtn" disabled>Verify against physics →</button>
+            <span id="status"></span>
+          </div>
+        </section>
+      </div>
+
+      <section class="card modelcard">
+        <h2>Model card · held-out accuracy</h2>
+        <div class="metrics" id="metrics"></div>
+        <div class="spec" id="spec"></div>
+        <p class="note" id="honesty">
+          The cycle is a smooth, deterministic function, so high accuracy here is
+          expected — this demonstrates the full pipeline (space-filling sampling →
+          from-scratch backprop → held-out validation → in-browser inference), not
+          a hard benchmark. Predictions are trustworthy only inside the sampled
+          ranges; the exact solver remains the source of truth.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      const MODEL_URL = "/lab/models/surrogate_turbojet.json?v=1";
+      let M = null;
+
+      // ---- pure-JS forward pass (mirrors the NumPy MLP exactly) ----
+      function predict(x) {
+        // standardise inputs
+        let a = x.map((v, i) => (v - M.x_mean[i]) / M.x_std[i]);
+        const L = M.weights.length;
+        for (let l = 0; l < L; l++) {
+          const W = M.weights[l], b = M.biases[l];
+          const nout = b.length, nin = a.length;
+          const z = new Array(nout).fill(0);
+          for (let j = 0; j < nout; j++) {
+            let s = b[j];
+            for (let i = 0; i < nin; i++) s += a[i] * W[i][j];
+            z[j] = (l === L - 1) ? s : Math.tanh(s);   // linear output layer
+          }
+          a = z;
+        }
+        // de-standardise + per-output transform
+        return a.map((v, j) => {
+          let y = v * M.y_std[j] + M.y_mean[j];
+          if (M.output_transforms[j] === "log") y = Math.exp(y);
+          return y;
+        });
+      }
+
+      const fmt = (v, d = 1) =>
+        Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+
+      function currentInputs() {
+        return M.inputs.map((_, i) => Number(document.getElementById("s" + i).value));
+      }
+
+      function refresh() {
+        const x = currentInputs();
+        const t0 = performance.now();
+        const y = predict(x);
+        const dt = performance.now() - t0;
+        M.outputs.forEach((_, j) => {
+          const dec = (M.outputs[j] === "overall_efficiency_estimate") ? 3 : 1;
+          document.getElementById("v" + j).textContent = fmt(y[j], dec);
+          const truth = document.getElementById("t" + j); if (truth) truth.textContent = "";
+        });
+        document.getElementById("inferTime").textContent =
+          `inference: ${(dt * 1000).toFixed(1)} µs · pure JS, no server`;
+        return x;
+      }
+
+      async function verify() {
+        const status = document.getElementById("status");
+        const x = currentInputs();
+        const y = predict(x);
+        status.textContent = "querying physics…";
+        try {
+          const res = await fetch("/simulate/turbojet", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              compressor_pressure_ratio: x[0], turbine_inlet_temperature_K: x[1],
+              mach: x[2], altitude_m: x[3], mass_flow_air_kg_s: 50,
+            }),
+          });
+          if (!res.ok) throw new Error("solver " + res.status);
+          const r = await res.json();
+          const truth = [
+            r.specific_thrust_N_per_kg_s,
+            r.TSFC_kg_per_kN_hr,
+            r.overall_efficiency_estimate,
+            r.station_table?.[3]?.stagnation_temperature_K,
+          ];
+          M.outputs.forEach((_, j) => {
+            const tv = truth[j];
+            const el = document.getElementById("t" + j);
+            if (!Number.isFinite(Number(tv))) { el.textContent = ""; return; }
+            const err = Math.abs((y[j] - tv) / (Math.abs(tv) > 1e-6 ? tv : 1)) * 100;
+            const cls = err < 3 ? "good" : "warn";
+            const dec = (M.outputs[j] === "overall_efficiency_estimate") ? 3 : 1;
+            el.innerHTML = `true ${fmt(tv, dec)} · <span class="err ${cls}">${err.toFixed(1)}% err</span>`;
+          });
+          status.textContent = "";
+        } catch (e) {
+          status.textContent = "verify failed: " + e.message;
+        }
+      }
+
+      function buildSliders() {
+        const host = document.getElementById("sliders");
+        const labels = {
+          compressor_pressure_ratio: ["Compressor pressure ratio", "", 0],
+          turbine_inlet_temperature_K: ["Turbine-inlet temperature", " K", 0],
+          mach: ["Flight Mach", "", 2],
+          altitude_m: ["Altitude", " m", 0],
+        };
+        const defaults = [20, 1500, 0.8, 10000];
+        M.inputs.forEach((name, i) => {
+          const [lo, hi] = M.input_ranges[i];
+          const [lab, unit, dec] = labels[name] || [name, "", 1];
+          const step = (name === "mach") ? 0.01 : (hi - lo > 200 ? 10 : 0.5);
+          const row = document.createElement("div");
+          row.className = "slider-row";
+          row.innerHTML =
+            `<div class="lab"><span>${lab}</span><strong id="d${i}"></strong></div>` +
+            `<input type="range" id="s${i}" min="${lo}" max="${hi}" step="${step}" value="${defaults[i]}" />`;
+          host.appendChild(row);
+          const input = row.querySelector("input");
+          const disp = row.querySelector("#d" + i);
+          const upd = () => {
+            disp.textContent = fmt(Number(input.value), dec) + unit;
+            input.style.setProperty("--pct", ((input.value - lo) / (hi - lo) * 100) + "%");
+            refresh();
+          };
+          input.addEventListener("input", upd);
+          upd();
+        });
+      }
+
+      function buildOutputs() {
+        const host = document.getElementById("outs");
+        M.outputs.forEach((_, j) => {
+          const el = document.createElement("div");
+          el.className = "out";
+          el.innerHTML = `<div class="k">${M.output_labels[j]}</div>` +
+            `<div class="v" id="v${j}">—</div><div class="truth" id="t${j}"></div>`;
+          host.appendChild(el);
+        });
+      }
+
+      function buildModelCard() {
+        const host = document.getElementById("metrics");
+        M.outputs.forEach((name) => {
+          const m = M.metrics?.[name] || {};
+          const el = document.createElement("div");
+          el.className = "metric";
+          el.innerHTML = `<div class="k">${M.output_labels[M.outputs.indexOf(name)]}</div>` +
+            `<div class="r2">R² ${m.r2 != null ? m.r2.toFixed(4) : "—"}</div>` +
+            `<div class="mape">${m.mape_pct != null ? m.mape_pct.toFixed(2) + "% MAPE" : ""}</div>`;
+          host.appendChild(el);
+        });
+        const tr = M.training || {};
+        document.getElementById("spec").innerHTML =
+          `architecture ${(tr.architecture || M.layer_sizes).join(" → ")} · tanh · Adam · ` +
+          `${tr.sampling || "latin-hypercube"} sampling · ` +
+          `${fmt(tr.n_train, 0)} train / ${fmt(tr.n_test, 0)} held-out`;
+      }
+
+      (async function boot() {
+        try {
+          M = await (await fetch(MODEL_URL)).json();
+          buildSliders(); buildOutputs(); buildModelCard();
+          refresh();
+          const badge = document.getElementById("readyBadge");
+          badge.innerHTML = `<span class="dot"></span> Model loaded · ${M.format}`;
+          const vb = document.getElementById("verifyBtn");
+          vb.disabled = false; vb.addEventListener("click", verify);
+        } catch (e) {
+          document.getElementById("readyBadge").textContent = "Failed to load model: " + e.message;
+        }
+      })();
+    </script>
+  </body>
+</html>

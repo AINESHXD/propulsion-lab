@@ -48,6 +48,12 @@ JS + Canvas/SVG with no build step, served by FastAPI from `app/static/`.
   (minimise TSFC vs maximise specific thrust) over compressor pressure ratio and
   turbine-inlet temperature, subject to a material-temperature cap and a fuel-air band.
   Deterministic under a fixed seed; no third-party optimiser dependency.
+- **DASLAB ML Suite** — a small neural-net surrogate of the turbojet cycle, trained
+  from scratch (hand-written MLP, backpropagation and Adam in NumPy) on a Latin-Hypercube
+  sample of the design space. It predicts specific thrust, TSFC, overall efficiency and
+  Tt3 to R² > 0.999 on a held-out set, exports to plain JSON, and runs the identical
+  forward pass in pure browser JavaScript (microsecond inference, no server round-trip),
+  verified live against the exact solver.
 - **Tooling** — single-parameter sweeps, engine comparison, T-s / P-v and performance
   charts, a branded PDF report, a stdlib-only Python API-client export, and shareable
   URLs that encode the full input deck.
