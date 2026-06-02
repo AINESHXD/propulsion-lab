@@ -1434,7 +1434,9 @@ function drawBarGraph(canvas, labels, values, colors, unitLabel, fixedMaxValue =
   const plotH = height - pad * 2;
   drawChartFrame(ctx, pad, pad, plotW, plotH);
 
-  const maxValue = fixedMaxValue || Math.max(1e-9, ...values.map((v) => Math.abs(v)));
+  // Headroom (×1.18) so the tallest bar never reaches the top — its value label
+  // is drawn above the bar on the dark background, not buried inside it.
+  const maxValue = fixedMaxValue || Math.max(1e-9, ...values.map((v) => Math.abs(v))) * 1.18;
   const slot = plotW / Math.max(1, values.length);
   const barWidth = Math.max(28, slot - 32);
 
