@@ -420,8 +420,13 @@ See [`ROADMAP.md`](ROADMAP.md) for what is done, in progress, and planned. In sh
 five engine families, off-design matching, mission integration, the optional real-gas
 hot section, reactor-network combustor emissions (NOx / CO + ICAO LTO), NSGA-II
 multi-objective design optimisation, and the reporting/export tooling are in place;
-component maps, full real-gas chemistry through the whole cycle, and an ML surrogate are
-the main planned steps.
+full real-gas chemistry through the whole cycle is the main planned step.
+
+A **cloud-CFD control plane** (job state machine, mesh spec, pluggable solver runner
+with a local quasi-1D mock; `app/cfd.py`) is scaffolded but **gated off** — its
+`/cfd/*` endpoints only appear when `ENABLE_CFD=1`, so it ships dark and adds nothing
+to the public launch surface. Wiring the production runner (containerised SU2/OpenFOAM
+on AWS Batch) is future work.
 
 ## License
 

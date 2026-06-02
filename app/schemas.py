@@ -852,3 +852,44 @@ class TurbojetOptimizeOutput(BaseModel):
     evaluations: int
     feasible_fraction: float
     notes: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Cloud-CFD job control plane (future / Pro feature — gated off at launch)
+# ---------------------------------------------------------------------------
+
+
+class CFDSubmitInput(BaseModel):
+    """A converging–divergent nozzle CFD case to queue."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    case_name: str = Field(default="nozzle", max_length=60)
+    throat_area_m2: float = Field(default=0.05, gt=0.0, le=25.0)
+    area_ratio: float = Field(default=2.0, ge=1.0, le=20.0)
+    nozzle_pressure_ratio: float = Field(default=6.0, gt=1.0, le=200.0)
+    gamma: float = Field(default=1.33, gt=1.0, le=1.7)
+    resolution: Literal["coarse", "medium", "fine"] = "medium"
+
+
+class CFDJobOutput(BaseModel):
+    """Status snapshot of a CFD job."""
+
+    id: str
+    case_name: str
+    status: str
+    progress: float
+    message: str
+    created_at: str
+    updated_at: str
+    cells: int
+    has_result: bool
+    error: str | None = None
+
+
+class CFDResultOutput(BaseModel):
+    """Completed CFD field result."""
+
+    id: str
+    status: str
+    result: dict[str, Any]

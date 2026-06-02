@@ -53,6 +53,7 @@ from app.engine_core.emissions import (
     icao_lto_nox,
 )
 from app.engine_core.optimization import TurbojetDesignProblem, nsga2
+from app.cfd import CFDCase, cfd_enabled, service as cfd_service
 from app.engine_core.compressor_maps import synthetic_compressor_map
 from app.engine_core.map_matching import (
     default_maps_for_reference,
@@ -86,6 +87,9 @@ from app.schemas import (
     EmissionsOutput,
     LTOModeOutput,
     ParetoPoint,
+    CFDJobOutput,
+    CFDResultOutput,
+    CFDSubmitInput,
     TurbojetLTOInput,
     TurbojetLTOOutput,
     TurbojetOptimizeInput,
@@ -520,6 +524,78 @@ def optimize_turbojet(inputs: TurbojetOptimizeInput) -> TurbojetOptimizeOutput:
         feasible_fraction=result.feasible_fraction,
         notes=notes,
     )
+
+
+# ---------------------------------------------------------------------------
+# Cloud-CFD job control plane (future / Pro — gated behind ENABLE_CFD)
+# ---------------------------------------------------------------------------
+
+
+def _require_cfd() -> None:
+    """404 unless the CFD feature is switched on. Keeps it dark at launch."""
+
+    if not cfd_enabled():
+        raise HTTPException(status_code=404, detail="CFD feature is not enabled.")
+
+
+@app.post("/cfd/jobs", response_model=CFDJobOutput)
+def cfd_submit(inputs: CFDSubmitInput) -> CFDJobOutput:
+    """Queue a nozzle CFD case and return the created job (gated)."""
+
+    _require_cfd()
+    job = cfd_service.submit(CFDCase(
+        case_name=inputs.case_name,
+        throat_area_m2=inputs.throat_area_m2,
+        area_ratio=inputs.area_ratio,
+        nozzle_pressure_ratio=inputs.nozzle_pressure_ratio,
+        gamma=inputs.gamma,
+        resolution=inputs.resolution,
+    ))
+    return CFDJobOutput(**job.to_dict())
+
+
+@app.get("/cfd/jobs", response_model=list[CFDJobOutput])
+def cfd_list() -> list[CFDJobOutput]:
+    """List CFD jobs, most recent first (gated)."""
+
+    _require_cfd()
+    return [CFDJobOutput(**j.to_dict()) for j in cfd_service.list()]
+
+
+@app.get("/cfd/jobs/{job_id}", response_model=CFDJobOutput)
+def cfd_status(job_id: str) -> CFDJobOutput:
+    """Poll a CFD job's status (gated)."""
+
+    _require_cfd()
+    job = cfd_service.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return CFDJobOutput(**job.to_dict())
+
+
+@app.get("/cfd/jobs/{job_id}/result", response_model=CFDResultOutput)
+def cfd_result(job_id: str) -> CFDResultOutput:
+    """Fetch a completed CFD job's field result (gated)."""
+
+    _require_cfd()
+    job = cfd_service.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job.result is None:
+        raise HTTPException(status_code=409, detail=f"Job is {job.status.value}, no result yet.")
+    return CFDResultOutput(id=job.id, status=job.status.value, result=job.result)
+
+
+@app.post("/cfd/jobs/{job_id}/cancel", response_model=CFDJobOutput)
+def cfd_cancel(job_id: str) -> CFDJobOutput:
+    """Request cancellation of a running CFD job (gated)."""
+
+    _require_cfd()
+    job = cfd_service.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    cfd_service.cancel(job_id)
+    return CFDJobOutput(**job.to_dict())
 
 
 # ---------------------------------------------------------------------------
