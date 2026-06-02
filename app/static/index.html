@@ -294,17 +294,17 @@
                     </label>
                     <label>
                       <span>Altitude <span class="unit">m</span></span>
-                      <input name="altitude_m" type="number" step="any" min="-500" max="25000" />
+                      <input name="altitude_m" type="number" step="any" min="-500" max="25000" value="10000" />
                     </label>
                     <label>
                       <span>Mach<span class="info-pop" tabindex="0"
                             data-tip="Flight Mach number — aircraft speed divided by local speed of sound. Sets the ram compression and the freestream stagnation state at station 0.">?</span></span>
-                      <input name="mach" type="number" step="any" min="0" max="3" />
+                      <input name="mach" type="number" step="any" min="0" max="3" value="0.8" />
                       <span class="field-hint">Inlet recovery drops harder as Mach rises.</span>
                     </label>
                     <label>
                       <span>Air mass flow <span class="unit">kg/s</span></span>
-                      <input name="mass_flow_air_kg_s" type="number" step="any" min="0.1" />
+                      <input name="mass_flow_air_kg_s" type="number" step="any" min="0.1" value="50" />
                     </label>
                     <label>
                       <span>Inlet capture area <span class="unit">m²</span></span>
@@ -313,7 +313,7 @@
                     <label>
                       <span>Inlet recovery<span class="info-pop" tabindex="0"
                             data-tip="Total-pressure recovery of the inlet diffuser — Pt2 / Pt0. Captures shock and friction losses between freestream and compressor face. Real subsonic inlets sit at 0.96–0.99; supersonic inlets drop sharply with Mach.">?</span></span>
-                      <input name="inlet_pressure_recovery" type="number" step="any" min="0.01" max="1" />
+                      <input name="inlet_pressure_recovery" type="number" step="any" min="0.01" max="1" value="0.98" />
                       <span class="field-hint">Typical clean subsonic value: 0.96–0.99.</span>
                     </label>
                   </div>
@@ -325,26 +325,26 @@
                     <label>
                       <span>Compressor PR<span class="info-pop" tabindex="0"
                             data-tip="Compressor pressure ratio — Pt3 / Pt2. Higher PR raises thermal efficiency but needs more turbine work to drive it, and pushes Tt3 toward the material limit.">?</span></span>
-                      <input name="compressor_pressure_ratio" type="number" step="any" min="1.01" />
+                      <input name="compressor_pressure_ratio" type="number" step="any" min="1.01" value="12" />
                       <span class="field-hint">Simple turbojet study range: 5–15.</span>
                     </label>
                     <label>
                       <span>Compressor η</span>
-                      <input name="compressor_efficiency" type="number" step="any" min="0.01" max="1" />
+                      <input name="compressor_efficiency" type="number" step="any" min="0.01" max="1" value="0.86" />
                     </label>
                     <label>
                       <span>Turbine inlet T <span class="unit">K</span><span class="info-pop" tabindex="0"
                             data-tip="Tt4 — gas total temperature at the turbine inlet. The single biggest driver of thrust and TSFC. Limited by turbine blade material + cooling: uncooled ~1200 K, modern cooled blades 1700–1900 K.">?</span></span>
-                      <input name="turbine_inlet_temperature_K" type="number" step="any" min="700" max="2300" />
+                      <input name="turbine_inlet_temperature_K" type="number" step="any" min="700" max="2300" value="1400" />
                       <span class="field-hint">Material / cooling limited.</span>
                     </label>
                     <label>
                       <span>Turbine η</span>
-                      <input name="turbine_efficiency" type="number" step="any" min="0.01" max="1" />
+                      <input name="turbine_efficiency" type="number" step="any" min="0.01" max="1" value="0.88" />
                     </label>
                     <label>
                       <span>Mechanical η</span>
-                      <input name="mechanical_efficiency" type="number" step="any" min="0.01" max="1" />
+                      <input name="mechanical_efficiency" type="number" step="any" min="0.01" max="1" value="0.99" />
                     </label>
                   </div>
                 </details>
@@ -354,17 +354,17 @@
                   <div class="input-grid">
                     <label>
                       <span>Combustor η</span>
-                      <input name="combustor_efficiency" type="number" step="any" min="0.01" max="1" />
+                      <input name="combustor_efficiency" type="number" step="any" min="0.01" max="1" value="0.99" />
                     </label>
                     <label>
                       <span>Combustor ΔP / P<span class="info-pop" tabindex="0"
                             data-tip="Fractional drop in total pressure across the combustor — captures friction, dilution mixing, and heat addition (Rayleigh) losses. Real cans sit at 3–8%.">?</span></span>
-                      <input name="combustor_pressure_loss_fraction" type="number" step="any" min="0" max="0.3" />
+                      <input name="combustor_pressure_loss_fraction" type="number" step="any" min="0" max="0.3" value="0.05" />
                       <span class="field-hint">Typical: 0.03–0.08.</span>
                     </label>
                     <label>
                       <span>Fuel LHV <span class="unit">J/kg</span></span>
-                      <input name="fuel_heating_value_J_kg" type="number" step="any" min="1000000" />
+                      <input name="fuel_heating_value_J_kg" type="number" step="any" min="1000000" value="43000000" />
                     </label>
                   </div>
                 </details>
@@ -375,7 +375,7 @@
                     <label>
                       <span>Nozzle η<span class="info-pop" tabindex="0"
                             data-tip="Nozzle adiabatic efficiency — ratio of actual to ideal kinetic energy at the exit. Captures friction losses through the convergent passage. Modern nozzles 0.95–0.98.">?</span></span>
-                      <input name="nozzle_efficiency" type="number" step="any" min="0.01" max="1" />
+                      <input name="nozzle_efficiency" type="number" step="any" min="0.01" max="1" value="0.95" />
                       <span class="field-hint">Typical: 0.90–0.98.</span>
                     </label>
                     <label>
@@ -398,11 +398,11 @@
                     </label>
                     <label>
                       <span>Afterburner η</span>
-                      <input name="afterburner_efficiency" type="number" step="any" min="0.01" max="1" />
+                      <input name="afterburner_efficiency" type="number" step="any" min="0.01" max="1" value="0.95" />
                     </label>
                     <label>
                       <span>Afterburner ΔP / P</span>
-                      <input name="afterburner_pressure_loss_fraction" type="number" step="any" min="0" max="0.25" />
+                      <input name="afterburner_pressure_loss_fraction" type="number" step="any" min="0" max="0.25" value="0.06" />
                     </label>
                   </div>
                 </details>
@@ -410,7 +410,7 @@
 
               <div class="form-footer">
                 <label class="checkbox-line">
-                  <input name="include_pressure_thrust" type="checkbox" />
+                  <input name="include_pressure_thrust" type="checkbox" checked />
                   Pressure thrust
                 </label>
                 <label class="checkbox-line">
