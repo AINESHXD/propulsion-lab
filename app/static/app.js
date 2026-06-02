@@ -613,8 +613,13 @@ async function loadPresets() {
   if (!response.ok) throw new Error("Could not load presets");
   const payload = await response.json();
   presetCatalog = payload.presets || [];
+  // The Cycle-tab selector is the turbojet workspace, so it only lists the
+  // turbojet family. Each other architecture gets its own preset dropdown.
   presetSelect.replaceChildren();
-  for (const preset of presetCatalog) {
+  const turbojetFamily = presetCatalog.filter(
+    (p) => p.engine_type === "turbojet" || p.engine_type === "afterburning_turbojet"
+  );
+  for (const preset of turbojetFamily) {
     const option = document.createElement("option");
     option.value = preset.name;
     option.textContent = preset.status ? `${preset.name} (${preset.status})` : preset.name;
@@ -1815,7 +1820,42 @@ function renderAdvancedInputs() {
     wrapper.append(labelLine, input);
     advancedInputGrid.append(wrapper);
   }
+  populateAdvancedPresets();
   renderAdvancedSweepControls(config);
+}
+
+/* Fill the advanced-engine preset dropdown with only this architecture's presets. */
+function populateAdvancedPresets() {
+  const sel = $("#advancedPresetSelect");
+  if (!sel) return;
+  sel.replaceChildren();
+  const base = document.createElement("option");
+  base.value = ""; base.textContent = "Default (no preset)";
+  sel.append(base);
+  for (const p of presetCatalog.filter((p) => p.engine_type === selectedEngine)) {
+    const o = document.createElement("option");
+    o.value = p.name;
+    o.textContent = p.status && p.status !== "available" ? `${p.name} (${p.status})` : p.name;
+    sel.append(o);
+  }
+}
+
+/* Apply a preset's inputs to the currently-rendered advanced form. */
+function applyAdvancedPreset(name) {
+  const config = advancedEngineConfigs[selectedEngine];
+  if (!config) return;
+  const preset = presetCatalog.find((p) => p.name === name);
+  if (!preset) { renderAdvancedInputs(); $("#advancedCaseLabel").textContent = "Awaiting run"; return; }
+  const di = preset.default_inputs || {};
+  for (const field of config.fields) {
+    const [key, , , opts] = field;
+    const node = advancedEngineForm.elements.namedItem(key);
+    if (!node || !(key in di)) continue;
+    if (opts?.type === "checkbox") node.checked = Boolean(di[key]);
+    else node.value = di[key];
+  }
+  $("#advancedCaseLabel").textContent =
+    preset.status && preset.status !== "available" ? `${preset.name} · ${preset.status}` : preset.name;
 }
 
 function readAdvancedInput() {
@@ -2654,6 +2694,12 @@ presetSelect.addEventListener("change", async () => {
   applyPreset(presetSelect.value);
   await runSimulation();
   await runSweep();
+});
+
+const advancedPresetEl = document.getElementById("advancedPresetSelect");
+if (advancedPresetEl) advancedPresetEl.addEventListener("change", async () => {
+  applyAdvancedPreset(advancedPresetEl.value);
+  await runAdvancedSimulation();
 });
 
 const ltoButtonEl = document.getElementById("ltoButton");
