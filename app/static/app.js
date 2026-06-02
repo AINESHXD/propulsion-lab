@@ -1635,7 +1635,14 @@ function updateGraphCanvases() {
     stations.map((s) => s.stagnation_pressure_Pa / 1000),
     palette.pressure, "Pt [kPa] · stagnation");
 
-  const thermo = stations.map(stationThermoProperties);
+  // The T-s / P-v cycle loop is the *core* Brayton cycle. The bypass-duct
+  // stations (13/16/18/19) are a separate cold stream — including them in the
+  // connecting line makes it jump out to the bypass and dangle, breaking the
+  // loop. They still appear on the station temperature/pressure charts above.
+  const CYCLE_BYPASS = new Set([13, 16, 18, 19]);
+  const thermo = stations
+    .filter((s) => !CYCLE_BYPASS.has(Number(s.station)))
+    .map(stationThermoProperties);
   drawXYGraph($("#graphTsDiagram"),
     thermo.map((p) => ({ station: p.station, x: p.entropyKjKgK, y: p.temperatureK })),
     { color: palette.temperature, title: "", xLabel: "s  [kJ/kg·K]", yLabel: "Tt [K] · stagnation" });
