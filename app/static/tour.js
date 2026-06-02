@@ -50,8 +50,7 @@
       #tourBackdrop.in{opacity:1;}
       #tourHi{position:fixed;z-index:9001;border-radius:14px;pointer-events:none;
         box-shadow:0 0 0 9999px rgba(7,8,11,.72), 0 0 0 1.5px rgba(123,167,235,.9), 0 0 30px rgba(123,167,235,.45);
-        transition:top .42s cubic-bezier(.4,0,.18,1),left .42s cubic-bezier(.4,0,.18,1),
-          width .42s cubic-bezier(.4,0,.18,1),height .42s cubic-bezier(.4,0,.18,1),opacity .25s ease;}
+        transition:opacity .2s ease;}
       #tourHi.center{opacity:0;}
       #tourTip{position:fixed;z-index:9002;width:340px;max-width:calc(100vw - 28px);
         background:linear-gradient(180deg,rgba(22,24,30,.98),rgba(15,17,21,.98));
@@ -139,15 +138,17 @@
   function go(n) {
     if (n < 0) return;
     if (n >= STEPS.length) return end();
-    els.tip.classList.remove("show");          // fade out, then fade in on place()
+    els.tip.classList.remove("show");          // fade the card out, then back in
     i = n;
     const step = STEPS[i];
     const target = step.center ? null : document.querySelector(step.sel);
     if (target) {
-      target.scrollIntoView({ block: "center", behavior: "smooth" });
-      setTimeout(() => place(step), 300);
+      // Instant scroll, then measure on the next frames so the spotlight snaps
+      // to the *settled* position — no gliding across the screen.
+      target.scrollIntoView({ block: "center", behavior: "auto" });
+      requestAnimationFrame(() => requestAnimationFrame(() => place(step)));
     } else {
-      setTimeout(() => place(step), 120);
+      requestAnimationFrame(() => place(step));
     }
   }
 

@@ -90,7 +90,8 @@
         font:14px/1.6 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;}
       #helpModal.in{display:block;opacity:1;transform:translate(-50%,-50%);}
       #helpModal .x{position:absolute;top:16px;right:18px;width:28px;height:28px;border-radius:8px;
-        border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:#c2c7cf;cursor:pointer;font-size:15px;}
+        border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:#c2c7cf;cursor:pointer;
+        font-size:13px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;}
       #helpModal .x:hover{color:#fff;border-color:#7ba7eb;}
       #helpModal h3{margin:0 0 4px;font-size:1.22rem;font-weight:650;letter-spacing:-.01em;padding-right:34px;}
       #helpModal .sec{margin-top:18px;}
