@@ -199,7 +199,8 @@
     injectStyles();
     els = buildDom();
     active = true;
-    document.body.style.overflow = "hidden";
+    // NB: do not set body overflow:hidden — it would stop scrollIntoView from
+    // reaching steps below the fold. The backdrop blocks stray clicks instead.
     window.addEventListener("resize", reposition);
     window.addEventListener("scroll", reposition, true);
     document.addEventListener("keydown", onKey, true);
@@ -209,7 +210,6 @@
   function end() {
     if (!active) return;
     active = false;
-    document.body.style.overflow = "";
     window.removeEventListener("resize", reposition);
     window.removeEventListener("scroll", reposition, true);
     document.removeEventListener("keydown", onKey, true);
