@@ -233,13 +233,12 @@
           host.appendChild(row);
           const input = row.querySelector("input");
           const disp = row.querySelector("#d" + i);
-          const upd = () => {
+          const setDisp = () => {
             disp.textContent = fmt(Number(input.value), dec) + unit;
             input.style.setProperty("--pct", ((input.value - lo) / (hi - lo) * 100) + "%");
-            refresh();
           };
-          input.addEventListener("input", upd);
-          upd();
+          input.addEventListener("input", () => { setDisp(); refresh(); });
+          setDisp();   // initial label only — full refresh runs once after all UI is built
         });
       }
 
