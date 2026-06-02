@@ -1254,6 +1254,41 @@ function stationFlowKey(n) {
 }
 function byFlowOrder(a, b) { return stationFlowKey(a.station) - stationFlowKey(b.station); }
 
+/* Interpolate the real thermodynamic process between consecutive stations so the
+ * cycle diagram is drawn with curves, not straight chords (which cross and look
+ * unphysical). For P-v use the polytropic relation P·vⁿ = const; for T-s use the
+ * exponential T = T₁·exp(k(s−s₁)) that an ideal gas follows along a process.
+ * Interpolated points carry station = null so only the real stations get dots
+ * and labels. */
+function interpolateProcess(points, mode) {
+  if (points.length < 2) return points;
+  const out = [];
+  const N = 16;
+  for (let k = 0; k < points.length - 1; k++) {
+    const a = points[k], b = points[k + 1];
+    out.push({ station: a.station, x: a.x, y: a.y });
+    for (let j = 1; j < N; j++) {
+      const t = j / N;
+      const x = a.x + (b.x - a.x) * t;
+      let y;
+      if (mode === "power" && a.x > 0 && b.x > 0 && a.y > 0 && b.y > 0 &&
+          Math.abs(Math.log(b.x / a.x)) > 1e-6 && x > 0) {
+        const n = Math.log(a.y / b.y) / Math.log(b.x / a.x);   // P·vⁿ = const
+        y = a.y * Math.pow(a.x / x, n);
+      } else if (mode === "exp" && Math.abs(b.x - a.x) > 1e-9 && a.y > 0 && b.y > 0) {
+        const kk = Math.log(b.y / a.y) / (b.x - a.x);          // T = T₁·exp(k·Δs)
+        y = a.y * Math.exp((x - a.x) * kk);
+      } else {
+        y = a.y + (b.y - a.y) * t;                              // linear fallback
+      }
+      out.push({ station: null, x, y });
+    }
+  }
+  const last = points[points.length - 1];
+  out.push({ station: last.station, x: last.x, y: last.y });
+  return out;
+}
+
 function drawStationChart(result, targetCanvas = stationCanvas, progress = 1) {
   const { context: ctx, width, height } = canvasScale(targetCanvas);
   const stations = Object.values(result.station_table).sort(byFlowOrder);
@@ -1571,7 +1606,8 @@ function drawXYGraph(canvas, points, options) {
 
   drawSeriesAreaFill(ctx, pts, padTop + plotH, options.color);
   drawSeriesLine(ctx, pts, options.color);
-  drawSeriesDots(ctx, pts, options.color);
+  // Dots only on the real stations — interpolated process points have station == null.
+  drawSeriesDots(ctx, pts.filter((_, i) => points[i].station != null), options.color);
 
   // station labels with simple greedy collision avoidance — when two label
   // positions are within COLLISION_PX, offset the second by a vertical step.
@@ -1580,6 +1616,7 @@ function drawXYGraph(canvas, points, options) {
   const COLLISION_PX = 22;
   const placedLabels = [];  // {x, y} of label anchor points already placed
   pts.forEach(([px, py], i) => {
+    if (points[i].station == null) return;     // skip interpolated process points
     let lx = px + 6;
     let ly = py - 6;
     let attempt = 0;
@@ -1644,10 +1681,12 @@ function updateGraphCanvases() {
     .filter((s) => !CYCLE_BYPASS.has(Number(s.station)))
     .map(stationThermoProperties);
   drawXYGraph($("#graphTsDiagram"),
-    thermo.map((p) => ({ station: p.station, x: p.entropyKjKgK, y: p.temperatureK })),
+    interpolateProcess(
+      thermo.map((p) => ({ station: p.station, x: p.entropyKjKgK, y: p.temperatureK })), "exp"),
     { color: palette.temperature, title: "", xLabel: "s  [kJ/kg·K]", yLabel: "Tt [K] · stagnation" });
   drawXYGraph($("#graphPvDiagram"),
-    thermo.map((p) => ({ station: p.station, x: p.specificVolume, y: p.pressureKPa })),
+    interpolateProcess(
+      thermo.map((p) => ({ station: p.station, x: p.specificVolume, y: p.pressureKPa })), "power"),
     { color: palette.pressure, title: "", xLabel: "v  [m³/kg] · stagnation", yLabel: "Pt [kPa] · stagnation" });
 
   drawBarGraph($("#graphEfficiency"),
