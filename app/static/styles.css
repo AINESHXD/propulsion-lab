@@ -2267,11 +2267,15 @@ a:focus-visible,
 }
 .cs-rail-name { font-size: 0.92rem; font-weight: 560; letter-spacing: -0.01em; }
 .cs-rail-sub {
+  display: grid;
+  grid-template-columns: 3em 1fr;   /* year column + BPR column align across all cards */
+  gap: 8px;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   color: var(--text-3);
   letter-spacing: 0.01em;
 }
+.cs-rail-sub .cs-yr { color: var(--text-2); }
 .cs-rail-item.active .cs-rail-sub { color: var(--accent); }
 
 /* Detail panel */

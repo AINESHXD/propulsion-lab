@@ -337,7 +337,8 @@
       (e, i) =>
         `<button type="button" class="cs-rail-item${i === 0 ? " active" : ""}" ` +
         `data-engine="${e.id}"><span class="cs-rail-name">${e.name}</span>` +
-        `<span class="cs-rail-sub">${e.eis} · BPR ${e.bypass}</span></button>`,
+        `<span class="cs-rail-sub"><span class="cs-yr">${e.eis}</span>` +
+        `<span class="cs-bpr">BPR ${e.bypass}</span></span></button>`,
     ).join("");
 
     function select(id) {
