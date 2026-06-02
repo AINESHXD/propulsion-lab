@@ -308,7 +308,8 @@
                     </label>
                     <label>
                       <span>Inlet capture area <span class="unit">m²</span></span>
-                      <input name="inlet_capture_area_m2" type="number" step="any" min="0.01" max="25" />
+                      <input name="inlet_capture_area_m2" type="number" step="any" min="0.01" max="25" placeholder="optional" />
+                      <span class="field-hint">Only used with “Estimate ṁ from inlet area”.</span>
                     </label>
                     <label>
                       <span>Inlet recovery<span class="info-pop" tabindex="0"
@@ -380,11 +381,13 @@
                     </label>
                     <label>
                       <span>Exit area <span class="unit">m²</span></span>
-                      <input name="nozzle_exit_area_m2" type="number" step="any" min="0.0001" max="25" />
+                      <input name="nozzle_exit_area_m2" type="number" step="any" min="0.0001" max="25" placeholder="auto" />
+                      <span class="field-hint">Blank = sized to the cycle. Set it to study off-design expansion.</span>
                     </label>
                     <label>
                       <span>Throat area <span class="unit">m²</span></span>
-                      <input name="nozzle_throat_area_m2" type="number" step="any" min="0.0001" max="25" />
+                      <input name="nozzle_throat_area_m2" type="number" step="any" min="0.0001" max="25" placeholder="auto" />
+                      <span class="field-hint">Blank = solver finds the choked throat.</span>
                     </label>
                   </div>
                 </details>
@@ -394,7 +397,8 @@
                   <div class="input-grid">
                     <label>
                       <span>Afterburner exit T <span class="unit">K</span></span>
-                      <input name="afterburner_exit_temperature_K" type="number" step="any" min="900" max="2400" />
+                      <input name="afterburner_exit_temperature_K" type="number" step="any" min="900" max="2400" placeholder="auto · 1800 K" />
+                      <span class="field-hint">Only the afterburning variant. Blank = 1800 K.</span>
                     </label>
                     <label>
                       <span>Afterburner η</span>
