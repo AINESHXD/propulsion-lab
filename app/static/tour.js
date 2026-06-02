@@ -23,7 +23,7 @@
       body: "Solves the whole cycle in a few milliseconds, and re-runs on its own as you edit the inputs." },
     { sel: ".results-panel .metric-grid", title: "The headline numbers",
       body: "Thrust, fuel burn (TSFC) and efficiency — what actually matters for the design." },
-    { sel: ".results-panel .table-wrap", title: "Every station",
+    { sel: ".results-panel .table-wrap:not([hidden])", title: "Every station",
       body: "Temperature, pressure, Mach and velocity from the inlet all the way to the nozzle." },
     { sel: "#cycleInsights", title: "In plain English",
       body: "The same numbers, explained — what the compressor's doing, whether the nozzle's choked, and why." },
@@ -118,7 +118,9 @@
     tip.querySelector("[data-next]").textContent = i === STEPS.length - 1 ? "Done" : "Next";
 
     const target = step.center ? null : document.querySelector(step.sel);
-    if (!target) {                                   // centred step: dim backdrop, no ring
+    const r0 = target && target.getBoundingClientRect();
+    // No target, or a hidden/zero-size one — show a centred card, never a corner ring.
+    if (!target || !r0 || (r0.width === 0 && r0.height === 0)) {
       hi.classList.remove("show");
       backdrop.classList.remove("clear");
       return;
