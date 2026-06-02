@@ -1,119 +1,87 @@
-/* PropulsionLab guided tour.
- *
- * A dependency-free product tour: a spotlight overlay dims the page, highlights
- * one element at a time, and explains it. Auto-runs once for first-time visitors
- * (localStorage flag) and can be replayed from the "Tutorial" button in the top
- * bar. Fully self-contained — injects its own styles and DOM.
- */
+/* PropulsionLab guided tour — a dependency-free spotlight walkthrough.
+ * Auto-runs once for new visitors; replay from the "Tutorial" button up top. */
 (function () {
   "use strict";
 
-  const SEEN_KEY = "pl_tour_seen_v2";
+  const SEEN_KEY = "pl_tour_seen_v3";
 
-  // Each step anchors to a CSS selector (or is centered). `tab` switches the
-  // console to that tab first. Missing anchors are skipped gracefully.
+  // Each step anchors to a selector (or is centered). Missing anchors are skipped.
   const STEPS = [
     {
       center: true,
       title: "Welcome to PropulsionLab",
-      body: "A browser tool that runs real reduced-order gas-turbine cycles — five engine families, station by station. Here's a 90-second tour of everything it does. You can skip anytime.",
+      body: "This runs real jet-engine cycles in your browser — five engine types, every station. Want the quick tour? You can skip whenever.",
     },
-    {
-      sel: ".engine-card-grid",
-      title: "1 · Pick an engine family",
-      body: "Turbojet, turbofan, turboprop, ramjet or scramjet. Each card loads its own physics solver and input set.",
-    },
-    {
-      sel: "#presetSelect",
-      title: "2 · Start from a real engine",
-      body: "Load a public-data preset (CFM56, J85, …) as a starting design point — or just tweak the sensible defaults yourself.",
-    },
-    {
-      sel: "#simulationForm",
-      title: "3 · Set the design point",
-      body: "Altitude, Mach, pressure ratio, turbine-inlet temperature, component efficiencies — every assumption is exposed. Hover any “?” for a plain-English explanation.",
-    },
-    {
-      sel: "#runSimulationButton",
-      title: "4 · Run the cycle",
-      body: "Solves the complete station-by-station cycle in milliseconds. It also re-runs automatically whenever you change an input.",
-    },
-    {
-      sel: ".results-panel .metric-grid",
-      title: "5 · Read the performance",
-      body: "Thrust, TSFC (how thirsty it is), and thermal / propulsive / overall efficiency — the headline numbers for this design.",
-    },
-    {
-      sel: ".results-panel .table-wrap",
-      title: "6 · Station by station",
-      body: "Total and static temperature, pressure, Mach and velocity at every station from the inlet to the nozzle exit.",
-    },
-    {
-      sel: "#cycleInsights",
-      title: "7 · Plain-English insights",
-      body: "The raw numbers translated into what they mean — compressor work, nozzle choking, expansion state — refreshed every run.",
-    },
-    {
-      sel: "#emissionsPanel",
-      title: "8 · Combustor emissions",
-      body: "A Cantera reactor-network estimate of NOx and CO, plus an ICAO landing–takeoff NOx total. High-pressure-ratio cores make more NOx — try it.",
-    },
-    {
-      sel: ".console-tabs",
-      title: "9 · Go deeper",
-      body: "Sweep a parameter, compare engines side by side, match the off-design operating line, fly a multi-leg mission, read a compressor map, or run a genetic-algorithm design optimization.",
-    },
-    {
-      sel: 'a[href="/lab/viewer3d.html"]',
-      title: "10 · 3D engine viewer",
-      body: "Interactive Blender-built cutaways of all five families, with hover-to-explain station labels.",
-    },
-    {
-      sel: 'a[href="/lab/mlsuite.html"]',
-      title: "11 · ML Suite",
-      body: "A from-scratch neural network that predicts performance instantly in your browser — and verifies itself live against the exact physics.",
-    },
-    {
-      sel: "#shareLinkButton",
-      title: "12 · Share & export",
-      body: "Your whole input deck encodes into a shareable link. You can also export a runnable Python script or a branded PDF report.",
-    },
-    {
-      center: true,
-      title: "That's the tour 🚀",
-      body: "Replay it anytime from “Tutorial” in the top bar. Now go design an engine — start by hitting Run cycle.",
-    },
+    { sel: ".engine-card-grid", title: "Pick an engine",
+      body: "Turbojet, turbofan, turboprop, ramjet, scramjet. Each one loads its own solver and inputs." },
+    { sel: "#presetSelect", title: "Or start from a real one",
+      body: "Load a known engine like the CFM56 or J85 as your starting point, then change whatever you want." },
+    { sel: "#simulationForm", title: "Set the design point",
+      body: "Altitude, speed, pressure ratio, turbine temperature, efficiencies. Nothing's hidden — hover a “?” if a field is new to you." },
+    { sel: "#runSimulationButton", title: "Run it",
+      body: "Solves the whole cycle in a few milliseconds, and re-runs on its own as you edit the inputs." },
+    { sel: ".results-panel .metric-grid", title: "The headline numbers",
+      body: "Thrust, fuel burn (TSFC) and efficiency — what actually matters for the design." },
+    { sel: ".results-panel .table-wrap", title: "Every station",
+      body: "Temperature, pressure, Mach and velocity from the inlet all the way to the nozzle." },
+    { sel: "#cycleInsights", title: "In plain English",
+      body: "The same numbers, explained — what the compressor's doing, whether the nozzle's choked, and why." },
+    { sel: "#emissionsPanel", title: "Emissions",
+      body: "A real NOx and CO estimate from combustion chemistry, plus the ICAO landing-takeoff total. Push the pressure ratio up and watch NOx climb." },
+    { sel: ".console-tabs", title: "Go further",
+      body: "Sweep a parameter, compare engines, run them off-design, fly a mission, read a compressor map, or let a genetic algorithm optimize the design. Each tab has an “ⓘ” that explains it." },
+    { sel: 'a[href="/lab/viewer3d.html"]', title: "See it in 3D",
+      body: "Spin through cutaways of all five engines, with a label on every stage." },
+    { sel: 'a[href="/lab/mlsuite.html"]', title: "The ML side",
+      body: "A neural net that predicts performance instantly — and checks itself against the real physics." },
+    { sel: "#shareLinkButton", title: "Share and export",
+      body: "Your setup lives in the URL. You can also export a Python script or a PDF." },
+    { center: true, title: "That's the tour",
+      body: "Replay it anytime from Tutorial up top. Go build something." },
   ];
 
-  let i = 0;
-  let active = false;
-  let els = null;
+  let i = 0, active = false, els = null;
 
   function injectStyles() {
     if (document.getElementById("tourStyles")) return;
     const css = `
-      #tourBackdrop{position:fixed;inset:0;z-index:9000;pointer-events:auto;background:transparent;}
-      #tourHi{position:fixed;z-index:9001;border-radius:12px;pointer-events:none;
-        box-shadow:0 0 0 9999px rgba(7,8,11,.76),0 0 0 2px var(--accent,#7ba7eb),0 0 26px rgba(123,167,235,.5);
-        transition:top .25s ease,left .25s ease,width .25s ease,height .25s ease;}
+      #tourBackdrop{position:fixed;inset:0;z-index:9000;background:transparent;
+        opacity:0;transition:opacity .3s ease;}
+      #tourBackdrop.in{opacity:1;}
+      #tourHi{position:fixed;z-index:9001;border-radius:14px;pointer-events:none;
+        box-shadow:0 0 0 9999px rgba(7,8,11,.72), 0 0 0 1.5px rgba(123,167,235,.9), 0 0 30px rgba(123,167,235,.45);
+        transition:top .42s cubic-bezier(.4,0,.18,1),left .42s cubic-bezier(.4,0,.18,1),
+          width .42s cubic-bezier(.4,0,.18,1),height .42s cubic-bezier(.4,0,.18,1),opacity .25s ease;}
       #tourHi.center{opacity:0;}
-      #tourTip{position:fixed;z-index:9002;width:330px;max-width:calc(100vw - 28px);
-        background:rgba(18,20,25,.97);border:1px solid rgba(255,255,255,.16);border-radius:14px;
-        padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.55);backdrop-filter:blur(12px);
-        color:#f3f4f6;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;}
-      #tourTip.center{left:50%;top:50%;transform:translate(-50%,-50%);width:420px;text-align:center;}
-      #tourTip h3{margin:0 0 8px;font-size:1rem;font-weight:650;letter-spacing:-.01em;}
-      #tourTip p{margin:0 0 14px;color:#c4c8ce;font-size:.86rem;}
-      #tourTip .row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
-      #tourTip .count{font-family:ui-monospace,monospace;font-size:.7rem;color:#9197a1;letter-spacing:.08em;}
-      #tourTip .acts{display:flex;gap:8px;}
-      #tourTip button{font:inherit;font-size:.8rem;border-radius:9px;padding:7px 14px;cursor:pointer;border:1px solid rgba(255,255,255,.18);
-        background:#16181d;color:#f3f4f6;transition:border-color .15s,color .15s,background .15s;}
-      #tourTip button:hover{border-color:#7ba7eb;color:#fff;}
-      #tourTip button.primary{background:rgba(123,167,235,.16);border-color:#7ba7eb;color:#cfe0ff;}
-      #tourTip .skip{background:none;border:none;color:#9197a1;padding:7px 4px;}
-      #tourTip .skip:hover{color:#f3f4f6;}
-      @media(prefers-reduced-motion:reduce){#tourHi{transition:none;}}
+      #tourTip{position:fixed;z-index:9002;width:340px;max-width:calc(100vw - 28px);
+        background:linear-gradient(180deg,rgba(22,24,30,.98),rgba(15,17,21,.98));
+        border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px 18px 14px;
+        box-shadow:0 24px 60px rgba(0,0,0,.6);backdrop-filter:blur(16px);color:#f3f4f6;
+        font:14px/1.55 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;
+        opacity:0;transform:translateY(6px);transition:opacity .24s ease,transform .24s ease;}
+      #tourTip.show{opacity:1;transform:translateY(0);}
+      #tourTip.center{left:50%;top:50%;width:440px;text-align:center;
+        transform:translate(-50%,-50%) scale(.98);}
+      #tourTip.center.show{transform:translate(-50%,-50%) scale(1);}
+      #tourTip .eyebrow{font:600 .6rem/1 ui-monospace,monospace;letter-spacing:.18em;
+        text-transform:uppercase;color:#7ba7eb;margin:0 0 9px;}
+      #tourTip h3{margin:0 0 7px;font-size:1.02rem;font-weight:650;letter-spacing:-.01em;}
+      #tourTip p{margin:0 0 16px;color:#c2c7cf;font-size:.87rem;}
+      #tourTip .foot{display:flex;align-items:center;gap:12px;}
+      #tourTip .prog{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;}
+      #tourTip .prog i{display:block;height:100%;background:#7ba7eb;border-radius:3px;
+        transition:width .3s cubic-bezier(.4,0,.2,1);}
+      #tourTip .acts{display:flex;gap:7px;align-items:center;}
+      #tourTip button{font:inherit;font-size:.8rem;border-radius:10px;padding:7px 13px;cursor:pointer;
+        border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:#f3f4f6;
+        transition:border-color .15s,color .15s,background .15s;}
+      #tourTip button:hover{border-color:#7ba7eb;color:#fff;background:rgba(123,167,235,.12);}
+      #tourTip button.primary{background:#7ba7eb;border-color:#7ba7eb;color:#0a0b0e;font-weight:600;}
+      #tourTip button.primary:hover{background:#9cbcf0;}
+      #tourTip button.skip{background:none;border:none;color:#878d97;padding:7px 6px;}
+      #tourTip button.skip:hover{color:#f3f4f6;}
+      @media(prefers-reduced-motion:reduce){
+        #tourHi,#tourTip,#tourBackdrop,#tourTip .prog i{transition:none;}}
     `;
     const s = document.createElement("style");
     s.id = "tourStyles"; s.textContent = css; document.head.appendChild(s);
@@ -124,13 +92,12 @@
     const hi = document.createElement("div"); hi.id = "tourHi";
     const tip = document.createElement("div"); tip.id = "tourTip";
     tip.innerHTML =
-      `<h3 data-t></h3><p data-b></p>` +
-      `<div class="row"><span class="count" data-c></span>` +
+      `<p class="eyebrow" data-e>Tour</p><h3 data-t></h3><p data-b></p>` +
+      `<div class="foot"><div class="prog"><i data-p></i></div>` +
       `<div class="acts"><button class="skip" data-skip>Skip</button>` +
       `<button data-back>Back</button><button class="primary" data-next>Next</button></div></div>`;
-    document.body.appendChild(backdrop);
-    document.body.appendChild(hi);
-    document.body.appendChild(tip);
+    document.body.append(backdrop, hi, tip);
+    requestAnimationFrame(() => backdrop.classList.add("in"));
     backdrop.addEventListener("click", end);
     tip.querySelector("[data-skip]").addEventListener("click", end);
     tip.querySelector("[data-back]").addEventListener("click", () => go(i - 1));
@@ -138,57 +105,49 @@
     return { backdrop, hi, tip };
   }
 
-  function activateTabFor(step) {
-    if (!step.tab) return;
-    const btn = document.querySelector(`.tab-button[data-tab="${step.tab}"]`);
-    if (btn) btn.click();
-  }
-
   function place(step) {
-    const hi = els.hi, tip = els.tip;
+    const { hi, tip } = els;
+    tip.querySelector("[data-e]").textContent = step.center ? "PropulsionLab" : `Step ${i} of ${STEPS.length - 2}`;
     tip.querySelector("[data-t]").textContent = step.title;
     tip.querySelector("[data-b]").textContent = step.body;
-    tip.querySelector("[data-c]").textContent = `${i + 1} / ${STEPS.length}`;
+    tip.querySelector("[data-p]").style.width = `${(i / (STEPS.length - 1)) * 100}%`;
     tip.querySelector("[data-back]").style.visibility = i === 0 ? "hidden" : "visible";
     tip.querySelector("[data-next]").textContent = i === STEPS.length - 1 ? "Done" : "Next";
 
     const target = step.center ? null : document.querySelector(step.sel);
-    if (!target) {                                  // centered (or anchor missing)
+    if (!target) {
       hi.classList.add("center"); tip.classList.add("center");
       tip.style.left = ""; tip.style.top = "";
+      requestAnimationFrame(() => tip.classList.add("show"));
       return;
     }
     hi.classList.remove("center"); tip.classList.remove("center");
-    const r = target.getBoundingClientRect();
-    const pad = 6;
-    hi.style.top = `${r.top - pad}px`;
-    hi.style.left = `${r.left - pad}px`;
-    hi.style.width = `${r.width + pad * 2}px`;
-    hi.style.height = `${r.height + pad * 2}px`;
+    const r = target.getBoundingClientRect(), pad = 6;
+    hi.style.top = `${r.top - pad}px`; hi.style.left = `${r.left - pad}px`;
+    hi.style.width = `${r.width + pad * 2}px`; hi.style.height = `${r.height + pad * 2}px`;
 
-    const tipW = tip.offsetWidth || 330, tipH = tip.offsetHeight || 150;
-    const vw = window.innerWidth, vh = window.innerHeight;
-    let top = r.bottom + 12;
-    if (top + tipH > vh - 10) top = r.top - tipH - 12;       // flip above
-    if (top < 10) top = Math.min(vh - tipH - 10, Math.max(10, r.bottom + 12));
-    let left = r.left + r.width / 2 - tipW / 2;
-    left = Math.max(12, Math.min(left, vw - tipW - 12));
-    tip.style.left = `${left}px`;
-    tip.style.top = `${top}px`;
+    const tipW = tip.offsetWidth || 340, tipH = tip.offsetHeight || 160;
+    const vw = innerWidth, vh = innerHeight;
+    let top = r.bottom + 14;
+    if (top + tipH > vh - 10) top = r.top - tipH - 14;
+    if (top < 10) top = Math.max(10, Math.min(vh - tipH - 10, r.bottom + 14));
+    let left = Math.max(12, Math.min(r.left + r.width / 2 - tipW / 2, vw - tipW - 12));
+    tip.style.left = `${left}px`; tip.style.top = `${top}px`;
+    requestAnimationFrame(() => tip.classList.add("show"));
   }
 
   function go(n) {
     if (n < 0) return;
     if (n >= STEPS.length) return end();
+    els.tip.classList.remove("show");          // fade out, then fade in on place()
     i = n;
     const step = STEPS[i];
-    activateTabFor(step);
     const target = step.center ? null : document.querySelector(step.sel);
     if (target) {
       target.scrollIntoView({ block: "center", behavior: "smooth" });
-      setTimeout(() => place(step), 360);
+      setTimeout(() => place(step), 300);
     } else {
-      place(step);
+      setTimeout(() => place(step), 120);
     }
   }
 
@@ -199,10 +158,8 @@
     injectStyles();
     els = buildDom();
     active = true;
-    // NB: do not set body overflow:hidden — it would stop scrollIntoView from
-    // reaching steps below the fold. The backdrop blocks stray clicks instead.
-    window.addEventListener("resize", reposition);
-    window.addEventListener("scroll", reposition, true);
+    addEventListener("resize", reposition);
+    addEventListener("scroll", reposition, true);
     document.addEventListener("keydown", onKey, true);
     go(0);
   }
@@ -210,11 +167,15 @@
   function end() {
     if (!active) return;
     active = false;
-    window.removeEventListener("resize", reposition);
-    window.removeEventListener("scroll", reposition, true);
+    removeEventListener("resize", reposition);
+    removeEventListener("scroll", reposition, true);
     document.removeEventListener("keydown", onKey, true);
-    [els.backdrop, els.hi, els.tip].forEach((e) => e && e.remove());
-    els = null;
+    if (els) {
+      els.backdrop.classList.remove("in");
+      const nodes = [els.backdrop, els.hi, els.tip];
+      setTimeout(() => nodes.forEach((e) => e && e.remove()), 280);
+      els = null;
+    }
     try { localStorage.setItem(SEEN_KEY, "1"); } catch (e) { /* ignore */ }
   }
 
@@ -224,14 +185,13 @@
     else if (e.key === "ArrowLeft") { e.preventDefault(); go(i - 1); }
   }
 
-  // Expose + wire the launch button; auto-run once for new visitors.
   window.PLTour = { start, end };
   function boot() {
     const btn = document.getElementById("tutorialButton");
     if (btn) btn.addEventListener("click", (e) => { e.preventDefault(); start(); });
     let seen = false;
     try { seen = localStorage.getItem(SEEN_KEY) === "1"; } catch (e) { /* ignore */ }
-    if (!seen) setTimeout(start, 1400);     // let the boot screen settle first
+    if (!seen) setTimeout(start, 1400);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
