@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <title>PropulsionLab — DAS LABS</title>
+    <title>PropulsionLab, DAS LABS</title>
     <!-- Privacy-friendly, cookieless analytics (Plausible). Activate at launch
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
@@ -110,7 +110,7 @@
              faint station ticks, telemetry ghost readouts.
              All animation under a reduced-motion guard.
              ============================================ -->
-        <!-- Hero visual — live auto-rotating 3D engine cutaway (embedded viewer). -->
+        <!-- Hero visual, live auto-rotating 3D engine cutaway (embedded viewer). -->
         <aside class="hero-reserved">
           <div class="hero-embed">
             <iframe src="/lab/viewer3d.html?engine=turbofan&embed=1" title="Live 3D engine cutaway" loading="lazy"></iframe>
@@ -133,12 +133,12 @@
           </p>
         </div>
 
-        <!-- Educational concept strip — orients new users in one line. -->
+        <!-- Educational concept strip, orients new users in one line. -->
         <div class="concept-strip" role="note">
           <div>
             <span class="concept-eyebrow">CONCEPT · ENGINE FAMILIES</span>
             <div class="concept-body">
-              All five families breathe air and burn fuel — they differ in how they
+              All five families breathe air and burn fuel, they differ in how they
               compress, how they expand, and whether they extract shaft work.
               A <b>turbojet</b> has only a turbine to drive its compressor; a
               <b>turbofan</b> adds a fan and a bypass stream; a <b>turboprop</b>
@@ -299,7 +299,7 @@
                     </label>
                     <label>
                       <span>Mach<span class="info-pop" tabindex="0"
-                            data-tip="Flight Mach number — aircraft speed divided by local speed of sound. Sets the ram compression and the freestream stagnation state at station 0.">?</span></span>
+                            data-tip="Flight Mach number, aircraft speed divided by local speed of sound. Sets the ram compression and the freestream stagnation state at station 0.">?</span></span>
                       <input name="mach" type="number" step="any" min="0" max="3" value="0.8" />
                       <span class="field-hint">Inlet recovery drops harder as Mach rises.</span>
                     </label>
@@ -314,7 +314,7 @@
                     </label>
                     <label>
                       <span>Inlet recovery<span class="info-pop" tabindex="0"
-                            data-tip="Total-pressure recovery of the inlet diffuser — Pt2 / Pt0. Captures shock and friction losses between freestream and compressor face. Real subsonic inlets sit at 0.96–0.99; supersonic inlets drop sharply with Mach.">?</span></span>
+                            data-tip="Total-pressure recovery of the inlet diffuser, Pt2 / Pt0. Captures shock and friction losses between freestream and compressor face. Real subsonic inlets sit at 0.96–0.99; supersonic inlets drop sharply with Mach.">?</span></span>
                       <input name="inlet_pressure_recovery" type="number" step="any" min="0.01" max="1" value="0.98" />
                       <span class="field-hint">Typical clean subsonic value: 0.96–0.99.</span>
                     </label>
@@ -326,7 +326,7 @@
                   <div class="input-grid">
                     <label>
                       <span>Compressor PR<span class="info-pop" tabindex="0"
-                            data-tip="Compressor pressure ratio — Pt3 / Pt2. Higher PR raises thermal efficiency but needs more turbine work to drive it, and pushes Tt3 toward the material limit.">?</span></span>
+                            data-tip="Compressor pressure ratio, Pt3 / Pt2. Higher PR raises thermal efficiency but needs more turbine work to drive it, and pushes Tt3 toward the material limit.">?</span></span>
                       <input name="compressor_pressure_ratio" type="number" step="any" min="1.01" value="12" />
                       <span class="field-hint">Simple turbojet study range: 5–15.</span>
                     </label>
@@ -336,7 +336,7 @@
                     </label>
                     <label>
                       <span>Turbine inlet T <span class="unit">K</span><span class="info-pop" tabindex="0"
-                            data-tip="Tt4 — gas total temperature at the turbine inlet. The single biggest driver of thrust and TSFC. Limited by turbine blade material + cooling: uncooled ~1200 K, modern cooled blades 1700–1900 K.">?</span></span>
+                            data-tip="Tt4, gas total temperature at the turbine inlet. The single biggest driver of thrust and TSFC. Limited by turbine blade material + cooling: uncooled ~1200 K, modern cooled blades 1700–1900 K.">?</span></span>
                       <input name="turbine_inlet_temperature_K" type="number" step="any" min="700" max="2300" value="1400" />
                       <span class="field-hint">Material / cooling limited.</span>
                     </label>
@@ -360,7 +360,7 @@
                     </label>
                     <label>
                       <span>Combustor ΔP / P<span class="info-pop" tabindex="0"
-                            data-tip="Fractional drop in total pressure across the combustor — captures friction, dilution mixing, and heat addition (Rayleigh) losses. Real cans sit at 3–8%.">?</span></span>
+                            data-tip="Fractional drop in total pressure across the combustor, captures friction, dilution mixing, and heat addition (Rayleigh) losses. Real cans sit at 3–8%.">?</span></span>
                       <input name="combustor_pressure_loss_fraction" type="number" step="any" min="0" max="0.3" value="0.05" />
                       <span class="field-hint">Typical: 0.03–0.08.</span>
                     </label>
@@ -376,7 +376,7 @@
                   <div class="input-grid">
                     <label>
                       <span>Nozzle η<span class="info-pop" tabindex="0"
-                            data-tip="Nozzle adiabatic efficiency — ratio of actual to ideal kinetic energy at the exit. Captures friction losses through the convergent passage. Modern nozzles 0.95–0.98.">?</span></span>
+                            data-tip="Nozzle adiabatic efficiency, ratio of actual to ideal kinetic energy at the exit. Captures friction losses through the convergent passage. Modern nozzles 0.95–0.98.">?</span></span>
                       <input name="nozzle_efficiency" type="number" step="any" min="0.01" max="1" value="0.95" />
                       <span class="field-hint">Typical: 0.90–0.98.</span>
                     </label>
@@ -437,12 +437,12 @@
               </div>
 
               <div class="metric-grid">
-                <div class="metric"><span>Net thrust</span><strong id="thrustValue">—</strong></div>
-                <div class="metric"><span>TSFC</span><strong id="tsfcValue">—</strong></div>
-                <div class="metric"><span>Fuel-air ratio</span><strong id="farValue">—</strong></div>
-                <div class="metric"><span>Nozzle</span><strong id="nozzleValue">—</strong></div>
-                <div class="metric"><span>Variant</span><strong id="variantValue">—</strong></div>
-                <div class="metric"><span>Overall η</span><strong id="overallEtaValue">—</strong></div>
+                <div class="metric"><span>Net thrust</span><strong id="thrustValue">, </strong></div>
+                <div class="metric"><span>TSFC</span><strong id="tsfcValue">, </strong></div>
+                <div class="metric"><span>Fuel-air ratio</span><strong id="farValue">, </strong></div>
+                <div class="metric"><span>Nozzle</span><strong id="nozzleValue">, </strong></div>
+                <div class="metric"><span>Variant</span><strong id="variantValue">, </strong></div>
+                <div class="metric"><span>Overall η</span><strong id="overallEtaValue">, </strong></div>
               </div>
 
               <!-- Live plain-English interpretation of the latest run. -->
@@ -457,10 +457,10 @@
               <section class="insights-panel" id="emissionsPanel" aria-labelledby="emissionsHeading">
                 <p id="emissionsHeading" class="insight-heading">COMBUSTOR EMISSIONS · REACTOR NETWORK</p>
                 <div class="metric-grid" id="emissionsMetrics">
-                  <div class="metric"><span>EI&nbsp;NOx [g/kg]</span><strong id="eiNoxValue">—</strong></div>
-                  <div class="metric"><span>EI&nbsp;CO [g/kg]</span><strong id="eiCoValue">—</strong></div>
-                  <div class="metric"><span>Flame T [K]</span><strong id="flameTempValue">—</strong></div>
-                  <div class="metric"><span>φ overall</span><strong id="phiOverallValue">—</strong></div>
+                  <div class="metric"><span>EI&nbsp;NOx [g/kg]</span><strong id="eiNoxValue">, </strong></div>
+                  <div class="metric"><span>EI&nbsp;CO [g/kg]</span><strong id="eiCoValue">, </strong></div>
+                  <div class="metric"><span>Flame T [K]</span><strong id="flameTempValue">, </strong></div>
+                  <div class="metric"><span>φ overall</span><strong id="phiOverallValue">, </strong></div>
                 </div>
                 <p id="emissionsNote" class="insight-sub">Run a cycle to compute Cantera reactor-network emission indices.</p>
                 <div class="emissions-actions">
@@ -531,12 +531,12 @@
               </div>
 
               <div class="metric-grid">
-                <div class="metric"><span>Net thrust</span><strong id="advancedThrustValue">—</strong></div>
-                <div class="metric"><span>TSFC</span><strong id="advancedTsfcValue">—</strong></div>
-                <div class="metric"><span>Fuel-air ratio</span><strong id="advancedFarValue">—</strong></div>
-                <div class="metric"><span>Nozzle</span><strong id="advancedNozzleValue">—</strong></div>
-                <div class="metric"><span>Specific thrust</span><strong id="advancedSpecificThrustValue">—</strong></div>
-                <div class="metric"><span>Overall η</span><strong id="advancedOverallEtaValue">—</strong></div>
+                <div class="metric"><span>Net thrust</span><strong id="advancedThrustValue">, </strong></div>
+                <div class="metric"><span>TSFC</span><strong id="advancedTsfcValue">, </strong></div>
+                <div class="metric"><span>Fuel-air ratio</span><strong id="advancedFarValue">, </strong></div>
+                <div class="metric"><span>Nozzle</span><strong id="advancedNozzleValue">, </strong></div>
+                <div class="metric"><span>Specific thrust</span><strong id="advancedSpecificThrustValue">, </strong></div>
+                <div class="metric"><span>Overall η</span><strong id="advancedOverallEtaValue">, </strong></div>
               </div>
 
               <div id="advancedDetail" class="detail-grid"></div>
@@ -683,7 +683,7 @@
               <h2>P-v diagram</h2>
               <canvas id="graphPvDiagram" width="520" height="260"></canvas>
               <p class="graph-note">Stagnation P–v (<code>v = R·Tt/Pt</code>), consistent
-                across all stations — not a static-state diagram.</p>
+                across all stations, not a static-state diagram.</p>
             </article>
             <article class="panel graph-card">
               <h2>Sweep · thrust</h2>
@@ -783,7 +783,7 @@
               <p><strong>Working principle.</strong> Two-spool architecture. The fan
                 pressurises both core and bypass streams. The HP spool drives the HP
                 compressor. The LP spool drives the fan via the LP turbine. Thrust comes
-                from a core nozzle (post-LPT) and a bypass nozzle (post-fan) — or, in
+                from a core nozzle (post-LPT) and a bypass nozzle (post-fan), or, in
                 mixed-flow mode, from a single nozzle after a constant-pressure mixer.
                 Optional afterburner reheats the core (separate flow) or the mixed
                 stream (mixed flow).</p>
@@ -841,45 +841,45 @@
               <p><strong>Honest limitations.</strong> No isolator pressure recovery
                 curve, no finite-rate chemistry, no real-gas dissociation above
                 ~2500 K. The model is an <em>educational reduced-order scramjet
-                approximation</em> — not a CFD or design tool. Warnings flag temperatures
+                approximation</em>, not a CFD or design tool. Warnings flag temperatures
                 above 3000 K and below-Mach-4 operation.</p>
             </details>
 
             <details class="manual-block">
               <summary>Efficiency definitions</summary>
-              <p><strong>Thermal η</strong> — useful jet power (Δjet KE + pressure
+              <p><strong>Thermal η</strong>, useful jet power (Δjet KE + pressure
                 power) divided by fuel chemical power.</p>
-              <p><strong>Propulsive η</strong> — thrust × V₀ divided by useful jet power.
+              <p><strong>Propulsive η</strong>, thrust × V₀ divided by useful jet power.
                 Tends to zero at static conditions by definition.</p>
-              <p><strong>Overall η</strong> — thrust × V₀ divided by fuel chemical power.
+              <p><strong>Overall η</strong>, thrust × V₀ divided by fuel chemical power.
                 For pure-jet engines overall ≈ thermal × propulsive. For turboprop
                 engines the overall metric includes the propeller shaft thrust, so the
                 product rule does not hold.</p>
             </details>
 
             <details class="manual-block">
-              <summary>Glossary — quick definitions</summary>
+              <summary>Glossary, quick definitions</summary>
               <dl class="glossary-grid">
                 <dt>Station</dt>
                 <dd>A numbered location along the engine axis (0 freestream → 9 nozzle exit). Each station carries a thermodynamic state.</dd>
                 <dt>Stagnation (total) state</dt>
-                <dd>Properties the flow would have if brought to rest isentropically — Tt, Pt. Useful because Tt is conserved across adiabatic devices and Pt only drops where there is loss.</dd>
+                <dd>Properties the flow would have if brought to rest isentropically, Tt, Pt. Useful because Tt is conserved across adiabatic devices and Pt only drops where there is loss.</dd>
                 <dt>Static state</dt>
-                <dd>Local thermodynamic state of the moving gas — T, P. Differ from stagnation by the kinetic-energy term.</dd>
+                <dd>Local thermodynamic state of the moving gas, T, P. Differ from stagnation by the kinetic-energy term.</dd>
                 <dt>Mach number</dt>
                 <dd>Local flow speed divided by local speed of sound. Sets compressibility behaviour.</dd>
                 <dt>Pressure ratio (PR)</dt>
-                <dd>Pt at exit over Pt at inlet of a component — compressor, fan, turbine all have one.</dd>
+                <dd>Pt at exit over Pt at inlet of a component, compressor, fan, turbine all have one.</dd>
                 <dt>Bypass ratio (BPR)</dt>
                 <dd>Mass flow through the fan bypass divided by mass flow through the core. Higher BPR → quieter, more efficient at subsonic cruise.</dd>
                 <dt>Fuel-air ratio (f)</dt>
                 <dd>Fuel mass flow divided by air mass flow through the combustor. Typically 0.015–0.04 in a lean turbojet.</dd>
                 <dt>Equivalence ratio (φ)</dt>
-                <dd>Actual fuel-air ratio divided by stoichiometric — φ &lt; 1 is lean, φ = 1 stoichiometric, φ &gt; 1 rich. Used for scramjets.</dd>
+                <dd>Actual fuel-air ratio divided by stoichiometric, φ &lt; 1 is lean, φ = 1 stoichiometric, φ &gt; 1 rich. Used for scramjets.</dd>
                 <dt>TSFC</dt>
-                <dd>Thrust-specific fuel consumption — fuel mass flow per unit thrust. Lower is better. Reported here in kg/(kN·hr).</dd>
+                <dd>Thrust-specific fuel consumption, fuel mass flow per unit thrust. Lower is better. Reported here in kg/(kN·hr).</dd>
                 <dt>BSFC</dt>
-                <dd>Brake-specific fuel consumption — fuel mass flow per unit shaft power. Used for turboprops.</dd>
+                <dd>Brake-specific fuel consumption, fuel mass flow per unit shaft power. Used for turboprops.</dd>
                 <dt>Thermal efficiency</dt>
                 <dd>Useful jet power divided by fuel chemical power. Captures how well the cycle converts heat into kinetic energy.</dd>
                 <dt>Propulsive efficiency</dt>
@@ -891,7 +891,7 @@
                 <dt>Pressure thrust</dt>
                 <dd>Force from the exit-static minus ambient-static pressure times exit area. Important when the nozzle is under- or over-expanded.</dd>
                 <dt>Adiabatic flame temperature</dt>
-                <dd>Temperature reached if combustion happened with no heat loss — the thermodynamic ceiling for combustor exit temperature.</dd>
+                <dd>Temperature reached if combustion happened with no heat loss, the thermodynamic ceiling for combustor exit temperature.</dd>
               </dl>
             </details>
 
@@ -915,7 +915,7 @@
             <p class="report-copy">
               Pick an engine and fix the flight condition, then compute the matched
               operating line. At each throttle the solver balances the spool work and
-              choked-flow continuity to find the self-consistent point — the engine
+              choked-flow continuity to find the self-consistent point, the engine
               spins up and down as a fixed-geometry machine actually would. Drag the
               throttle to scrub thrust and TSFC along the line.
             </p>
@@ -924,8 +924,8 @@
               <label>
                 <span>Engine</span>
                 <select id="odEngine">
-                  <option value="turbojet">Turbojet — single spool</option>
-                  <option value="turbofan">Turbofan — two spool</option>
+                  <option value="turbojet">Turbojet, single spool</option>
+                  <option value="turbofan">Turbofan, two spool</option>
                 </select>
               </label>
               <label>
@@ -947,15 +947,15 @@
               </div>
               <div class="od-readout">
                 <div class="od-throttle">
-                  <label for="odThrottle">Throttle — turbine inlet T <span class="unit">K</span></label>
+                  <label for="odThrottle">Throttle, turbine inlet T <span class="unit">K</span></label>
                   <input id="odThrottle" type="range" min="0" max="100" value="100" step="0.1" disabled />
-                  <output id="odThrottleValue">—</output>
+                  <output id="odThrottleValue">, </output>
                 </div>
                 <dl class="od-metrics">
-                  <div class="od-metric"><dt>Thrust</dt><dd id="odThrust">—</dd></div>
-                  <div class="od-metric"><dt>TSFC</dt><dd id="odTsfc">—</dd></div>
-                  <div class="od-metric"><dt id="odPrLabel">Pressure ratio</dt><dd id="odPr">—</dd></div>
-                  <div class="od-metric"><dt>Matched</dt><dd id="odConverged">—</dd></div>
+                  <div class="od-metric"><dt>Thrust</dt><dd id="odThrust">, </dd></div>
+                  <div class="od-metric"><dt>TSFC</dt><dd id="odTsfc">, </dd></div>
+                  <div class="od-metric"><dt id="odPrLabel">Pressure ratio</dt><dd id="odPr">, </dd></div>
+                  <div class="od-metric"><dt>Matched</dt><dd id="odConverged">, </dd></div>
                 </dl>
                 <p class="od-note">
                   Bypass ratio (turbofan) is held at its design value; a real
@@ -974,7 +974,7 @@
               <h2>Mission profile</h2>
             </div>
             <p class="report-copy">
-              Build a flight as a sequence of legs — each held at a fixed altitude,
+              Build a flight as a sequence of legs, each held at a fixed altitude,
               Mach, and throttle for a set duration. The engine is matched off-design
               at every leg and fuel burn is integrated across the mission. Edit any
               cell, add or remove legs, and the totals update automatically.
@@ -984,8 +984,8 @@
               <label>
                 <span>Engine</span>
                 <select id="mnEngine">
-                  <option value="turbojet">Turbojet — single spool</option>
-                  <option value="turbofan">Turbofan — two spool</option>
+                  <option value="turbojet">Turbojet, single spool</option>
+                  <option value="turbofan">Turbofan, two spool</option>
                 </select>
               </label>
               <button type="button" id="mnAddSegment" class="ghost-button">+ Add leg</button>
@@ -999,7 +999,7 @@
                     <th>Leg</th>
                     <th>Altitude <span class="unit">m</span></th>
                     <th>Mach</th>
-                    <th>Throttle — turbine inlet T <span class="unit">K</span></th>
+                    <th>Throttle, turbine inlet T <span class="unit">K</span></th>
                     <th>Duration <span class="unit">s</span></th>
                     <th>Fuel <span class="unit">kg</span></th>
                     <th></th>
@@ -1013,9 +1013,9 @@
 
             <div class="mn-results">
               <dl class="mn-totals">
-                <div class="mn-total"><dt>Total fuel</dt><dd id="mnTotalFuel">—</dd></div>
-                <div class="mn-total"><dt>Total time</dt><dd id="mnTotalTime">—</dd></div>
-                <div class="mn-total"><dt>Legs matched</dt><dd id="mnMatched">—</dd></div>
+                <div class="mn-total"><dt>Total fuel</dt><dd id="mnTotalFuel">, </dd></div>
+                <div class="mn-total"><dt>Total time</dt><dd id="mnTotalTime">, </dd></div>
+                <div class="mn-total"><dt>Legs matched</dt><dd id="mnMatched">, </dd></div>
               </dl>
               <div class="mn-chart-wrap">
                 <canvas id="missionCanvas" width="560" height="260"></canvas>
@@ -1034,7 +1034,7 @@
               Pressure ratio against corrected mass flow, with constant
               corrected-speed lines, surge and choke boundaries, and the matched
               off-design <strong>running line</strong>. The operating point is
-              converged on the map at each throttle — drag the throttle to move
+              converged on the map at each throttle, drag the throttle to move
               it along the line. The map is sized to the deck on the Cycle tab;
               change the deck and recompute to resize it.
             </p>
@@ -1050,21 +1050,21 @@
               </div>
               <div class="od-readout">
                 <div class="od-throttle">
-                  <label for="cmThrottle">Throttle — turbine inlet T <span class="unit">K</span></label>
+                  <label for="cmThrottle">Throttle, turbine inlet T <span class="unit">K</span></label>
                   <input id="cmThrottle" type="range" min="0" max="100" value="0" step="0.1" disabled />
-                  <output id="cmThrottleValue">—</output>
+                  <output id="cmThrottleValue">, </output>
                 </div>
                 <dl class="od-metrics">
-                  <div class="od-metric"><dt>Pressure ratio</dt><dd id="cmPr">—</dd></div>
-                  <div class="od-metric"><dt>Corrected mass flow</dt><dd id="cmMdot">—</dd></div>
-                  <div class="od-metric"><dt>Map efficiency</dt><dd id="cmEff">—</dd></div>
-                  <div class="od-metric"><dt>Surge margin</dt><dd id="cmSurge">—</dd></div>
-                  <div class="od-metric"><dt>Thrust</dt><dd id="cmThrust">—</dd></div>
-                  <div class="od-metric"><dt>On map</dt><dd id="cmInRange">—</dd></div>
+                  <div class="od-metric"><dt>Pressure ratio</dt><dd id="cmPr">, </dd></div>
+                  <div class="od-metric"><dt>Corrected mass flow</dt><dd id="cmMdot">, </dd></div>
+                  <div class="od-metric"><dt>Map efficiency</dt><dd id="cmEff">, </dd></div>
+                  <div class="od-metric"><dt>Surge margin</dt><dd id="cmSurge">, </dd></div>
+                  <div class="od-metric"><dt>Thrust</dt><dd id="cmThrust">, </dd></div>
+                  <div class="od-metric"><dt>On map</dt><dd id="cmInRange">, </dd></div>
                 </dl>
                 <p class="od-note">
                   This characteristic is a <strong>synthetic, illustrative</strong>
-                  map — correct trends, not measured manufacturer data. A verified
+                  map, correct trends, not measured manufacturer data. A verified
                   dataset can be loaded into the same viewer later. Corrected mass
                   flow is referenced to 288.15 K / 101.325 kPa at the compressor
                   face; efficiency and surge margin are read off the map at the
@@ -1082,14 +1082,13 @@
               <h2>Multi-objective design optimization · NSGA-II</h2>
             </div>
             <p class="report-copy">
-              A genetic algorithm (NSGA-II — non-dominated sorting, crowding
+              A genetic algorithm (NSGA-II, non-dominated sorting, crowding
               distance, simulated-binary crossover and polynomial mutation,
               implemented from scratch) searches the design space of
               <strong>compressor pressure ratio</strong> and
               <strong>turbine-inlet temperature</strong> at the flight condition
-              from the Cycle tab. It traces the <strong>Pareto front</strong> —
-              the set of designs where you cannot improve one objective without
-              giving up another — subject to a compressor-exit (material)
+              from the Cycle tab. It traces the <strong>Pareto front</strong>,               the set of designs where you cannot improve one objective without
+              giving up another, subject to a compressor-exit (material)
               temperature cap and a fuel-air band.
             </p>
 
@@ -1117,10 +1116,10 @@
               </div>
               <div class="od-readout">
                 <dl class="od-metrics">
-                  <div class="od-metric"><dt>Front size</dt><dd id="optFrontSize">—</dd></div>
-                  <div class="od-metric"><dt>Evaluations</dt><dd id="optEvals">—</dd></div>
-                  <div class="od-metric"><dt>Min TSFC</dt><dd id="optMinTsfc">—</dd></div>
-                  <div class="od-metric"><dt>Max specific thrust</dt><dd id="optMaxSpec">—</dd></div>
+                  <div class="od-metric"><dt>Front size</dt><dd id="optFrontSize">, </dd></div>
+                  <div class="od-metric"><dt>Evaluations</dt><dd id="optEvals">, </dd></div>
+                  <div class="od-metric"><dt>Min TSFC</dt><dd id="optMinTsfc">, </dd></div>
+                  <div class="od-metric"><dt>Max specific thrust</dt><dd id="optMaxSpec">, </dd></div>
                 </dl>
                 <p class="od-note">
                   Each point is a non-dominated design: hover the front to read it.
@@ -1234,15 +1233,15 @@
         <div class="footer-block">
           <strong>Creator</strong>
           Ainesh Das<br />
-          <a href="https://www.linkedin.com/in/ainesh-das/" target="_blank" rel="noopener noreferrer">LinkedIn — in/ainesh-das</a><br />
-          <a href="https://www.instagram.com/das.labs/" target="_blank" rel="noopener noreferrer">Instagram — @das.labs</a>
+          <a href="https://www.linkedin.com/in/ainesh-das/" target="_blank" rel="noopener noreferrer">LinkedIn, in/ainesh-das</a><br />
+          <a href="https://www.instagram.com/das.labs/" target="_blank" rel="noopener noreferrer">Instagram, @das.labs</a>
         </div>
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260603-portal"></script>
-    <script src="/lab/tour.js?v=20260602-tour8"></script>
-    <script src="/lab/help.js?v=20260602-help2"></script>
-    <script src="/lab/casestudies.js?v=20260602-cs"></script>
+    <script src="/lab/app.js?v=20260603-dedash"></script>
+    <script src="/lab/tour.js?v=20260603-dedash"></script>
+    <script src="/lab/help.js?v=20260603-dedash"></script>
+    <script src="/lab/casestudies.js?v=20260603-dedash"></script>
   </body>
 </html>

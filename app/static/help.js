@@ -10,13 +10,13 @@
   const HELP = {
     graphs: {
       title: "Graphs & reports",
-      what: "Everything from your latest run, drawn out — the cycle on T–s and P–v diagrams, temperature and pressure at each station, your sweep results, and the thrust and efficiency breakdown. The buttons here also export a PDF report or a runnable Python script.",
+      what: "Everything from your latest run, drawn out, the cycle on T–s and P–v diagrams, temperature and pressure at each station, your sweep results, and the thrust and efficiency breakdown. The buttons here also export a PDF report or a runnable Python script.",
       howto: [
-        "Run a cycle on the Cycle tab first — these charts read that result.",
+        "Run a cycle on the Cycle tab first, these charts read that result.",
         "Open this tab to see the diagrams.",
         "Use Download PDF for a shareable report, or Export Python to get the exact run as a script you can rerun.",
       ],
-      where: "T–s and P–v diagrams are how the cycle gets taught and checked — area on the chart is work and heat. They're the quickest way to see where pressure or efficiency is being lost.",
+      where: "T–s and P–v diagrams are how the cycle gets taught and checked, area on the chart is work and heat. They're the quickest way to see where pressure or efficiency is being lost.",
     },
     compare: {
       title: "Engine compare",
@@ -24,13 +24,13 @@
       howto: [
         "Tick the engines you want in the comparison.",
         "Set the shared flight condition.",
-        "Press Run compare and read the bars — thrust, TSFC and efficiency for each.",
+        "Press Run compare and read the bars, thrust, TSFC and efficiency for each.",
       ],
       where: "This is the first question on any engine project: which architecture? A turbofan sips fuel at airliner cruise; a turbojet or ramjet takes over once you're supersonic. Compare shows that trade-off directly instead of arguing about it.",
     },
     offdesign: {
       title: "Off-design matching",
-      what: "Your design point is just one operating condition. A real engine has fixed hardware and still has to work everywhere else — idle, climb, cruise. This takes that same fixed engine and finds the self-consistent operating point at each throttle setting.",
+      what: "Your design point is just one operating condition. A real engine has fixed hardware and still has to work everywhere else, idle, climb, cruise. This takes that same fixed engine and finds the self-consistent operating point at each throttle setting.",
       howto: [
         "Pick the engine and fix the altitude and Mach.",
         "Press Compute envelope to match the operating line.",
@@ -40,33 +40,33 @@
     },
     mission: {
       title: "Mission profile",
-      what: "Strings off-design points together into a whole flight — climb, cruise, descent — and adds up fuel and time across the trip instead of at a single point.",
+      what: "Strings off-design points together into a whole flight, climb, cruise, descent, and adds up fuel and time across the trip instead of at a single point.",
       howto: [
         "Build the leg table: altitude, Mach, throttle, and how long each leg lasts.",
         "Press Fly mission.",
         "Read the total fuel and time, plus the per-leg breakdown.",
       ],
-      where: "This is how range, endurance and fuel load get decided. Two engines can look the same at cruise but burn very differently over a real mission — flying the profile is how you tell them apart.",
+      where: "This is how range, endurance and fuel load get decided. Two engines can look the same at cruise but burn very differently over a real mission, flying the profile is how you tell them apart.",
     },
     compressormap: {
       title: "Compressor map",
       what: "The compressor's character: pressure ratio against corrected mass flow, with constant-speed lines, the surge and choke limits, and the matched running line drawn on top.",
       howto: [
-        "The map is sized from your Cycle-tab deck — change the deck and recompute to resize it.",
+        "The map is sized from your Cycle-tab deck, change the deck and recompute to resize it.",
         "Drag the throttle to move the operating point along the running line.",
         "Keep an eye on the surge margin as you throttle back.",
       ],
-      where: "This is the central chart of turbomachinery matching. Surge margin is a safety limit — get too close and the compressor stalls. Efficiency and the operating point at every power setting are read straight off this map.",
+      where: "This is the central chart of turbomachinery matching. Surge margin is a safety limit, get too close and the compressor stalls. Efficiency and the operating point at every power setting are read straight off this map.",
     },
     optimize: {
       title: "Design optimization · NSGA-II",
-      what: "A genetic algorithm searches the design space for the best balance between goals that fight each other — low fuel burn versus high thrust per unit of airflow — while staying inside limits like the turbine-temperature cap.",
+      what: "A genetic algorithm searches the design space for the best balance between goals that fight each other, low fuel burn versus high thrust per unit of airflow, while staying inside limits like the turbine-temperature cap.",
       howto: [
         "Set the variable bounds and the constraints.",
         "Press Run optimization and let it evolve.",
         "Read the Pareto front: each dot is a design where you can't improve one goal without giving up another. Colour shows turbine temperature.",
       ],
-      where: "There's never a single best engine, only trade-offs. The Pareto front is the menu of optimal compromises — designers pick a point on it based on what the aircraft actually needs.",
+      where: "There's never a single best engine, only trade-offs. The Pareto front is the menu of optimal compromises, designers pick a point on it based on what the aircraft actually needs.",
     },
   };
 

@@ -1,5 +1,5 @@
 /* =============================================================
-   DAS LABS · PropulsionLab — Console
+   DAS LABS · PropulsionLab, Console
    v3.0  Restrained aerospace product.
    All backend solver / sweep / compare / PDF / profile flows
    preserved verbatim. No boot sequence, no particles, no mission
@@ -278,7 +278,7 @@ const palette = {
   surface:    "#0d0e11",
   surface2:   "#131418",
 
-  // chart series — muted, premium
+  // chart series, muted, premium
   thrust:      "#f4f4f5",
   tsfc:        "#d4d4d8",
   temperature: "#d97757",
@@ -302,7 +302,7 @@ const thermoReference = {
  * ------------------------------------------------------------ */
 
 function numberFormat(value, digits = 2) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return ", ";
   return Number(value).toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
@@ -330,7 +330,7 @@ function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 /* FastAPI returns request-validation failures as an ARRAY of error objects
  * under `detail` (Pydantic), while the solver's own 400s return a plain
  * string. Passing the array straight into `new Error(...)` stringifies it to
- * "[object Object]" — so normalise either shape into a readable sentence. */
+ * "[object Object]", so normalise either shape into a readable sentence. */
 function formatRequestError(detail, fallback = "Request failed") {
   if (detail === null || detail === undefined) return fallback;
   if (typeof detail === "string") return detail;
@@ -848,7 +848,7 @@ function fillStationTable(tableBody, stationTable) {
       numberFormat(station.stagnation_temperature_K, 1),
       numberFormat(station.stagnation_pressure_Pa / 1000, 1),
       numberFormat(station.static_temperature_K, 1),
-      station.static_pressure_Pa ? numberFormat(station.static_pressure_Pa / 1000, 1) : "—",
+      station.static_pressure_Pa ? numberFormat(station.static_pressure_Pa / 1000, 1) : ", ",
       numberFormat(station.mach, 2),
       numberFormat(station.velocity_m_s, 1),
       (station.notes || []).join("; "),
@@ -1227,7 +1227,7 @@ const prefersReducedMotion = window.matchMedia
 /**
  * One-shot animated wrapper around drawStationChart. Sweeps the traces in
  * left-to-right over ~520 ms, then settles on the final frame. Self-
- * terminating — no persistent rAF loop. Honours reduced-motion by drawing the
+ * terminating, no persistent rAF loop. Honours reduced-motion by drawing the
  * final frame immediately.
  */
 function animateStationChart(result, targetCanvas = stationCanvas) {
@@ -1248,7 +1248,7 @@ function animateStationChart(result, targetCanvas = stationCanvas) {
 /* Order stations by physical flow position, not raw number, so charts read
  * inlet → exhaust. Standard SAE numbering puts the inter-turbine station 45
  * between the burner (4) and the LP-turbine exit (5), and the bypass stations
- * (13, 19) form a cold tail after the core — sorting numerically would scatter
+ * (13, 19) form a cold tail after the core, sorting numerically would scatter
  * them and make the traces look broken. */
 const STATION_FLOW_RANK = {
   0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 41: 4.3, 44: 4.6, 45: 5, 49: 5.5, 5: 6, 55: 6.5,
@@ -1474,7 +1474,7 @@ function drawBarGraph(canvas, labels, values, colors, unitLabel, fixedMaxValue =
   const plotH = height - pad * 2;
   drawChartFrame(ctx, pad, pad, plotW, plotH);
 
-  // Headroom (×1.18) so the tallest bar never reaches the top — its value label
+  // Headroom (×1.18) so the tallest bar never reaches the top, its value label
   // is drawn above the bar on the dark background, not buried inside it.
   const maxValue = fixedMaxValue || Math.max(1e-9, ...values.map((v) => Math.abs(v))) * 1.18;
   const slot = plotW / Math.max(1, values.length);
@@ -1541,7 +1541,7 @@ function stationThermoProperties(station) {
   };
 }
 
-/** "Nice number" ticks (Heckbert 1990 style) — returns ~5 round values. */
+/** "Nice number" ticks (Heckbert 1990 style), returns ~5 round values. */
 function niceTicks(min, max, targetCount = 5) {
   const range = Math.max(1e-12, max - min);
   const roughStep = range / targetCount;
@@ -1611,10 +1611,10 @@ function drawXYGraph(canvas, points, options) {
 
   drawSeriesAreaFill(ctx, pts, padTop + plotH, options.color);
   drawSeriesLine(ctx, pts, options.color);
-  // Dots only on the real stations — interpolated process points have station == null.
+  // Dots only on the real stations, interpolated process points have station == null.
   drawSeriesDots(ctx, pts.filter((_, i) => points[i].station != null), options.color);
 
-  // station labels with simple greedy collision avoidance — when two label
+  // station labels with simple greedy collision avoidance, when two label
   // positions are within COLLISION_PX, offset the second by a vertical step.
   ctx.fillStyle = palette.text;
   ctx.font = "600 10.5px 'JetBrains Mono', ui-monospace, monospace";
@@ -1655,7 +1655,7 @@ function drawXYGraph(canvas, points, options) {
 
 function updateGraphCanvases() {
   if (!lastResult) {
-    // Engine switched without a fresh run — wipe the charts so stale stations
+    // Engine switched without a fresh run, wipe the charts so stale stations
     // from a previous architecture don't bleed across.
     [
       "#graphStationTemp", "#graphStationPressure", "#graphTsDiagram",
@@ -1678,7 +1678,7 @@ function updateGraphCanvases() {
     palette.pressure, "Pt [kPa] · stagnation");
 
   // The T-s / P-v cycle loop is the *core* Brayton cycle. The bypass-duct
-  // stations (13/16/18/19) are a separate cold stream — including them in the
+  // stations (13/16/18/19) are a separate cold stream, including them in the
   // connecting line makes it jump out to the bypass and dangle, breaking the
   // loop. They still appear on the station temperature/pressure charts above.
   const CYCLE_BYPASS = new Set([13, 16, 18, 19]);
@@ -1903,7 +1903,7 @@ function updateAdvancedMetrics(result) {
   renderAdvancedDetail(result);
 }
 
-/* Engine-specific detail block — appears under the metric grid and lists the
+/* Engine-specific detail block, appears under the metric grid and lists the
  * physically meaningful per-engine outputs that the generic metric grid would
  * otherwise omit (core/bypass thrust for turbofans, shaft power for
  * turboprops, etc.). */
@@ -2090,10 +2090,10 @@ async function updateEmissions(result) {
       fuel_air_ratio: Math.min(0.074, Math.max(1e-4, far)),
     });
     const fmt = (v, d = 1) =>
-      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : ", ";
     set("eiNoxValue", fmt(emis.ei_nox_g_per_kg, 1));
     set("eiCoValue", fmt(emis.ei_co_g_per_kg, 2));
-    set("flameTempValue", emis.primary_zone_temperature_K ? fmt(emis.primary_zone_temperature_K, 0) : "—");
+    set("flameTempValue", emis.primary_zone_temperature_K ? fmt(emis.primary_zone_temperature_K, 0) : ", ");
     set("phiOverallValue", fmt(emis.phi_overall, 2));
     if (note) {
       const src = emis.source === "reactor-network"
@@ -2115,7 +2115,7 @@ async function estimateLtoNox() {
   try {
     const out = await postJson("/emissions/turbojet/lto", { design: inputs });
     const fmt = (v, d = 1) =>
-      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : ", ";
     const rows = out.modes.map((m) =>
       `<tr><td>${m.name}</td><td>${fmt(m.thrust_fraction * 100, 0)}%</td>` +
       `<td>${fmt(m.combustor_inlet_temperature_K, 0)}</td>` +
@@ -2159,7 +2159,7 @@ async function runOptimization() {
     });
     lastPareto = out;
     const fmt = (v, d = 1) =>
-      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+      Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : ", ";
     const front = out.pareto_front;
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     set("optFrontSize", String(front.length));
@@ -2246,25 +2246,25 @@ function updateCycleInsights(result, inputs) {
   const fmt = (v, d = 1) =>
     Number.isFinite(Number(v))
       ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d })
-      : "—";
+      : ", ";
 
   // Compressor exit temperature
   if (t3.stagnation_temperature_K) {
     const Tt3 = t3.stagnation_temperature_K;
     if (Tt3 > 850) {
       bullets.push(
-        `Compressor exit Tt3 is <b>${fmt(Tt3, 0)} K</b> — high enough that the back stages would need cooling on a real engine. Compressor work scales with this rise from Tt2.`
+        `Compressor exit Tt3 is <b>${fmt(Tt3, 0)} K</b>, high enough that the back stages would need cooling on a real engine. Compressor work scales with this rise from Tt2.`
       );
     } else {
       bullets.push(
-        `Compressor lifts the air from <b>${fmt(t0.stagnation_temperature_K || 0, 0)} K</b> at the freestream to <b>${fmt(Tt3, 0)} K</b> at station 3 — that temperature rise is the work the turbine has to supply.`
+        `Compressor lifts the air from <b>${fmt(t0.stagnation_temperature_K || 0, 0)} K</b> at the freestream to <b>${fmt(Tt3, 0)} K</b> at station 3, that temperature rise is the work the turbine has to supply.`
       );
     }
   }
   // Nozzle choking
   if (result.nozzle_choked) {
     bullets.push(
-      `Nozzle is <b>choked</b> (M=1 at the throat). That happens whenever Pt₅/P₀ exceeds the critical pressure ratio (~1.89 for hot gas) — here Pt₅/P₀ = <b>${fmt(npr, 2)}</b>.`
+      `Nozzle is <b>choked</b> (M=1 at the throat). That happens whenever Pt₅/P₀ exceeds the critical pressure ratio (~1.89 for hot gas), here Pt₅/P₀ = <b>${fmt(npr, 2)}</b>.`
     );
   } else {
     bullets.push(
@@ -2274,33 +2274,33 @@ function updateCycleInsights(result, inputs) {
   // Nozzle expansion state
   if (exp.includes("under")) {
     bullets.push(
-      `Exit is <b>under-expanded</b> — exit static pressure exceeds ambient, so the gas keeps expanding outside the nozzle. A longer divergent section would recover some of that pressure thrust.`
+      `Exit is <b>under-expanded</b>, exit static pressure exceeds ambient, so the gas keeps expanding outside the nozzle. A longer divergent section would recover some of that pressure thrust.`
     );
   } else if (exp.includes("over")) {
     bullets.push(
-      `Exit is <b>over-expanded</b> — exit pressure is below ambient, costing some momentum to ambient back-pressure. A smaller exit area would match better at this flight condition.`
+      `Exit is <b>over-expanded</b>, exit pressure is below ambient, costing some momentum to ambient back-pressure. A smaller exit area would match better at this flight condition.`
     );
   } else if (exp.includes("ideal")) {
     bullets.push(
-      `Nozzle is <b>nearly ideally expanded</b> — exit static pressure matches ambient, which maximises momentum thrust for the given Pt.`
+      `Nozzle is <b>nearly ideally expanded</b>, exit static pressure matches ambient, which maximises momentum thrust for the given Pt.`
     );
   }
   // TSFC interpretation
   const tsfc = result.TSFC_kg_per_kN_hr;
   if (Number.isFinite(tsfc)) {
     let comment;
-    if (tsfc < 90) comment = "very good — turbofan-class economy";
+    if (tsfc < 90) comment = "very good, turbofan-class economy";
     else if (tsfc < 150) comment = "typical for a simple turbojet cycle";
-    else if (tsfc < 250) comment = "high — likely low TIT or low PR";
-    else comment = "very high — check inputs or expect afterburner-class numbers";
+    else if (tsfc < 250) comment = "high, likely low TIT or low PR";
+    else comment = "very high, check inputs or expect afterburner-class numbers";
     bullets.push(
-      `TSFC ≈ <b>${fmt(tsfc, 1)} kg/(kN·hr)</b> — ${comment}. Lower is better; ramjets typically sit above 200, modern high-bypass turbofans around 50–60.`
+      `TSFC ≈ <b>${fmt(tsfc, 1)} kg/(kN·hr)</b>, ${comment}. Lower is better; ramjets typically sit above 200, modern high-bypass turbofans around 50–60.`
     );
   }
   // Efficiency hint
   if (Number.isFinite(result.thermal_efficiency_estimate)) {
     bullets.push(
-      `Thermal η ≈ <b>${fmt(result.thermal_efficiency_estimate * 100, 1)}%</b>, propulsive η ≈ <b>${fmt(result.propulsive_efficiency_estimate * 100, 1)}%</b>. Overall η ≈ thermal × propulsive for a pure-jet engine — try raising PR or TIT and watch thermal rise.`
+      `Thermal η ≈ <b>${fmt(result.thermal_efficiency_estimate * 100, 1)}%</b>, propulsive η ≈ <b>${fmt(result.propulsive_efficiency_estimate * 100, 1)}%</b>. Overall η ≈ thermal × propulsive for a pure-jet engine, try raising PR or TIT and watch thermal rise.`
     );
   }
   // Fuel-air sanity
@@ -2308,7 +2308,7 @@ function updateCycleInsights(result, inputs) {
     const f = result.fuel_air_ratio;
     if (f < 0.008 || f > 0.055) {
       bullets.push(
-        `Fuel-air ratio <b>${fmt(f, 4)}</b> is outside the typical lean turbojet band of 0.015–0.040 — check TIT vs compressor exit.`
+        `Fuel-air ratio <b>${fmt(f, 4)}</b> is outside the typical lean turbojet band of 0.015–0.040, check TIT vs compressor exit.`
       );
     }
   }
@@ -2357,7 +2357,7 @@ function updateHeroTelemetry(result, inputs) {
   const fmt = (v, d = 1) =>
     Number.isFinite(Number(v))
       ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d })
-      : "—";
+      : ", ";
   const setText = (id, text) => {
     const node = document.getElementById(id);
     if (node) node.textContent = text;
@@ -2821,7 +2821,7 @@ function initScrollReveal() {
 }
 initScrollReveal();
 
-/* Activate a console tab by name — keeps the tab-button + tab-panel pair in sync. */
+/* Activate a console tab by name, keeps the tab-button + tab-panel pair in sync. */
 function activateConsoleTab(tabName) {
   document.querySelectorAll(".tab-button").forEach((b) => {
     b.classList.toggle("active", b.dataset.tab === tabName);
@@ -2870,7 +2870,7 @@ window.addEventListener("resize", () => {
 });
 
 /* ------------------------------------------------------------ *
- *  28. BOOT (no overlay — direct fade-in via CSS)                *
+ *  28. BOOT (no overlay, direct fade-in via CSS)                *
  * ------------------------------------------------------------ */
 
 async function boot() {
@@ -2916,8 +2916,7 @@ boot();
  * ------------------------------------------------------------ *
  * Fetches a matched operating LINE once (a throttle sweep at a fixed flight
  * condition) from /simulate/{engine}/off-design, then lets a throttle slider
- * scrub thrust / TSFC / pressure-ratio along it by LOCAL linear interpolation —
- * no network call per drag, so it updates far faster than 30 Hz. */
+ * scrub thrust / TSFC / pressure-ratio along it by LOCAL linear interpolation,  * no network call per drag, so it updates far faster than 30 Hz. */
 
 const offDesign = {
   engine: "turbojet",
@@ -2975,7 +2974,7 @@ async function computeOffDesignEnvelope() {
   if (!ok.length) {
     offDesign.ready = false;
     $("#odThrottle").disabled = true;
-    $("#odStatus").textContent = "No matched points at this condition — try a lower altitude or Mach.";
+    $("#odStatus").textContent = "No matched points at this condition, try a lower altitude or Mach.";
     return;
   }
 
@@ -3030,7 +3029,7 @@ function updateOffDesignFromSlider() {
   $("#odThrust").textContent = `${numberFormat(v.thrust, 2)} kN`;
   $("#odTsfc").textContent = `${numberFormat(v.tsfc, 2)} kg/kN/hr`;
   $("#odPr").textContent = numberFormat(v.pr, 2);
-  $("#odConverged").textContent = v.converged ? "Yes" : "—";
+  $("#odConverged").textContent = v.converged ? "Yes" : ", ";
   drawOffDesignChart(t);
 }
 
@@ -3116,7 +3115,7 @@ function drawOffDesignChart(markerT) {
   drawSeriesLabel(ctx, "Thrust [kN]", pad + 4, pad - 14, palette.thrust);
   drawSeriesLabel(ctx, "TSFC [kg/kN/hr]", pad + 120, pad - 14, palette.tsfc);
   ctx.fillStyle = palette.textDim;
-  ctx.fillText("Throttle — turbine inlet T [K]", pad + plotW / 2 - 84, pad + plotH + 36);
+  ctx.fillText("Throttle, turbine inlet T [K]", pad + plotW / 2 - 84, pad + plotH + 36);
 }
 
 let offDesignWired = false;
@@ -3190,7 +3189,7 @@ function renderMissionTable() {
     fuelTd.className = "mn-fuel-cell";
     const row = mission.lastResult?.segments?.[idx];
     fuelTd.textContent = row && row.success ? numberFormat(row.fuel_burned_kg, 1)
-      : (row && !row.success ? "—" : "");
+      : (row && !row.success ? ", " : "");
     tr.append(fuelTd);
     // Remove button.
     const rmTd = document.createElement("td");
@@ -3247,7 +3246,7 @@ async function flyMission() {
   $("#mnTotalTime").textContent = `${numberFormat(mins, 1)} min`;
   $("#mnMatched").textContent = `${result.successful_segments} / ${result.segments.length}`;
   $("#mnStatus").textContent = result.failed_segments
-    ? `${result.failed_segments} leg(s) could not be matched — see the dashes in the table.`
+    ? `${result.failed_segments} leg(s) could not be matched, see the dashes in the table.`
     : "Mission matched at every leg.";
   renderMissionTable(); // refresh the fuel column
   drawMissionChart(result);
@@ -3408,7 +3407,7 @@ function setCompressorMapReadout(point) {
   const pr = $("#cmPr"), md = $("#cmMdot"), ef = $("#cmEff");
   const sm = $("#cmSurge"), th = $("#cmThrust"), ir = $("#cmInRange");
   if (!point) {
-    [pr, md, ef, sm, th, ir].forEach((n) => { if (n) n.textContent = "—"; });
+    [pr, md, ef, sm, th, ir].forEach((n) => { if (n) n.textContent = ", "; });
     return;
   }
   if (pr) pr.textContent = numberFormat(point.pressure_ratio, 2);
@@ -3581,7 +3580,7 @@ function updateCompressorMapFromSlider() {
   compressorMap.markerIndex = Math.round(pct * (line.length - 1));
   const point = currentMarkerPoint();
   const out = $("#cmThrottleValue");
-  if (out) out.textContent = point ? `${numberFormat(point.throttle_K, 0)} K` : "—";
+  if (out) out.textContent = point ? `${numberFormat(point.throttle_K, 0)} K` : ", ";
   setCompressorMapReadout(point);
   drawCompressorMap();
 }
@@ -3599,12 +3598,12 @@ async function refreshCompressorMap() {
     compressorMap.markerIndex = compressorMap.designIndex;
     const point = currentMarkerPoint();
     const out = $("#cmThrottleValue");
-    if (out) out.textContent = point ? `${numberFormat(point.throttle_K, 0)} K` : "—";
+    if (out) out.textContent = point ? `${numberFormat(point.throttle_K, 0)} K` : ", ";
     setCompressorMapReadout(point);
   } else {
     setCompressorMapReadout(null);
     const out = $("#cmThrottleValue");
-    if (out) out.textContent = "—";
+    if (out) out.textContent = ", ";
   }
   drawCompressorMap();
 }

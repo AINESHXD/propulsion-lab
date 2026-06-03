@@ -1,4 +1,4 @@
-/* PropulsionLab guided tour — dependency-free, robust.
+/* PropulsionLab guided tour, dependency-free, robust.
  *
  * The card is pinned to the bottom-centre of the screen (it can never land in a
  * corner). The window is scrolled directly with window.scrollTo so an inner
@@ -12,21 +12,21 @@
 
   const STEPS = [
     { center: true, title: "Welcome to PropulsionLab",
-      body: "This runs real jet-engine cycles in your browser — five engine types, every station. Want the quick tour? You can skip whenever." },
+      body: "This runs real jet-engine cycles in your browser, five engine types, every station. Want the quick tour? You can skip whenever." },
     { sel: ".engine-card-grid", title: "Pick an engine",
       body: "Turbojet, turbofan, turboprop, ramjet, scramjet. Each one loads its own solver and inputs." },
     { sel: "#presetSelect", title: "Or start from a real one",
       body: "Load a known engine like the CFM56 or J85 as your starting point, then change whatever you want." },
     { sel: "#simulationForm", title: "Set the design point",
-      body: "Altitude, speed, pressure ratio, turbine temperature, efficiencies. Nothing's hidden — hover a “?” if a field is new to you." },
+      body: "Altitude, speed, pressure ratio, turbine temperature, efficiencies. Nothing's hidden, hover a “?” if a field is new to you." },
     { sel: "#runSimulationButton", title: "Run it",
       body: "Solves the whole cycle in a few milliseconds, and re-runs on its own as you edit the inputs." },
     { sel: ".results-panel .metric-grid", title: "The headline numbers",
-      body: "Thrust, fuel burn (TSFC) and efficiency — what actually matters for the design." },
+      body: "Thrust, fuel burn (TSFC) and efficiency, what actually matters for the design." },
     { sel: ".results-panel .table-wrap:not([hidden])", title: "Every station",
       body: "Temperature, pressure, Mach and velocity from the inlet all the way to the nozzle." },
     { sel: "#cycleInsights", title: "In plain English",
-      body: "The same numbers, explained — what the compressor's doing, whether the nozzle's choked, and why." },
+      body: "The same numbers, explained, what the compressor's doing, whether the nozzle's choked, and why." },
     { sel: "#emissionsPanel", title: "Emissions",
       body: "A real NOx and CO estimate from combustion chemistry, plus the ICAO landing-takeoff total. Push the pressure ratio up and watch NOx climb." },
     { sel: ".console-tabs", title: "Go further",
@@ -34,7 +34,7 @@
     { sel: 'a[href="/lab/viewer3d.html"]', title: "See it in 3D",
       body: "Spin through cutaways of all five engines, with a label on every stage." },
     { sel: 'a[href="/lab/mlsuite.html"]', title: "The ML side",
-      body: "A neural net that predicts performance instantly — and checks itself against the real physics." },
+      body: "A neural net that predicts performance instantly, and checks itself against the real physics." },
     { sel: "#shareLinkButton", title: "Share and export",
       body: "Your setup lives in the URL. You can also export a Python script or a PDF." },
     { center: true, title: "That's the tour",
@@ -119,7 +119,7 @@
 
     const target = step.center ? null : document.querySelector(step.sel);
     const r0 = target && target.getBoundingClientRect();
-    // No target, or a hidden/zero-size one — show a centred card, never a corner ring.
+    // No target, or a hidden/zero-size one, show a centred card, never a corner ring.
     if (!target || !r0 || (r0.width === 0 && r0.height === 0)) {
       hi.classList.remove("show");
       backdrop.classList.remove("clear");

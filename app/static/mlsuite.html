@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0a0b0e" />
-    <meta name="description" content="DASLAB ML Suite — a from-scratch neural-net surrogate of the turbojet cycle. Move the sliders and read instant, in-browser performance predictions, verified live against the exact physics solver." />
-    <title>PropulsionLab — DASLAB ML Suite</title>
+    <meta name="description" content="DASLAB ML Suite, a from-scratch neural-net surrogate of the turbojet cycle. Move the sliders and read instant, in-browser performance predictions, verified live against the exact physics solver." />
+    <title>PropulsionLab, DASLAB ML Suite</title>
     <style>
       :root{
         --bg:#0a0b0e; --panel:rgba(16,18,22,.72); --line:rgba(255,255,255,.09);
@@ -87,8 +87,8 @@
       <p class="eyebrow">PropulsionLab · Neural surrogate</p>
       <h1>Turbojet performance, predicted in-browser.</h1>
       <p class="lede">
-        A small neural network — trained from scratch on thousands of solver
-        evaluations — approximates the turbojet cycle. Move the sliders for
+        A small neural network, trained from scratch on thousands of solver
+        evaluations, approximates the turbojet cycle. Move the sliders for
         instant predictions with no server round-trip, then verify any point
         against the exact physics.
       </p>
@@ -104,7 +104,7 @@
           <h2>Predicted performance</h2>
           <div class="outs" id="outs"></div>
           <div class="infer">
-            <span class="t" id="inferTime">—</span>
+            <span class="t" id="inferTime">, </span>
             <button class="btn primary" id="verifyBtn" disabled>Verify against physics →</button>
             <span id="status"></span>
           </div>
@@ -117,7 +117,7 @@
         <div class="spec" id="spec"></div>
         <p class="note" id="honesty">
           The cycle is a smooth, deterministic function, so high accuracy here is
-          expected — this demonstrates the full pipeline (space-filling sampling →
+          expected, this demonstrates the full pipeline (space-filling sampling →
           from-scratch backprop → held-out validation → in-browser inference), not
           a hard benchmark. Predictions are trustworthy only inside the sampled
           ranges; the exact solver remains the source of truth.
@@ -154,7 +154,7 @@
       }
 
       const fmt = (v, d = 1) =>
-        Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : "—";
+        Number.isFinite(Number(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: d }) : ", ";
 
       function currentInputs() {
         return M.inputs.map((_, i) => Number(document.getElementById("s" + i).value));
@@ -237,7 +237,7 @@
             input.style.setProperty("--pct", ((input.value - lo) / (hi - lo) * 100) + "%");
           };
           input.addEventListener("input", () => { setDisp(); refresh(); });
-          setDisp();   // initial label only — full refresh runs once after all UI is built
+          setDisp();   // initial label only, full refresh runs once after all UI is built
         });
       }
 
@@ -247,7 +247,7 @@
           const el = document.createElement("div");
           el.className = "out";
           el.innerHTML = `<div class="k">${M.output_labels[j]}</div>` +
-            `<div class="v" id="v${j}">—</div><div class="truth" id="t${j}"></div>`;
+            `<div class="v" id="v${j}">, </div><div class="truth" id="t${j}"></div>`;
           host.appendChild(el);
         });
       }
@@ -259,7 +259,7 @@
           const el = document.createElement("div");
           el.className = "metric";
           el.innerHTML = `<div class="k">${M.output_labels[M.outputs.indexOf(name)]}</div>` +
-            `<div class="r2">R² ${m.r2 != null ? m.r2.toFixed(4) : "—"}</div>` +
+            `<div class="r2">R² ${m.r2 != null ? m.r2.toFixed(4) : ", "}</div>` +
             `<div class="mape">${m.mape_pct != null ? m.mape_pct.toFixed(2) + "% MAPE" : ""}</div>`;
           host.appendChild(el);
         });

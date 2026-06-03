@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0a0b0e" />
-    <meta name="description" content="PropulsionLab 3D engine viewing suite — physically based, interactive turbofan, turbojet, ramjet and scramjet cutaways built in Blender, with hover-to-explain station labels." />
-    <title>PropulsionLab — engine viewer</title>
+    <meta name="description" content="PropulsionLab 3D engine viewing suite, physically based, interactive turbofan, turbojet, ramjet and scramjet cutaways built in Blender, with hover-to-explain station labels." />
+    <title>PropulsionLab, engine viewer</title>
     <style>
       :root {
         --bg:#0a0b0e; --panel:rgba(16,18,22,0.72); --line:rgba(255,255,255,0.09);
@@ -102,7 +102,7 @@
     <script type="importmap">
       { "imports": { "three": "/lab/vendor/three/three.module.js" } }
     </script>
-    <!-- GSAP (cinematic camera) — classic script loads before the deferred module. -->
+    <!-- GSAP (cinematic camera), classic script loads before the deferred module. -->
     <script src="/lab/vendor/gsap/gsap.min.js"></script>
   </head>
   <body>
@@ -150,7 +150,7 @@
     </div>
 
     <script type="module">
-      import { startViewer } from "/lab/viewer3d.js?v=20260601p";
+      import { startViewer } from "/lab/viewer3d.js?v=20260603-dedash";
       startViewer();
     </script>
   </body>

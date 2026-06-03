@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PropulsionLab, launch slides</title>
+<style>
+  :root{ --bg:#0a0b0e; --text:#f3f4f6; --dim:#9197a1; --line:rgba(255,255,255,.12); --accent:#7ba7eb;
+    --mono:"SF Mono",ui-monospace,"Cascadia Code",monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;overflow:hidden}
+  .slide{position:fixed;inset:0;display:none;flex-direction:column;justify-content:space-between;
+    padding:9vh 8vw;background:
+      radial-gradient(120% 80% at 70% 10%, rgba(123,167,235,.10), transparent 60%),
+      radial-gradient(100% 70% at 20% 100%, rgba(123,167,235,.05), transparent 55%), var(--bg);}
+  .slide.on{display:flex}
+  .mark{display:flex;align-items:center;gap:14px}
+  .mark svg{width:54px;height:27px;color:var(--text)}
+  .mark .word{font-weight:700;letter-spacing:.16em;font-size:clamp(14px,2.4vh,20px)}
+  .eyebrow{font-family:var(--mono);font-size:clamp(11px,1.7vh,15px);letter-spacing:.22em;
+    text-transform:uppercase;color:var(--dim)}
+  h1{font-weight:680;letter-spacing:-.02em;line-height:1.02;font-size:clamp(40px,8.4vh,86px)}
+  h1 .dim{color:var(--dim)}
+  .sub{color:var(--dim);font-size:clamp(15px,2.5vh,22px);max-width:30ch}
+  .pill{display:inline-flex;align-items:center;gap:9px;align-self:flex-start;
+    border:1px solid var(--line);border-radius:999px;padding:9px 16px;
+    font-family:var(--mono);font-size:clamp(11px,1.7vh,14px);letter-spacing:.18em;text-transform:uppercase;color:var(--text)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#37d39a;box-shadow:0 0 12px #37d39a}
+  .families{display:flex;flex-direction:column;gap:clamp(8px,1.6vh,16px)}
+  .fam{display:flex;align-items:baseline;gap:16px;border-top:1px solid var(--line);padding-top:clamp(8px,1.6vh,16px)}
+  .fam b{font-weight:620;font-size:clamp(20px,3.6vh,34px);min-width:6.2em}
+  .fam span{color:var(--dim);font-size:clamp(13px,2vh,18px)}
+  .stats{display:flex;gap:6vw;flex-wrap:wrap}
+  .stat .n{font-weight:680;font-size:clamp(34px,6.4vh,64px);letter-spacing:-.02em}
+  .stat .l{color:var(--dim);font-family:var(--mono);font-size:clamp(10px,1.6vh,13px);letter-spacing:.12em;text-transform:uppercase}
+  .center{align-items:center;justify-content:center;text-align:center;gap:4vh}
+  .center .mark svg{width:120px;height:60px}
+  .center .mark .word{font-size:clamp(22px,4vh,40px)}
+  .foot{display:flex;justify-content:space-between;align-items:flex-end;color:var(--dim);
+    font-family:var(--mono);font-size:clamp(11px,1.7vh,14px);letter-spacing:.06em}
+  .stack{display:flex;flex-direction:column;gap:clamp(14px,3vh,30px)}
+  .handle{color:var(--accent)}
+</style>
+</head>
+<body>
+  <!-- SLIDE 1, COVER -->
+  <section class="slide" data-slide="1">
+    <div class="mark"><svg viewBox="0 0 96 48" fill="none"><line x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M30 29 L86 8 L52 29 Z" fill="currentColor"/><path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity=".6"/></svg><span class="word">DAS&nbsp;LABS</span></div>
+    <div class="stack">
+      <p class="eyebrow">PropulsionLab · v2.6</p>
+      <h1>Gas-turbine<br>cycle analysis,<br><span class="dim">station by station.</span></h1>
+      <p class="sub">Five engine families. Interactive 3D cutaways. Real reduced-order physics, in the browser.</p>
+    </div>
+    <div class="foot"><span class="pill"><span class="dot"></span> Coming soon</span><span>propulsion · aerospace</span></div>
+  </section>
+
+  <!-- SLIDE 2, FAMILIES / STATS -->
+  <section class="slide" data-slide="2">
+    <div class="mark"><svg viewBox="0 0 96 48" fill="none"><line x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M30 29 L86 8 L52 29 Z" fill="currentColor"/><path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity=".6"/></svg><span class="word">DAS&nbsp;LABS</span></div>
+    <div class="stack">
+      <p class="eyebrow">Five engine families</p>
+      <div class="families">
+        <div class="fam"><b>Turbojet</b><span>all flow through the core</span></div>
+        <div class="fam"><b>Turbofan</b><span>fan + bypass stream</span></div>
+        <div class="fam"><b>Turboprop</b><span>shaft power to a propeller</span></div>
+        <div class="fam"><b>Ramjet</b><span>ram compression, no spool</span></div>
+        <div class="fam"><b>Scramjet</b><span>supersonic combustion</span></div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n">9</div><div class="l">stations tracked</div></div>
+      <div class="stat"><div class="n">3D</div><div class="l">engine cutaways</div></div>
+      <div class="stat"><div class="n">0→8</div><div class="l">Mach envelope</div></div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3, CTA -->
+  <section class="slide center" data-slide="3">
+    <div class="mark"><svg viewBox="0 0 96 48" fill="none"><line x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M30 29 L86 8 L52 29 Z" fill="currentColor"/><path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity=".6"/></svg><span class="word">DAS&nbsp;LABS</span></div>
+    <div class="stack" style="align-items:center">
+      <h1 style="font-size:clamp(38px,7.4vh,72px)">Launching<br>soon.</h1>
+      <p class="sub" style="text-align:center">Follow <span class="handle">@AINESHXD</span> for the launch.</p>
+    </div>
+    <p class="eyebrow">PropulsionLab, DAS LABS</p>
+  </section>
+
+<script>
+  const n = new URLSearchParams(location.search).get("slide") || "1";
+  const el = document.querySelector(`.slide[data-slide="${n}"]`) || document.querySelector('.slide');
+  el.classList.add("on");
+</script>
+</body>
+</html>

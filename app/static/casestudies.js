@@ -1,12 +1,12 @@
 /* ============================================================================
- * PropulsionLab — Engine case studies tab
+ * PropulsionLab, Engine case studies tab
  * ----------------------------------------------------------------------------
  * Ten production gas-turbine engines with public-estimated specifications and
  * a technical overview of each one's architecture and cycle. No third-party /
  * copyrighted imagery is used.
  *
  * All figures are approximate, public-estimated, and given for a representative
- * variant — exact numbers vary by sub-model and rating. Self-contained IIFE;
+ * variant, exact numbers vary by sub-model and rating. Self-contained IIFE;
  * relies only on the generic data-tab / data-tab-panel switching in app.js.
  * ========================================================================== */
 (function () {
@@ -35,7 +35,7 @@
           "high-bypass engines.",
         "By modern standards the overall pressure ratio (≈ 16–21) and turbine " +
           "temperatures are low, which means high specific fuel consumption and " +
-          "a loud jet — the later -200 'refan' and external hush-kits chased " +
+          "a loud jet, the later -200 'refan' and external hush-kits chased " +
           "tightening noise rules. Its lasting significance is volume and " +
           "ruggedness: it was the workhorse that made the first generation of " +
           "short/medium-haul jetliners economic.",
@@ -106,8 +106,8 @@
         "The best-selling jet engine in history. A two-spool design that grafts " +
           "GE's F101 core (developed for the B-1 bomber) onto a Snecma " +
           "low-pressure system: single fan, booster stages, a nine-stage HP " +
-          "compressor, an annular combustor — single-annular, or dual-annular " +
-          "on low-NOₓ variants — and cooled HP/LP turbines.",
+          "compressor, an annular combustor, single-annular, or dual-annular " +
+          "on low-NOₓ variants, and cooled HP/LP turbines.",
         "Bypass ratio around 5 and a steadily climbing pressure ratio across " +
           "the -5B/-7B variants made it the default narrowbody powerplant for " +
           "three decades. Its commercial importance is hard to overstate: tens " +
@@ -129,7 +129,7 @@
       apps: "747-400 · 767 · 777 · A300/A310 · A330 · MD-11",
       tech: [
         "A two-spool high-bypass family built around one core philosophy but " +
-          "offered in three fan diameters — 94, 100 and 112 inches — to span " +
+          "offered in three fan diameters, 94, 100 and 112 inches, to span " +
           "everything from the A310 to the 777. Full-authority digital engine " +
           "control (FADEC) was standard, and the larger members raised bypass " +
           "ratio toward 6 for better cruise efficiency.",
@@ -152,7 +152,7 @@
       spoolsText: "2-spool",
       apps: "Boeing 777",
       tech: [
-        "The most powerful turbofan ever certified — the GE90-115B recorded " +
+        "The most powerful turbofan ever certified, the GE90-115B recorded " +
           "roughly 569 kN on test, a Guinness world record. It was the first " +
           "production engine with swept, hollow carbon-fibre composite fan " +
           "blades, allowing a 3.25 m fan (wider than a 737 fuselage) that turns " +
@@ -178,8 +178,8 @@
       apps: "Boeing 787 · 747-8",
       tech: [
         "A direct technology descendant of the GE90, re-sized for the 787 and " +
-          "747-8. It uses composite fan blades and — a first for a large engine " +
-          "— a composite fan case, cutting weight, while a very high overall " +
+          "747-8. It uses composite fan blades and, a first for a large engine " +
+          ", a composite fan case, cutting weight, while a very high overall " +
           "pressure ratio (toward ~58 with the booster) pushes thermal " +
           "efficiency. The TAPS (Twin-Annular Pre-Swirl) combustor lowers NOₓ.",
         "Chevron (sawtooth) nozzle trailing edges mix the exhaust more gently " +
@@ -227,8 +227,8 @@
       tech: [
         "The defining efficiency idea of the 2010s narrowbody generation. A " +
           "planetary reduction gearbox of roughly 3:1 sits between the fan and " +
-          "the low-pressure spool, so a large fan can turn slowly — its " +
-          "aerodynamic optimum — while the LP compressor and turbine spin fast, " +
+          "the low-pressure spool, so a large fan can turn slowly, its " +
+          "aerodynamic optimum, while the LP compressor and turbine spin fast, " +
           "theirs. Decoupling the two lets each run near its best speed.",
         "Because the LP spool runs fast, it needs far fewer compressor and " +
           "turbine stages, cutting parts and weight, and the slow fan can be " +
@@ -268,7 +268,7 @@
    * Each maps the engine onto the simulator's two-spool turbofan inputs at a
    * cruise design point. core_compressor_pressure_ratio is chosen so that
    * fan_pressure_ratio × core HPC ≈ the engine's overall pressure ratio.
-   * These are illustrative design points, not certification data — and the
+   * These are illustrative design points, not certification data, and the
    * simulator models a plain two-spool fan, so the geared (GTF) and three-spool
    * (Trent XWB) architectures are represented by their bypass ratio, fan PR and
    * OPR rather than by an explicit gearbox or third shaft. */

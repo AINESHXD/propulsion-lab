@@ -1,4 +1,4 @@
-/* PropulsionLab — 3D engine viewing suite.
+/* PropulsionLab, 3D engine viewing suite.
  *
  * A focused viewer for the Blender-built engine models (turbofan, turbojet,
  * ramjet, scramjet), each loaded as a glTF cutaway with hover-to-explain
@@ -19,7 +19,7 @@ const ENGINES = {
   turbofan: {
     label: "Turbofan",
     url: "/lab/models/jet_engine_cutaway.glb",
-    blurb: "High-bypass turbofan — a large fan provides most of the thrust. Efficient and quiet at subsonic cruise.",
+    blurb: "High-bypass turbofan, a large fan provides most of the thrust. Efficient and quiet at subsonic cruise.",
     stations: [
       { name: "Fan", t: 0.05, text: "A large fan accelerates a big mass of bypass air, giving most of the thrust at high propulsive efficiency." },
       { name: "Compressor", t: 0.30, text: "Multi-stage axial compressor raises the core-air pressure before combustion." },
@@ -31,7 +31,7 @@ const ENGINES = {
   turbojet: {
     label: "Turbojet",
     url: "/lab/models/jet_engine_turbojet.glb",
-    blurb: "Turbojet — all air passes through the core. Simple and capable of high speed, but thirsty at low speed.",
+    blurb: "Turbojet, all air passes through the core. Simple and capable of high speed, but thirsty at low speed.",
     stations: [
       { name: "Inlet", t: 0.05, text: "Incoming air is diffused and slowed, raising its pressure ahead of the compressor." },
       { name: "Compressor", t: 0.30, text: "Axial stages compress the air to the design pressure ratio." },
@@ -43,9 +43,9 @@ const ENGINES = {
   ramjet: {
     label: "Ramjet",
     url: "/lab/models/jet_engine_ramjet.glb",
-    blurb: "Ramjet — no moving compressor. Ram compression only works once already flying supersonically.",
+    blurb: "Ramjet, no moving compressor. Ram compression only works once already flying supersonically.",
     stations: [
-      { name: "Inlet spike", t: 0.08, text: "A centre-body spike sets up shock waves that compress the supersonic air — no rotating compressor is needed." },
+      { name: "Inlet spike", t: 0.08, text: "A centre-body spike sets up shock waves that compress the supersonic air, no rotating compressor is needed." },
       { name: "Diffuser", t: 0.32, text: "The diverging duct slows the flow toward subsonic, trading speed for pressure." },
       { name: "Combustor", t: 0.58, text: "Fuel burns behind flame holders. A ramjet makes no static thrust and must be boosted up to speed first." },
       { name: "Nozzle", t: 0.88, text: "A convergent–divergent nozzle expands the hot gas back to supersonic for thrust." },
@@ -54,24 +54,24 @@ const ENGINES = {
   scramjet: {
     label: "Scramjet",
     url: "/lab/models/jet_engine_scramjet.glb",
-    blurb: "Scramjet — a supersonic-combustion ramjet for hypersonic flight. The air never slows to subsonic.",
+    blurb: "Scramjet, a supersonic-combustion ramjet for hypersonic flight. The air never slows to subsonic.",
     stations: [
       { name: "Inlet", t: 0.10, text: "Sharp compression surfaces compress the air while keeping the whole flow supersonic." },
       { name: "Isolator", t: 0.35, text: "A constant-area duct contains the shock train and isolates the inlet from combustor pressure rises." },
-      { name: "Combustor", t: 0.58, text: "Fuel injected from struts burns in milliseconds — combustion happens in supersonic flow." },
+      { name: "Combustor", t: 0.58, text: "Fuel injected from struts burns in milliseconds, combustion happens in supersonic flow." },
       { name: "Nozzle", t: 0.86, text: "The long expansion surface accelerates the exhaust, producing thrust at hypersonic speed." },
     ],
   },
   turboprop: {
     label: "Turboprop",
     url: "/lab/models/jet_engine_turboprop.glb",
-    blurb: "Turboprop — a gas-generator core drives a large propeller through a gearbox. Most efficient at low-to-mid subsonic speeds.",
+    blurb: "Turboprop, a gas-generator core drives a large propeller through a gearbox. Most efficient at low-to-mid subsonic speeds.",
     stations: [
       { name: "Propeller", t: 0.09, text: "A large propeller produces most of the thrust; the engine core mainly exists to spin it efficiently." },
       { name: "Gearbox", t: 0.20, text: "A reduction gearbox steps the high turbine RPM down to an efficient propeller speed." },
       { name: "Compressor", t: 0.40, text: "Axial stages compress the core air for the gas generator." },
       { name: "Combustor", t: 0.56, text: "Fuel burns, driving both the gas-generator and the power turbine." },
-      { name: "Power turbine", t: 0.70, text: "A free (power) turbine extracts shaft work to drive the propeller — separate from the gas-generator spool." },
+      { name: "Power turbine", t: 0.70, text: "A free (power) turbine extracts shaft work to drive the propeller, separate from the gas-generator spool." },
       { name: "Exhaust", t: 0.87, text: "Only a small residual jet remains; nearly all the energy has gone to the propeller." },
     ],
   },
@@ -210,7 +210,7 @@ class Viewer {
     this._loading[engine] = onReady ? [onReady] : [];
     new GLTFLoader().load(cfg.url + MODEL_VERSION, (gltf) => {
       const s = gltf.scene;
-      const slim = (engine === "ramjet" || engine === "scramjet"); // slim dark bodies read dark — lift them
+      const slim = (engine === "ramjet" || engine === "scramjet"); // slim dark bodies read dark, lift them
       s.traverse((o) => {
         if (!o.isMesh) return;
         o.castShadow = true; o.receiveShadow = true;
@@ -258,8 +258,7 @@ class Viewer {
     const half = Math.tan((this.camera.fov * Math.PI / 180) / 2);
     let dist;
     if (this.embed) {
-      // Fit the engine's BOUNDING SPHERE to the smaller viewport dimension —
-      // orientation-independent, so nothing ever clips while it auto-rotates,
+      // Fit the engine's BOUNDING SPHERE to the smaller viewport dimension,       // orientation-independent, so nothing ever clips while it auto-rotates,
       // regardless of panel aspect or layout timing.
       const R = 0.5 * Math.sqrt(rec.span * rec.span + 2 * (2 * rec.maxY) * (2 * rec.maxY));
       const vfov = (this.camera.fov * Math.PI) / 180;
