@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050608" />
+    <meta name="description" content="DAS LABS — interactive engine simulators. PropulsionLab models airbreathing and gas-turbine propulsion; PistonLab (coming soon) models reciprocating internal-combustion engines." />
+    <title>DAS LABS — engine simulators</title>
+    <style>
+      :root{
+        --bg:#050608; --panel:#0c0e12; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.16);
+        --text:#f3f4f6; --dim:#8b9099; --jet:#7ba7eb; --piston:#f0883e;
+        --mono:"SF Mono",ui-monospace,"Cascadia Code",monospace;
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      html,body{min-height:100%;background:var(--bg);color:var(--text);
+        font:16px/1.55 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;
+        -webkit-font-smoothing:antialiased}
+      body{display:flex;flex-direction:column;min-height:100vh;
+        background:
+          radial-gradient(120% 75% at 25% 0%, rgba(123,167,235,.08), transparent 55%),
+          radial-gradient(120% 75% at 80% 100%, rgba(240,136,62,.07), transparent 55%),
+          var(--bg);}
+      a{text-decoration:none;color:inherit}
+
+      .wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        padding:48px 22px;text-align:center}
+      .logo{height:54px;width:auto;margin:0 auto 6px;opacity:.97}
+      .logo-fallback{font-weight:800;letter-spacing:.22em;font-size:30px}
+      .eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:.26em;text-transform:uppercase;
+        color:var(--dim);margin-top:14px}
+      .tagline{color:var(--dim);font-size:1.02rem;margin-top:14px;max-width:52ch}
+
+      .grid{display:grid;grid-template-columns:repeat(2,minmax(0,300px));gap:22px;margin-top:48px;width:100%;max-width:640px}
+      .card{position:relative;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:14px;
+        padding:26px 24px 22px;border:1px solid var(--line);border-radius:20px;background:var(--panel);
+        transition:transform .25s cubic-bezier(.3,0,.2,1),border-color .25s,box-shadow .25s;overflow:hidden}
+      .card .glow{position:absolute;inset:-1px;border-radius:20px;opacity:0;transition:opacity .25s;pointer-events:none}
+      .card.live{cursor:pointer}
+      .card.live:hover{transform:translateY(-5px);border-color:rgba(123,167,235,.5);
+        box-shadow:0 24px 60px rgba(0,0,0,.5)}
+      .card.live:hover .glow{opacity:1;box-shadow:0 0 0 1px rgba(123,167,235,.4),0 0 40px rgba(123,167,235,.18) inset}
+      .card.soon{opacity:.72}
+      .icon{width:46px;height:46px;color:var(--jet)}
+      .card.piston .icon{color:var(--piston)}
+      .badge{position:absolute;top:16px;right:16px;font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;
+        text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line-2)}
+      .badge.ok{color:#37d39a;border-color:rgba(55,211,154,.4)}
+      .badge.dev{color:var(--piston);border-color:rgba(240,136,62,.4)}
+      .card h2{font-size:1.3rem;font-weight:650;letter-spacing:-.01em}
+      .card p{color:var(--dim);font-size:.86rem;line-height:1.5}
+      .enter{margin-top:4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;color:var(--jet)}
+      .card.piston .enter{color:var(--piston);opacity:.85}
+
+      footer{border-top:1px solid var(--line);padding:18px 22px;display:flex;justify-content:center;gap:18px;
+        flex-wrap:wrap;color:var(--dim);font-size:.78rem}
+      footer a:hover{color:var(--text)}
+      footer .sep{opacity:.4}
+      @media(max-width:600px){.grid{grid-template-columns:1fr;max-width:340px}.logo{height:44px}}
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <img class="logo" src="/lab/assets/das_labs_logo_dark.png?v=1" alt="DAS LABS"
+           onerror="this.style.display='none';document.getElementById('lf').style.display='block'" />
+      <div id="lf" class="logo-fallback" style="display:none">DAS&nbsp;LABS</div>
+      <p class="eyebrow">Interactive engine simulators</p>
+      <p class="tagline">We model how engines work — one domain at a time.</p>
+
+      <div class="grid">
+        <!-- PropulsionLab — live -->
+        <a class="card live" href="/lab/">
+          <span class="glow"></span>
+          <span class="badge ok">● Live</span>
+          <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="24" cy="24" r="19"/>
+            <circle cx="24" cy="24" r="4.5" fill="currentColor" stroke="none"/>
+            <g stroke-linecap="round">
+              <line x1="24" y1="24" x2="24" y2="7"/><line x1="24" y1="24" x2="36" y2="12"/>
+              <line x1="24" y1="24" x2="41" y2="24"/><line x1="24" y1="24" x2="36" y2="36"/>
+              <line x1="24" y1="24" x2="24" y2="41"/><line x1="24" y1="24" x2="12" y2="36"/>
+              <line x1="24" y1="24" x2="7" y2="24"/><line x1="24" y1="24" x2="12" y2="12"/>
+            </g>
+          </svg>
+          <h2>PropulsionLab</h2>
+          <p>Airbreathing &amp; gas-turbine propulsion — turbojet, turbofan, turboprop, ramjet, scramjet. Station-by-station cycle analysis in the browser.</p>
+          <span class="enter">Enter →</span>
+        </a>
+
+        <!-- PistonLab — coming soon -->
+        <div class="card soon piston" aria-disabled="true">
+          <span class="badge dev">Coming soon</span>
+          <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="16" y="6" width="16" height="22" rx="2.5"/>
+            <rect x="18" y="14" width="12" height="8" rx="1.2" fill="currentColor" stroke="none"/>
+            <line x1="24" y1="22" x2="24" y2="36"/>
+            <circle cx="24" cy="40" r="5"/>
+            <line x1="24" y1="35" x2="29" y2="42"/>
+          </svg>
+          <h2>PistonLab</h2>
+          <p>Reciprocating internal-combustion engines — Otto, Diesel, turbocharging, and the classic P–V loop. In development.</p>
+          <span class="enter">In development</span>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <span>DAS LABS</span><span class="sep">·</span>
+      <span>by Ainesh Das</span><span class="sep">·</span>
+      <a href="https://www.linkedin.com/in/ainesh-das/" target="_blank" rel="noopener">LinkedIn</a>
+      <a href="https://www.instagram.com/das.labs/" target="_blank" rel="noopener">Instagram</a>
+    </footer>
+  </body>
+</html>

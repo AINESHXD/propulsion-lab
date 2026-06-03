@@ -169,7 +169,14 @@ def run_turbojet_simulation(inputs: TurbojetInput) -> TurbojetOutput:
     return TurbojetOutput.model_validate(result)
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
+def portal() -> FileResponse:
+    """DAS LABS portal — choose between PropulsionLab and PistonLab (coming soon)."""
+
+    return FileResponse(STATIC_PATH / "portal.html")
+
+
+@app.get("/api")
 def root() -> dict[str, Any]:
     """Return API metadata and discoverable endpoints."""
 

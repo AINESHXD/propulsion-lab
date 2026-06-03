@@ -2876,7 +2876,7 @@ window.addEventListener("resize", () => {
 async function boot() {
   animateHeroCounters();
   try {
-    const response = await fetch("/");
+    const response = await fetch("/api");
     if (!response.ok) throw new Error("API unavailable");
     setStatus("Online", "ok");
     await loadPresets();
