@@ -142,6 +142,20 @@ def pro_stub() -> FileResponse:
     return FileResponse(STATIC_PATH / "pro" / "index.html")
 
 
+@app.get("/piston", include_in_schema=False)
+@app.get("/piston/", include_in_schema=False)
+def piston_lab() -> FileResponse:
+    """Serve the PistonLab reciprocating-engine console at a clean /piston/ URL.
+
+    PistonLab is the DAS LABS sibling to PropulsionLab. It is in development and
+    intentionally not yet linked from the portal (the portal still shows it as
+    "coming soon"); the page is reachable directly so it can be built and shared
+    for review before launch.
+    """
+
+    return FileResponse(STATIC_PATH / "piston" / "index.html")
+
+
 def load_engine_presets() -> dict[str, Any]:
     """Load bundled educational engine presets from JSON."""
 
