@@ -33,7 +33,7 @@
 
       .grid{display:grid;grid-template-columns:repeat(2,minmax(0,300px));gap:22px;margin-top:48px;width:100%;max-width:640px}
       .card{position:relative;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:14px;
-        padding:26px 24px 22px;border:1px solid var(--line);border-radius:20px;background:var(--panel);
+        padding:44px 24px 22px;border:1px solid var(--line);border-radius:20px;background:var(--panel);
         transition:transform .25s cubic-bezier(.3,0,.2,1),border-color .25s,box-shadow .25s;overflow:hidden}
       .card .glow{position:absolute;inset:-1px;border-radius:20px;opacity:0;transition:opacity .25s;pointer-events:none}
       .card.live{cursor:pointer}
@@ -41,8 +41,10 @@
         box-shadow:0 24px 60px rgba(0,0,0,.5)}
       .card.live:hover .glow{opacity:1;box-shadow:0 0 0 1px rgba(123,167,235,.4),0 0 40px rgba(123,167,235,.18) inset}
       .card.soon{opacity:.72}
-      .icon{width:46px;height:46px;color:var(--jet)}
-      .card.piston .icon{color:var(--piston)}
+      .wordmark{width:100%;max-width:236px;height:auto;margin:2px 0;
+        mix-blend-mode:screen;}   /* silver-on-black wordmark: black bg drops out on the dark card */
+      .card.soon .wordmark{opacity:.9}
+      .wm-fallback{display:none;font-size:1.3rem;font-weight:650;letter-spacing:-.01em}
       .badge{position:absolute;top:16px;right:16px;font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;
         text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line-2)}
       .badge.ok{color:#37d39a;border-color:rgba(55,211,154,.4)}
@@ -72,17 +74,9 @@
         <a class="card live" href="/lab/">
           <span class="glow"></span>
           <span class="badge ok">● Live</span>
-          <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6">
-            <circle cx="24" cy="24" r="19"/>
-            <circle cx="24" cy="24" r="4.5" fill="currentColor" stroke="none"/>
-            <g stroke-linecap="round">
-              <line x1="24" y1="24" x2="24" y2="7"/><line x1="24" y1="24" x2="36" y2="12"/>
-              <line x1="24" y1="24" x2="41" y2="24"/><line x1="24" y1="24" x2="36" y2="36"/>
-              <line x1="24" y1="24" x2="24" y2="41"/><line x1="24" y1="24" x2="12" y2="36"/>
-              <line x1="24" y1="24" x2="7" y2="24"/><line x1="24" y1="24" x2="12" y2="12"/>
-            </g>
-          </svg>
-          <h2>PropulsionLab</h2>
+          <img class="wordmark" src="/lab/assets/propulsionlab_wordmark.png?v=1" alt="PropulsionLab"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
+          <div class="wm-fallback">PropulsionLab</div>
           <p>Airbreathing &amp; gas-turbine propulsion — turbojet, turbofan, turboprop, ramjet, scramjet. Station-by-station cycle analysis in the browser.</p>
           <span class="enter">Enter →</span>
         </a>
@@ -90,14 +84,9 @@
         <!-- PistonLab — coming soon -->
         <div class="card soon piston" aria-disabled="true">
           <span class="badge dev">Coming soon</span>
-          <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="16" y="6" width="16" height="22" rx="2.5"/>
-            <rect x="18" y="14" width="12" height="8" rx="1.2" fill="currentColor" stroke="none"/>
-            <line x1="24" y1="22" x2="24" y2="36"/>
-            <circle cx="24" cy="40" r="5"/>
-            <line x1="24" y1="35" x2="29" y2="42"/>
-          </svg>
-          <h2>PistonLab</h2>
+          <img class="wordmark" src="/lab/assets/pistonlab_wordmark.png?v=1" alt="PistonLab"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
+          <div class="wm-fallback">PistonLab</div>
           <p>Reciprocating internal-combustion engines — Otto, Diesel, turbocharging, and the classic P–V loop. In development.</p>
           <span class="enter">In development</span>
         </div>
