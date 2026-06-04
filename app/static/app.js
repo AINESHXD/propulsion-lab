@@ -432,7 +432,19 @@ async function postJson(url, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const payload = await response.json();
+  // Read as text first: an unexpected 5xx returns plain text, not JSON, and
+  // calling response.json() on it throws a confusing "Unexpected token" error.
+  const text = await response.text();
+  let payload = null;
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(
+      response.ok
+        ? "The server returned an unreadable response."
+        : `Server error ${response.status}. Please adjust the inputs and try again.`,
+    );
+  }
   if (!response.ok) throw new Error(formatRequestError(payload.detail));
   return payload;
 }

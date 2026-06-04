@@ -325,6 +325,10 @@ _OBJECTIVES: dict[str, tuple[str, Callable[[dict[str, Any]], float]]] = {
     ),
 }
 
+# Number of inequality constraints returned by ``_evaluate_one`` (Tt3 cap, lean
+# floor, rich limit). Feasible and infeasible rows must both return this many.
+_N_CONSTRAINTS = 3
+
 
 @dataclass
 class TurbojetDesignProblem:
@@ -367,9 +371,12 @@ class TurbojetDesignProblem:
             r = simulate_turbojet_cycle(inputs)
         except CycleCalculationError:
             # Infeasible cycle: large objective values + large violation so the
-            # constraint-domination keeps it out of the Pareto front.
+            # constraint-domination keeps it out of the Pareto front. The
+            # violation vector MUST be the same length as the feasible branch
+            # below (one entry per constraint), otherwise mixing feasible and
+            # infeasible rows produces a ragged array when they are stacked.
             big = [1.0e6] * len(self.objectives)
-            return big, [1.0e3]
+            return big, [1.0e3] * _N_CONSTRAINTS
         F = [_OBJECTIVES[name][1](r) for name in self.objectives]
         far = float(r.get("core_fuel_air_ratio") or r["fuel_air_ratio"])
         tt3 = float(r["station_table"][3]["stagnation_temperature_K"])
@@ -378,7 +385,8 @@ class TurbojetDesignProblem:
             self.far_min - far,              # lean blow-out floor
             far - self.far_max,              # rich limit
         ]
-        return F, G
+        assert len(G) == _N_CONSTRAINTS
+        return F, [float(g) for g in G]
 
     def evaluate(self, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         F_rows, G_rows = [], []
