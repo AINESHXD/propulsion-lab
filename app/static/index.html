@@ -247,6 +247,7 @@
           <button type="button" class="tab-button" data-tab="mission">Mission</button>
           <button type="button" class="tab-button" data-tab="compressormap">Compressor map</button>
           <button type="button" class="tab-button" data-tab="optimize">Optimize</button>
+          <button type="button" class="tab-button" data-tab="sensitivity">Sensitivity</button>
           <button type="button" class="tab-button" data-tab="casestudies">Case studies</button>
           <button type="button" class="tab-button" data-tab="manual">User manual</button>
         </nav>
@@ -1129,6 +1130,60 @@
                   Lower-TSFC designs push pressure ratio up until the Tt₃ cap binds;
                   higher specific-thrust designs run the turbine hotter. The search
                   is deterministic for a fixed seed.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============== SENSITIVITY TAB ============== -->
+        <div id="sensitivityTab" class="tab-panel" data-tab-panel="sensitivity">
+          <section class="panel od-panel">
+            <div class="panel-heading">
+              <h2>Sensitivity · tornado chart</h2>
+            </div>
+            <p class="report-copy">
+              Each design input from the Cycle tab is nudged up and down by a
+              fixed percentage; the cycle is re-run and the change in the chosen
+              output is plotted. The longest bars are the inputs the result cares
+              about most. This is a <strong>local, one-at-a-time</strong>
+              analysis, it shows each input's slope and sign near the current
+              operating point, not how inputs interact.
+            </p>
+
+            <div class="od-controls">
+              <label>
+                <span>Output metric</span>
+                <select id="sensMetric">
+                  <option value="thrust_kN">Thrust</option>
+                  <option value="TSFC_kg_per_kN_hr">TSFC</option>
+                  <option value="specific_thrust_N_per_kg_s">Specific thrust</option>
+                  <option value="overall_efficiency_estimate">Overall efficiency</option>
+                </select>
+              </label>
+              <label>
+                <span>Perturbation <span class="unit">±%</span></span>
+                <input id="sensDelta" type="number" step="1" min="1" max="50" value="10" />
+              </label>
+              <button type="button" id="sensRun" class="primary-button">Run sensitivity</button>
+            </div>
+
+            <p id="sensStatus" class="od-status">Press “Run sensitivity” to rank the inputs.</p>
+
+            <div class="od-body">
+              <div class="od-chart-wrap">
+                <canvas id="sensitivityCanvas" width="560" height="340"></canvas>
+              </div>
+              <div class="od-readout">
+                <dl class="od-metrics">
+                  <div class="od-metric"><dt>Baseline</dt><dd id="sensBaseline">, </dd></div>
+                  <div class="od-metric"><dt>Top driver</dt><dd id="sensTop">, </dd></div>
+                </dl>
+                <p class="od-note">
+                  Bars extend from the baseline: blue is the change from raising
+                  the input, amber from lowering it. A long two-sided bar means a
+                  strong, monotonic driver; a one-sided or stubby bar means the
+                  output barely moves. Re-run after changing the Cycle deck.
                 </p>
               </div>
             </div>

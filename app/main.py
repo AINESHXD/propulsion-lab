@@ -53,6 +53,7 @@ from app.engine_core.emissions import (
     icao_lto_nox,
 )
 from app.engine_core.optimization import TurbojetDesignProblem, nsga2
+from app.engine_core.sensitivity import turbojet_sensitivity
 from app.cfd import CFDCase, cfd_enabled, service as cfd_service
 from app.engine_core.compressor_maps import synthetic_compressor_map
 from app.engine_core.map_matching import (
@@ -94,6 +95,8 @@ from app.schemas import (
     TurbojetLTOOutput,
     TurbojetOptimizeInput,
     TurbojetOptimizeOutput,
+    TurbojetSensitivityInput,
+    TurbojetSensitivityOutput,
     TurbofanMissionInput,
     TurbojetMissionInput,
     RamjetInput,
@@ -214,6 +217,7 @@ def root() -> dict[str, Any]:
             "POST /emissions/combustor",
             "POST /emissions/turbojet/lto",
             "POST /optimize/turbojet",
+            "POST /analyze/turbojet/sensitivity",
             "POST /export/python",
             "GET /maps/compressor",
             "POST /simulate/turboprop",
@@ -547,6 +551,35 @@ def optimize_turbojet(inputs: TurbojetOptimizeInput) -> TurbojetOptimizeOutput:
     )
 
 
+# ---------------------------------------------------------------------------
+# One-at-a-time sensitivity (tornado chart)
+# ---------------------------------------------------------------------------
+
+
+@app.post("/analyze/turbojet/sensitivity", response_model=TurbojetSensitivityOutput)
+def analyze_turbojet_sensitivity(
+    inputs: TurbojetSensitivityInput,
+) -> TurbojetSensitivityOutput:
+    """Rank turbojet design inputs by their local effect on a chosen output.
+
+    Perturbs each input by +/- ``delta_fraction`` around the deck from the Cycle
+    tab, re-runs the cycle, and returns the metric swings sorted largest-first
+    for a tornado chart. Local, one-at-a-time finite differences, so it reports
+    slope and sign near the operating point, not input interactions.
+    """
+
+    try:
+        result = turbojet_sensitivity(
+            inputs.design.to_cycle_inputs(),
+            metric=inputs.metric,
+            delta_fraction=inputs.delta_fraction,
+        )
+    except (ValueError, CycleCalculationError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return TurbojetSensitivityOutput.model_validate(result)
+
+
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # Cloud-CFD job control plane (future / Pro — gated behind ENABLE_CFD)
 # ---------------------------------------------------------------------------

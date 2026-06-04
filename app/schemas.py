@@ -855,6 +855,45 @@ class TurbojetOptimizeOutput(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# One-at-a-time sensitivity (tornado chart)
+# ---------------------------------------------------------------------------
+
+
+class TurbojetSensitivityInput(BaseModel):
+    """Baseline deck + which output metric to rank inputs against."""
+
+    design: TurbojetInput = Field(default_factory=TurbojetInput)
+    metric: str = "thrust_kN"
+    delta_fraction: float = Field(0.1, gt=0.0, lt=0.9)
+
+
+class SensitivityRow(BaseModel):
+    """One input's low/high perturbation and the resulting metric change."""
+
+    parameter: str
+    label: str
+    base_value: float
+    low_value: float
+    high_value: float
+    low_metric: float | None = None
+    high_metric: float | None = None
+    delta_low: float | None = None
+    delta_high: float | None = None
+    swing: float
+
+
+class TurbojetSensitivityOutput(BaseModel):
+    """Tornado-chart payload: rows sorted by swing (largest mover first)."""
+
+    metric: str
+    metric_label: str
+    base_metric: float
+    delta_fraction: float
+    rows: list[SensitivityRow]
+
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Cloud-CFD job control plane (future / Pro feature — gated off at launch)
 # ---------------------------------------------------------------------------
 
