@@ -68,6 +68,16 @@
       ],
       where: "There's never a single best engine, only trade-offs. The Pareto front is the menu of optimal compromises, designers pick a point on it based on what the aircraft actually needs.",
     },
+    sensitivity: {
+      title: "Sensitivity · tornado chart",
+      what: "Takes every input from the Cycle tab, nudges each one up and down by a fixed percentage, re-runs the cycle, and ranks them by how much the chosen output moved. The longest bars are the inputs that matter most.",
+      howto: [
+        "Set your design on the Cycle tab first, this perturbs that deck.",
+        "Pick the output metric and the perturbation size, then press Run sensitivity.",
+        "Read the bars top-down: blue is the change from raising the input, amber from lowering it.",
+      ],
+      where: "It tells you where to spend effort and where tolerances bite. If turbine temperature dominates the chart, that's the parameter to measure and control carefully; inputs with stubby bars barely matter. It's a local, one-at-a-time view, so it shows slope and sign near your operating point, not how inputs interact.",
+    },
   };
 
   function injectStyles() {

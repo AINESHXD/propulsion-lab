@@ -2788,6 +2788,129 @@ if (ltoButtonEl) ltoButtonEl.addEventListener("click", () => { estimateLtoNox();
 const optRunEl = document.getElementById("optRun");
 if (optRunEl) optRunEl.addEventListener("click", () => { runOptimization(); });
 
+/* ---------------- Sensitivity (tornado chart) ----------------
+ * Perturb each Cycle-tab input by ±delta, post to /analyze/turbojet/sensitivity,
+ * and draw a tornado: longest bars = inputs the output cares about most. The
+ * metric delta is shown in the active unit system. */
+const SENS_METRIC_UNIT = {
+  thrust_kN: { kind: "thrust" },
+  TSFC_kg_per_kN_hr: { kind: "tsfc" },
+  specific_thrust_N_per_kg_s: { kind: "specthrust" },
+  overall_efficiency_estimate: { kind: null, scale: 100, unit: "pp" },
+};
+let lastSensitivity = null;
+
+function sensConvertDelta(metricKey, delta) {
+  if (delta == null) return null;
+  const m = SENS_METRIC_UNIT[metricKey];
+  if (!m) return delta;
+  return m.kind ? unitConvert(m.kind, delta) : delta * (m.scale || 1);
+}
+function sensDeltaUnit(metricKey) {
+  const m = SENS_METRIC_UNIT[metricKey];
+  if (!m) return "";
+  return m.kind ? unitLabel(m.kind) : (m.unit || "");
+}
+function sensFmtBaseline(metricKey, value) {
+  const m = SENS_METRIC_UNIT[metricKey];
+  if (m && m.kind) return uval(m.kind, value, 2);
+  if (m) return `${numberFormat(value * (m.scale || 1), 1)} ${m.unit || ""}`;
+  return numberFormat(value, 2);
+}
+
+async function runSensitivity() {
+  const status = document.getElementById("sensStatus");
+  const button = document.getElementById("sensRun");
+  const metric = document.getElementById("sensMetric")?.value || "thrust_kN";
+  const pct = Number(document.getElementById("sensDelta")?.value) || 10;
+  if (button) { button.disabled = true; button.textContent = "Running…"; }
+  if (status) status.textContent = "Perturbing each input…";
+  try {
+    const out = await postJson("/analyze/turbojet/sensitivity", {
+      design: readFormInput(),
+      metric,
+      delta_fraction: Math.min(Math.max(pct / 100, 0.01), 0.5),
+    });
+    lastSensitivity = out;
+    drawTornado(out);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("sensBaseline", sensFmtBaseline(out.metric, out.base_metric));
+    set("sensTop", out.rows.length ? out.rows[0].label : "—");
+    if (status) status.textContent =
+      `${out.metric_label} ranked across ${out.rows.length} inputs at ±${Math.round(out.delta_fraction * 100)}%.`;
+  } catch (err) {
+    if (status) status.textContent = `Sensitivity failed: ${err.message}`;
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "Run sensitivity"; }
+  }
+}
+
+function drawTornado(out) {
+  const canvas = document.getElementById("sensitivityCanvas");
+  if (!canvas) return;
+  const { context: ctx, width: W, height: H } = canvasScale(canvas);
+  ctx.clearRect(0, 0, W, H);
+  const metric = out.metric;
+  const conv = (d) => sensConvertDelta(metric, d);
+  const rows = (out.rows || []).filter((r) => r.delta_low != null || r.delta_high != null);
+  if (!rows.length) {
+    ctx.fillStyle = "#8b9099"; ctx.font = "12px -apple-system, system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.fillText("No sensitivity to show.", W / 2, H / 2);
+    return;
+  }
+  let maxAbs = 0;
+  for (const r of rows) for (const d of [conv(r.delta_low), conv(r.delta_high)]) {
+    if (d != null) maxAbs = Math.max(maxAbs, Math.abs(d));
+  }
+  if (maxAbs <= 0) maxAbs = 1;
+
+  const padL = 118, padR = 58, padT = 16, padB = 38;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const cx = padL + plotW / 2;
+  const X = (d) => cx + (d / maxAbs) * (plotW / 2);
+  const rowH = plotH / rows.length;
+  const barH = Math.min(16, rowH * 0.46);
+
+  // baseline axis
+  ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, padT); ctx.lineTo(cx, padT + plotH); ctx.stroke();
+
+  ctx.font = "11px -apple-system, system-ui, sans-serif";
+  rows.forEach((r, i) => {
+    const yc = padT + rowH * (i + 0.5);
+    ctx.fillStyle = "#c8ccd2"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(r.label, padL - 10, yc);
+    const drawBar = (delta, color) => {
+      const d = conv(delta); if (d == null) return;
+      const x = X(d), x0 = Math.min(cx, x), w = Math.max(1, Math.abs(x - cx));
+      ctx.fillStyle = color;
+      ctx.fillRect(x0, yc - barH / 2, w, barH);
+    };
+    drawBar(r.delta_high, "rgba(123,167,235,0.85)"); // input raised → blue
+    drawBar(r.delta_low, "rgba(240,136,62,0.85)");   // input lowered → amber
+  });
+
+  // x ticks + axis title
+  ctx.fillStyle = "#8b9099"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.font = "10px ui-monospace, monospace";
+  for (const frac of [-1, -0.5, 0, 0.5, 1]) {
+    const d = frac * maxAbs;
+    ctx.fillText(`${d > 0 ? "+" : ""}${numberFormat(d, 1)}`, X(d), padT + plotH + 6);
+  }
+  ctx.font = "11px -apple-system, system-ui, sans-serif";
+  ctx.fillText(`Δ ${out.metric_label} (${sensDeltaUnit(metric)})`, cx, H - 13);
+}
+
+function initSensitivity() {
+  if (!lastSensitivity) runSensitivity().catch(() => {});
+  else drawTornado(lastSensitivity);
+}
+
+const sensRunEl = document.getElementById("sensRun");
+if (sensRunEl) sensRunEl.addEventListener("click", () => { runSensitivity(); });
+const sensMetricEl = document.getElementById("sensMetric");
+if (sensMetricEl) sensMetricEl.addEventListener("change", () => { runSensitivity(); });
+
 $("#saveProfileButton").addEventListener("click", () => { saveCurrentProfile(); });
 $("#loadProfileButton").addEventListener("click", async () => {
   if (loadCustomProfile()) { await runSimulation(); await runSweep(); }
@@ -2870,6 +2993,7 @@ document.querySelectorAll(".tab-button").forEach((button) => {
     else if (tab === "offdesign") initOffDesign();
     else if (tab === "mission") initMission();
     else if (tab === "compressormap") initCompressorMap();
+    else if (tab === "sensitivity") initSensitivity();
   });
 });
 
