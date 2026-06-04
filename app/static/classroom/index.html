@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0b0e" />
+    <meta name="description" content="PropulsionLab Classroom — guided engine-design challenges for turbojet, turbofan, turboprop, ramjet and scramjet. Set the design variables, hit the targets, and check your answer against the real cycle solver." />
+    <title>PropulsionLab Classroom — design challenges</title>
+    <style>
+      :root {
+        --bg:#0a0b0e; --panel:#13151a; --panel-2:#171a20; --line:rgba(255,255,255,0.09);
+        --line-2:rgba(255,255,255,0.16); --text:#f3f4f6; --dim:#9197a1; --accent:#7ba7eb;
+        --ok:#37d39a; --bad:#f0883e; --mono:"SF Mono",ui-monospace,"Cascadia Code",monospace;
+      }
+      * { box-sizing:border-box; margin:0; padding:0; }
+      html,body { background:var(--bg); color:var(--text); min-height:100%;
+        font:15px/1.55 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;
+        -webkit-font-smoothing:antialiased; }
+      body { background:
+        radial-gradient(120% 70% at 80% 0%, rgba(123,167,235,0.06), transparent 55%), var(--bg); }
+      a { color:var(--accent); text-decoration:none; }
+      ::selection { background:rgba(123,167,235,0.3); }
+
+      .topbar { display:flex; justify-content:space-between; align-items:center;
+        padding:14px 24px; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10;
+        background:rgba(10,11,14,0.82); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+      .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:0.13em;
+        font-size:12.5px; text-transform:uppercase; }
+      .brand .tag { font-family:var(--mono); font-size:0.6rem; letter-spacing:0.16em; color:var(--dim);
+        padding-left:11px; border-left:1px solid var(--line-2); text-transform:uppercase; }
+      .topbar nav { display:flex; gap:18px; }
+      .topbar nav a { color:var(--dim); font-size:0.85rem; }
+      .topbar nav a:hover { color:var(--text); }
+
+      .wrap { max-width:1060px; margin:0 auto; padding:34px 22px 64px; }
+      .eyebrow { font-family:var(--mono); font-size:0.64rem; letter-spacing:0.2em; text-transform:uppercase;
+        color:var(--accent); margin-bottom:8px; }
+      h1 { font-size:1.7rem; letter-spacing:-0.02em; margin-bottom:10px; }
+      .lede { color:var(--dim); max-width:64ch; }
+
+      .filters { display:flex; flex-wrap:wrap; gap:8px; margin:24px 0 10px; }
+      .filter { font:inherit; font-size:0.82rem; color:var(--text); background:var(--panel-2);
+        border:1px solid var(--line-2); border-radius:999px; padding:6px 13px; cursor:pointer;
+        transition:all .15s; }
+      .filter:hover { color:#fff; }
+      .filter.on { border-color:var(--accent); color:var(--accent); background:rgba(123,167,235,0.1); }
+
+      .card { background:var(--panel); border:1px solid var(--line); border-radius:16px;
+        padding:22px; margin-top:18px; }
+      .card-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+      .card-eng { font-family:var(--mono); font-size:0.62rem; letter-spacing:0.12em; text-transform:uppercase;
+        color:var(--accent); border:1px solid rgba(123,167,235,0.4); border-radius:999px; padding:3px 9px; }
+      .card h2 { font-size:1.12rem; font-weight:600; letter-spacing:-0.01em; }
+      .scenario { color:var(--dim); font-size:0.92rem; margin:8px 0 16px; line-height:1.55; }
+
+      .controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
+      .control label { display:block; font-size:0.72rem; color:var(--dim); text-transform:uppercase;
+        letter-spacing:0.05em; margin-bottom:6px; }
+      .control input { width:100%; background:var(--panel-2); color:var(--text);
+        border:1px solid var(--line-2); border-radius:9px; padding:9px 10px; font:inherit; }
+
+      .actions { display:flex; gap:12px; align-items:center; margin-top:16px; flex-wrap:wrap; }
+      .btn { font:inherit; font-weight:500; color:#0a0b0e; background:var(--accent); border:none;
+        border-radius:10px; padding:9px 18px; cursor:pointer; transition:filter .15s; }
+      .btn:hover { filter:brightness(1.08); }
+      .btn:disabled { opacity:0.5; cursor:default; }
+      .hint-toggle { font:inherit; font-size:0.85rem; color:var(--dim); background:none; border:none;
+        cursor:pointer; text-decoration:underline; }
+      .hint { color:var(--dim); font-size:0.88rem; margin-top:12px; border-left:2px solid var(--line-2);
+        padding-left:12px; line-height:1.55; }
+      .hint[hidden] { display:none; }
+
+      .results { margin-top:16px; display:none; }
+      .results.show { display:block; }
+      .verdict { font-weight:600; font-size:0.95rem; margin-bottom:10px; }
+      .verdict.pass { color:var(--ok); }
+      .verdict.fail { color:var(--bad); }
+      .targets { display:flex; flex-direction:column; gap:8px; }
+      .target { display:flex; align-items:center; gap:10px; font-size:0.9rem; }
+      .target .mark { width:18px; height:18px; border-radius:50%; flex:none; display:grid; place-items:center;
+        font-size:11px; font-weight:700; }
+      .target.met .mark { background:rgba(55,211,154,0.16); color:var(--ok); }
+      .target.miss .mark { background:rgba(240,136,62,0.16); color:var(--bad); }
+      .target .got { margin-left:auto; font-family:var(--mono); font-size:0.84rem; color:var(--dim); }
+
+      footer { border-top:1px solid var(--line); padding:18px 22px; text-align:center;
+        color:var(--dim); font-size:0.78rem; }
+      .note { color:var(--dim); font-size:0.8rem; margin-top:26px; line-height:1.55;
+        border-left:2px solid var(--line-2); padding-left:12px; max-width:70ch; }
+
+      @media (max-width:560px) {
+        .topbar { padding:12px 16px; }
+        .topbar nav { gap:13px; }
+        .wrap { padding:24px 15px 48px; }
+        h1 { font-size:1.4rem; }
+        .card { padding:17px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">DAS&nbsp;LABS<span class="tag">Classroom</span></div>
+      <nav>
+        <a href="/lab/">← Console</a>
+        <a href="/lab/methodology.html">Methodology</a>
+        <a href="/">DAS LABS</a>
+      </nav>
+    </header>
+
+    <main class="wrap">
+      <p class="eyebrow">PropulsionLab · Classroom</p>
+      <h1>Design challenges</h1>
+      <p class="lede">One guided problem per engine family. Set the design variables, then check your
+        answer, every target is graded against the same cycle solver that powers the console. Green
+        means you hit it.</p>
+
+      <div class="filters" id="filters"></div>
+      <div id="problems"></div>
+
+      <p class="note">
+        These are teaching exercises with deliberately approachable targets, not a graded assessment.
+        The numbers come from the reduced-order, educational cycle models; treat them as trend-correct,
+        not certified design data. Want the full deck? Open the <a href="/lab/">console</a>.
+      </p>
+    </main>
+
+    <footer>
+      <span>PropulsionLab Classroom</span> · a DAS LABS project by Ainesh Das ·
+      <a href="mailto:aineshdas120706@gmail.com">Email</a>
+    </footer>
+
+    <script src="/lab/classroom/classroom.js?v=20260603-1"></script>
+  </body>
+</html>

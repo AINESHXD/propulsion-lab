@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="description" content="PropulsionLab methodology and limitations — the reduced-order models behind the cycle analysis, the assumptions they make, and what the results do and do not claim." />
+    <title>PropulsionLab — methodology &amp; limitations</title>
+    <link rel="stylesheet" href="/lab/styles.css?v=20260603-tjtag" />
+    <link rel="stylesheet" href="/lab/case-study.css?v=20260529-brand-2" />
+  </head>
+  <body>
+    <header class="cs-page-bar">
+      <a class="brand" href="/lab/" aria-label="DAS LABS · PropulsionLab">
+        <span class="brand-mark">DAS&nbsp;LABS</span>
+      </a>
+      <nav class="cs-page-nav">
+        <a href="/lab/">Console</a>
+        <a href="/classroom/">Classroom</a>
+      </nav>
+    </header>
+
+    <article class="cs-article">
+      <p class="eyebrow">PropulsionLab · Methodology</p>
+      <h1>What the model does, and what it does not claim.</h1>
+      <p class="cs-sub">
+        PropulsionLab is an educational <strong>reduced-order</strong> cycle simulator. It captures the
+        thermodynamics and the right trends, station by station, so you can reason about how an engine
+        behaves. It is not a high-fidelity design tool, and this page is explicit about where the line is.
+      </p>
+
+      <h2>The cycle model</h2>
+      <p><strong>Steady, one-dimensional, station-based.</strong> Each engine is a chain of stations
+        (inlet, fan, compressor, combustor, turbine, nozzle) carrying stagnation temperature and
+        pressure. There is no spatial flow field, no blade-row geometry, no swirl.</p>
+      <p><strong>Perfect gas with constant specific heats by region.</strong> The working fluid is air,
+        then combustion products, each with a fixed cp and gamma (a cold-side and a hot-side value). An
+        optional Cantera-backed real-gas correction is available for the hot section, but the default is
+        constant-cp.</p>
+      <p><strong>Isentropic processes with component efficiencies.</strong> Compression and expansion are
+        reversible-adiabatic, scaled by an isentropic efficiency you set; the combustor adds heat with an
+        efficiency and a pressure loss. These are the standard preliminary-design idealisations.</p>
+      <p><strong>Off-design by constant-ratio matching.</strong> With a choked turbine and nozzle, the
+        turbine temperature and pressure ratios are constant, so the operating point is found by a spool
+        work balance rather than a full transient. Compressor/turbine <em>maps</em> are offered as a
+        higher-fidelity path, but they are <strong>synthetic, illustrative characteristics</strong> sized
+        to the design point, not measured manufacturer data.</p>
+
+      <h2>Per-engine notes</h2>
+      <p><strong>Turbojet</strong> is the most developed model: dry and afterburning, choked/unchoked
+        convergent nozzle, full station table, off-design matching, and the analysis tools (optimisation,
+        sensitivity, transient spool dynamics, variable-area nozzle scheduling) are built on it.</p>
+      <p><strong>Turbofan</strong> is separate-flow, two-spool, with a bypass stream and an optional
+        third stream; off-design and map matching hold the bypass ratio at its design value.</p>
+      <p><strong>Turboprop</strong> adds a free power turbine and a propeller model; reported power is
+        shaft/equivalent-shaft power, and propeller efficiency is a simple model, not a blade-element one.</p>
+      <p><strong>Ramjet and scramjet</strong> are high-speed, compressor-less cycles: the ramjet uses
+        MIL-spec inlet recovery and subsonic combustion; the scramjet burns supersonically with an
+        equivalence-ratio input and dissociation warnings. Both only produce useful thrust above their
+        characteristic Mach numbers, and the model says so.</p>
+
+      <h2>Things the analysis tools assume</h2>
+      <p><strong>Transient spool dynamics</strong> is the bare rotor-inertia response; a real engine adds
+        a fuel-control acceleration schedule that slows spool-up further. <strong>Variable geometry</strong>
+        and the <strong>afterburner stability loop</strong> are reduced-order estimates, not combustor
+        chemistry. <strong>Optimisation, sensitivity and transient</strong> run on the turbojet deck only.</p>
+
+      <h2>What is <em>not</em> claimed</h2>
+      <p><strong>No manufacturer-level validation.</strong> The model has not been matched to flight-test
+        or manufacturer data for a named engine. Presets are public-estimate starting points, clearly
+        labelled "-like", not the real engine's deck.</p>
+      <p><strong>Not certification-grade.</strong> Everything is reduced-order and educational. Treat
+        every number as trend-correct, not a design figure: useful for understanding <em>why</em> thrust
+        rises with turbine temperature or <em>how</em> bypass trades against specific thrust, not for
+        sizing hardware.</p>
+      <p><strong>No CFD, no real geometry.</strong> There are no blade rows, cooling-flow networks,
+        combustor reactions beyond the optional equilibrium hot section, or 3-D effects.</p>
+
+      <div class="cs-related">
+        <h2>See it in action</h2>
+        <div class="cs-related-links">
+          <a href="/lab/">Open the console</a>
+          <a href="/classroom/">Try a design challenge</a>
+          <a href="/lab/case-studies/cfm56.html">Read a case study</a>
+        </div>
+      </div>
+
+      <p class="cs-disclaimer">
+        PropulsionLab is an educational project by Ainesh Das. The models, assumptions and limits
+        described here are stated in good faith; nothing on this page or in the tool is a certified
+        engineering result.
+      </p>
+    </article>
+  </body>
+</html>
