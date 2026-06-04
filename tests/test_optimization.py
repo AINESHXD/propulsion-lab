@@ -161,3 +161,42 @@ def test_optimize_endpoint_returns_sorted_front() -> None:
     assert tsfc == sorted(tsfc)         # front sorted by first objective
     for p in out.pareto_front:
         assert p.compressor_exit_temperature_K <= 950.0 + 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Regression: mixed feasible / infeasible populations must not crash
+# ---------------------------------------------------------------------------
+
+
+def _mixed_problem() -> TurbojetDesignProblem:
+    # Wide bounds so the population contains both feasible designs and ones the
+    # cycle solver rejects (high pressure ratio + low turbine temperature drives
+    # the compressor exit above the turbine inlet, so combustion is impossible).
+    return TurbojetDesignProblem(
+        base=TurbojetInput().to_cycle_inputs(),
+        pr_bounds=(5.0, 40.0),
+        tit_bounds=(600.0, 2400.0),
+        objectives=("tsfc", "specific_thrust"),
+        tt3_max_K=950.0,
+        far_min=0.005,
+        far_max=0.05,
+    )
+
+
+def test_evaluate_returns_uniform_constraint_shape() -> None:
+    prob = _mixed_problem()
+    X = np.array([[12.0, 1400.0],   # feasible
+                  [40.0, 600.0]])    # infeasible (Tt3 > Tt4)
+    F, G = prob.evaluate(X)
+    assert F.shape == (2, 2)
+    # Both rows must carry the same number of constraints (the original bug
+    # returned 1 for infeasible vs 3 for feasible -> ragged array -> 500).
+    assert G.shape == (2, 3)
+
+
+def test_nsga2_runs_with_infeasible_members_in_population() -> None:
+    prob = _mixed_problem()
+    result = nsga2(prob, pop_size=24, n_gen=4, seed=0)  # must not raise
+    assert result.F.shape[1] == 2
+    assert result.X.shape[1] == 2
+    assert 0.0 <= result.feasible_fraction <= 1.0

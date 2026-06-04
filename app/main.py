@@ -494,22 +494,25 @@ def optimize_turbojet(inputs: TurbojetOptimizeInput) -> TurbojetOptimizeOutput:
     if inputs.far_min >= inputs.far_max:
         raise HTTPException(status_code=400, detail="far_min must be below far_max.")
 
-    base = inputs.design.to_cycle_inputs()
-    problem = TurbojetDesignProblem(
-        base=base,
-        pr_bounds=(inputs.pr_min, inputs.pr_max),
-        tit_bounds=(inputs.tit_min_K, inputs.tit_max_K),
-        objectives=tuple(inputs.objectives),
-        tt3_max_K=inputs.tt3_max_K,
-        far_min=inputs.far_min,
-        far_max=inputs.far_max,
-    )
-    result = nsga2(
-        problem,
-        pop_size=inputs.population_size,
-        n_gen=inputs.generations,
-        seed=inputs.seed,
-    )
+    try:
+        base = inputs.design.to_cycle_inputs()
+        problem = TurbojetDesignProblem(
+            base=base,
+            pr_bounds=(inputs.pr_min, inputs.pr_max),
+            tit_bounds=(inputs.tit_min_K, inputs.tit_max_K),
+            objectives=tuple(inputs.objectives),
+            tt3_max_K=inputs.tt3_max_K,
+            far_min=inputs.far_min,
+            far_max=inputs.far_max,
+        )
+        result = nsga2(
+            problem,
+            pop_size=inputs.population_size,
+            n_gen=inputs.generations,
+            seed=inputs.seed,
+        )
+    except (CycleCalculationError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Optimization could not run: {exc}") from exc
 
     # Re-run each Pareto design once to attach full display metrics, and sort the
     # front by the first objective so the curve plots cleanly.
