@@ -306,6 +306,86 @@ function numberFormat(value, digits = 2) {
   return Number(value).toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
+/* ------------------------------------------------------------ *
+ *  UNIT SYSTEM (SI / US customary)                              *
+ * ------------------------------------------------------------ *
+ * The solver and API are SI throughout; this layer only converts what is
+ * *displayed*. The choice is persisted, and toggling re-renders from the cached
+ * lastResult (no re-fetch). Temperatures use Rankine, not Fahrenheit, so they
+ * stay absolute and consistent with psia, the way US cycle analysis is taught. */
+const UNIT_KEY = "pl_units";
+let unitSystem = localStorage.getItem(UNIT_KEY) === "US" ? "US" : "SI";
+
+const UNIT_DEFS = {
+  thrust: { si: "kN", us: "lbf", f: 224.808943 },          // from kN
+  tsfc: { si: "kg/kN·h", us: "lb/lbf·h", f: 0.00980665 },  // from kg/(kN·h)
+  specthrust: { si: "N·s/kg", us: "lbf·s/lbm", f: 0.101971621 }, // from N/(kg/s)
+  temp: { si: "K", us: "°R", f: 1.8 },                     // from K
+  press: { si: "kPa", us: "psia", f: 0.145037738 },        // from kPa
+  vel: { si: "m/s", us: "ft/s", f: 3.280839895 },          // from m/s
+  flow: { si: "kg/s", us: "lb/s", f: 2.204622622 },        // from kg/s
+  area: { si: "m²", us: "ft²", f: 10.76391042 },           // from m²
+  len: { si: "m", us: "ft", f: 3.280839895 },              // from m
+  power: { si: "kW", us: "hp", f: 1.34102209 },            // from kW
+  bsfc: { si: "kg/kW·h", us: "lb/hp·h", f: 1.643988 },     // from kg/(kW·h)
+};
+
+function unitLabel(kind) {
+  const d = UNIT_DEFS[kind];
+  return unitSystem === "US" ? d.us : d.si;
+}
+function unitConvert(kind, value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return value;
+  return unitSystem === "US" ? Number(value) * UNIT_DEFS[kind].f : Number(value);
+}
+/** "value unit" string in the active system (label travels with the number). */
+function uval(kind, value, digits = 2) {
+  return `${numberFormat(unitConvert(kind, value), digits)} ${unitLabel(kind)}`;
+}
+/** Number only, for tables whose column header already carries the unit. */
+function unum(kind, value, digits = 1) {
+  return numberFormat(unitConvert(kind, value), digits);
+}
+/** Rewrite every unit-bearing column header span to the active system. */
+function updateStationHeaders() {
+  document.querySelectorAll("[data-u]").forEach((el) => {
+    el.textContent = `[${unitLabel(el.dataset.u)}]`;
+  });
+}
+/** Re-render the cached result and headers when the unit system changes. */
+function rerenderUnits() {
+  updateStationHeaders();
+  if (!lastResult) return;
+  if (selectedEngine === "turbojet") {
+    updateMetrics(lastResult);
+    updateNozzlePanel(lastResult);
+    updateStationTable(lastResult.station_table);
+  } else {
+    updateAdvancedMetrics(lastResult);
+    if (typeof advancedStationTableBody !== "undefined" && advancedStationTableBody) {
+      fillStationTable(advancedStationTableBody, lastResult.station_table);
+    }
+  }
+  updateStationInspector();
+  if (typeof lastSensitivity !== "undefined" && lastSensitivity) drawTornado(lastSensitivity);
+  if (typeof lastTransient !== "undefined" && lastTransient) drawTransient(lastTransient);
+}
+function setUnitSystem(system) {
+  unitSystem = system === "US" ? "US" : "SI";
+  localStorage.setItem(UNIT_KEY, unitSystem);
+  const btn = document.getElementById("unitToggle");
+  if (btn) btn.textContent = `Units: ${unitSystem}`;
+  rerenderUnits();
+}
+function initUnitToggle() {
+  const btn = document.getElementById("unitToggle");
+  updateStationHeaders();
+  if (!btn) return;
+  btn.textContent = `Units: ${unitSystem}`;
+  btn.addEventListener("click", () =>
+    setUnitSystem(unitSystem === "US" ? "SI" : "US"));
+}
+
 function setStatus(text, className) {
   apiStatus.textContent = text;
   apiStatus.className = `status-pill ${className || ""}`;
@@ -707,8 +787,8 @@ function deleteCustomProfile() {
  * ------------------------------------------------------------ */
 
 function updateMetrics(result) {
-  animateMetric($("#thrustValue"), `${numberFormat(result.thrust_kN, 2)} kN`, result.thrust_kN);
-  animateMetric($("#tsfcValue"), `${numberFormat(result.TSFC_kg_per_kN_hr, 2)} kg/kN/hr`, result.TSFC_kg_per_kN_hr);
+  animateMetric($("#thrustValue"), uval("thrust", result.thrust_kN, 2), result.thrust_kN);
+  animateMetric($("#tsfcValue"), uval("tsfc", result.TSFC_kg_per_kN_hr, 2), result.TSFC_kg_per_kN_hr);
   $("#farValue").textContent = numberFormat(result.fuel_air_ratio, 4);
   $("#nozzleValue").textContent = result.nozzle_choked ? "Choked" : "Unchoked";
   $("#variantValue").textContent = result.engine_variant === "afterburning_turbojet" ? "Reheat" : "Dry";
@@ -777,10 +857,10 @@ function updateStationInspector(stationNumber = activeStation) {
   const data = document.createElement("span");
   data.className = "mono";
   data.textContent =
-    `Tt ${numberFormat(station.stagnation_temperature_K, 1)} K  ·  ` +
-    `Pt ${numberFormat(station.stagnation_pressure_Pa / 1000, 1)} kPa  ·  ` +
+    `Tt ${uval("temp", station.stagnation_temperature_K, 1)}  ·  ` +
+    `Pt ${uval("press", station.stagnation_pressure_Pa / 1000, 1)}  ·  ` +
     `M ${numberFormat(station.mach, 2)}  ·  ` +
-    `V ${numberFormat(station.velocity_m_s, 1)} m/s`;
+    `V ${uval("vel", station.velocity_m_s, 1)}`;
   stationInspector.append(title, data);
 }
 
@@ -808,12 +888,12 @@ function updateNozzlePanel(result) {
   const rows = [
     ["Status", result.nozzle_expansion_status || (result.nozzle_choked ? "Choked" : "Not choked")],
     ["Choking", result.nozzle_choked ? "Choked" : "Not choked"],
-    ["Exit velocity", `${numberFormat(result.exit_velocity_m_s, 1)} m/s`],
-    ["Exit pressure", `${numberFormat(result.nozzle_exit_pressure_Pa / 1000, 1)} kPa`],
-    ["Ambient pressure", `${numberFormat(result.ambient_pressure_Pa / 1000, 1)} kPa`],
-    ["Pressure thrust", `${numberFormat(result.pressure_thrust_N / 1000, 2)} kN`],
-    ["Exit area", `${numberFormat(result.nozzle_exit_area_m2, 4)} m²`],
-    ["Throat area", `${numberFormat(result.nozzle_throat_area_m2, 4)} m²`],
+    ["Exit velocity", uval("vel", result.exit_velocity_m_s, 1)],
+    ["Exit pressure", uval("press", result.nozzle_exit_pressure_Pa / 1000, 1)],
+    ["Ambient pressure", uval("press", result.ambient_pressure_Pa / 1000, 1)],
+    ["Pressure thrust", uval("thrust", result.pressure_thrust_N / 1000, 2)],
+    ["Exit area", uval("area", result.nozzle_exit_area_m2, 4)],
+    ["Throat area", uval("area", result.nozzle_throat_area_m2, 4)],
     ["Area ratio", numberFormat(result.nozzle_area_ratio, 3)],
     ["Nozzle PR", numberFormat(result.nozzle_pressure_ratio, 2)],
   ];
@@ -845,12 +925,12 @@ function fillStationTable(tableBody, stationTable) {
     const cells = [
       station.station,
       station.name,
-      numberFormat(station.stagnation_temperature_K, 1),
-      numberFormat(station.stagnation_pressure_Pa / 1000, 1),
-      numberFormat(station.static_temperature_K, 1),
-      station.static_pressure_Pa ? numberFormat(station.static_pressure_Pa / 1000, 1) : ", ",
+      unum("temp", station.stagnation_temperature_K, 1),
+      unum("press", station.stagnation_pressure_Pa / 1000, 1),
+      unum("temp", station.static_temperature_K, 1),
+      station.static_pressure_Pa ? unum("press", station.static_pressure_Pa / 1000, 1) : ", ",
       numberFormat(station.mach, 2),
-      numberFormat(station.velocity_m_s, 1),
+      unum("vel", station.velocity_m_s, 1),
       (station.notes || []).join("; "),
     ];
     for (const cellValue of cells) {
@@ -1892,11 +1972,11 @@ function renderAdvancedSweepControls(config) {
 }
 
 function updateAdvancedMetrics(result) {
-  animateMetric($("#advancedThrustValue"), `${numberFormat(result.thrust_kN, 2)} kN`, result.thrust_kN);
-  animateMetric($("#advancedTsfcValue"), `${numberFormat(result.TSFC_kg_per_kN_hr, 2)} kg/kN/hr`, result.TSFC_kg_per_kN_hr);
+  animateMetric($("#advancedThrustValue"), uval("thrust", result.thrust_kN, 2), result.thrust_kN);
+  animateMetric($("#advancedTsfcValue"), uval("tsfc", result.TSFC_kg_per_kN_hr, 2), result.TSFC_kg_per_kN_hr);
   $("#advancedFarValue").textContent = numberFormat(result.fuel_air_ratio, 4);
   $("#advancedNozzleValue").textContent = result.nozzle_choked ? "Choked" : "Unchoked";
-  $("#advancedSpecificThrustValue").textContent = `${numberFormat(result.specific_thrust_N_per_kg_s, 1)} N/kg/s`;
+  $("#advancedSpecificThrustValue").textContent = uval("specthrust", result.specific_thrust_N_per_kg_s, 1);
   animateMetric($("#advancedOverallEtaValue"),
     `${numberFormat(result.overall_efficiency_estimate * 100, 1)} %`,
     result.overall_efficiency_estimate * 100);
@@ -1913,45 +1993,45 @@ function renderAdvancedDetail(result) {
   const rows = [
     ["Thermal η", `${numberFormat(result.thermal_efficiency_estimate * 100, 1)} %`],
     ["Propulsive η", `${numberFormat(result.propulsive_efficiency_estimate * 100, 1)} %`],
-    ["Fuel flow", `${numberFormat(result.fuel_flow_kg_s, 3)} kg/s`],
-    ["Exit velocity", `${numberFormat(result.exit_velocity_m_s, 1)} m/s`],
-    ["Freestream V₀", `${numberFormat(result.freestream_velocity_m_s, 1)} m/s`],
-    ["Momentum thrust", `${numberFormat(result.momentum_thrust_N / 1000, 2)} kN`],
-    ["Pressure thrust", `${numberFormat(result.pressure_thrust_N / 1000, 2)} kN`],
+    ["Fuel flow", uval("flow", result.fuel_flow_kg_s, 3)],
+    ["Exit velocity", uval("vel", result.exit_velocity_m_s, 1)],
+    ["Freestream V₀", uval("vel", result.freestream_velocity_m_s, 1)],
+    ["Momentum thrust", uval("thrust", result.momentum_thrust_N / 1000, 2)],
+    ["Pressure thrust", uval("thrust", result.pressure_thrust_N / 1000, 2)],
   ];
   if (result.core_thrust_N != null) {
-    rows.push(["Core thrust", `${numberFormat(result.core_thrust_N / 1000, 2)} kN`]);
+    rows.push(["Core thrust", uval("thrust", result.core_thrust_N / 1000, 2)]);
   }
   if (result.bypass_thrust_N != null) {
-    rows.push(["Bypass thrust", `${numberFormat(result.bypass_thrust_N / 1000, 2)} kN`]);
+    rows.push(["Bypass thrust", uval("thrust", result.bypass_thrust_N / 1000, 2)]);
   }
   if (result.bypass_exit_velocity_m_s != null) {
-    rows.push(["Bypass V₁₉", `${numberFormat(result.bypass_exit_velocity_m_s, 1)} m/s`]);
+    rows.push(["Bypass V₁₉", uval("vel", result.bypass_exit_velocity_m_s, 1)]);
   }
   const xtra = result.extra || {};
   if (xtra.third_stream_active) {
     rows.push(["Cycle mode", xtra.variable_cycle_mode === "high_thrust" ? "High thrust" : "High efficiency"]);
-    rows.push(["Third-stream thrust", `${numberFormat((result.third_stream_thrust_N || 0) / 1000, 2)} kN`]);
+    rows.push(["Third-stream thrust", uval("thrust", (result.third_stream_thrust_N || 0) / 1000, 2)]);
     rows.push(["Effective bypass ratio", numberFormat(xtra.effective_bypass_ratio, 2)]);
-    rows.push(["Total ṁ air (w/ 3rd)", `${numberFormat(xtra.total_air_with_third_kg_s, 1)} kg/s`]);
+    rows.push(["Total ṁ air (w/ 3rd)", uval("flow", xtra.total_air_with_third_kg_s, 1)]);
   }
   if (result.afterburner_fuel_air_ratio != null && result.afterburner_fuel_air_ratio > 0) {
     rows.push(["AB fuel-air", numberFormat(result.afterburner_fuel_air_ratio, 4)]);
   }
   if (result.shaft_power_kW != null) {
-    rows.push(["Shaft power", `${numberFormat(result.shaft_power_kW, 1)} kW`]);
+    rows.push(["Shaft power", uval("power", result.shaft_power_kW, 1)]);
   }
   if (result.equivalent_shaft_power_kW != null) {
-    rows.push(["Equivalent SHP", `${numberFormat(result.equivalent_shaft_power_kW, 1)} kW`]);
+    rows.push(["Equivalent SHP", uval("power", result.equivalent_shaft_power_kW, 1)]);
   }
   if (result.BSFC_kg_per_kW_h != null) {
-    rows.push(["BSFC", `${numberFormat(result.BSFC_kg_per_kW_h, 3)} kg/kW/hr`]);
+    rows.push(["BSFC", uval("bsfc", result.BSFC_kg_per_kW_h, 3)]);
   }
   if (result.propeller_thrust_N != null) {
-    rows.push(["Propeller thrust", `${numberFormat(result.propeller_thrust_N / 1000, 2)} kN`]);
+    rows.push(["Propeller thrust", uval("thrust", result.propeller_thrust_N / 1000, 2)]);
   }
   if (result.jet_thrust_N != null) {
-    rows.push(["Residual jet thrust", `${numberFormat(result.jet_thrust_N / 1000, 2)} kN`]);
+    rows.push(["Residual jet thrust", uval("thrust", result.jet_thrust_N / 1000, 2)]);
   }
   const extra = result.extra || {};
   if (extra.propeller_efficiency != null && extra.propeller_efficiency > 0) {
@@ -2122,7 +2202,7 @@ async function estimateLtoNox() {
       `<td>${fmt(m.ei_nox_g_per_kg, 1)}</td><td>${fmt(m.fuel_flow_kg_s, 2)}</td>` +
       `<td>${fmt(m.nox_g, 0)}</td></tr>`).join("");
     host.innerHTML =
-      `<p class="insight-sub">Rated thrust <strong>${fmt(out.rated_thrust_kN, 1)} kN</strong> · ` +
+      `<p class="insight-sub">Rated thrust <strong>${uval("thrust", out.rated_thrust_kN, 1)}</strong> · ` +
       `Dp(NOx) <strong>${fmt(out.dp_nox_g, 0)} g</strong> · ` +
       `Dp/Foo <strong>${fmt(out.dp_foo_g_per_kN, 1)} g/kN</strong></p>` +
       `<table><thead><tr><th>Mode</th><th>F00</th><th>T₃ [K]</th><th>EI NOx</th>` +
@@ -2164,8 +2244,8 @@ async function runOptimization() {
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     set("optFrontSize", String(front.length));
     set("optEvals", fmt(out.evaluations, 0));
-    set("optMinTsfc", `${fmt(Math.min(...front.map((p) => p.TSFC_kg_per_kN_hr)), 1)} kg/kN·h`);
-    set("optMaxSpec", `${fmt(Math.max(...front.map((p) => p.specific_thrust_N_per_kg_s)), 0)} N·s/kg`);
+    set("optMinTsfc", uval("tsfc", Math.min(...front.map((p) => p.TSFC_kg_per_kN_hr)), 1));
+    set("optMaxSpec", uval("specthrust", Math.max(...front.map((p) => p.specific_thrust_N_per_kg_s)), 0));
     drawParetoFront(out);
     if (status) status.textContent =
       `Pareto front: ${front.length} non-dominated designs from ${fmt(out.evaluations, 0)} cycle evaluations.`;
@@ -2363,10 +2443,10 @@ function updateHeroTelemetry(result, inputs) {
     if (node) node.textContent = text;
   };
   setText("pcTelMach", `M  ${fmt(inputs?.mach, 2)}`);
-  setText("pcTelT0",   `T₀ ${fmt(t0?.static_temperature_K, 0)} K`);
-  setText("pcTelP0",   `P₀ ${fmt(t0?.static_pressure_Pa / 1000, 1)} kPa`);
-  setText("pcTelTt",   `Tₜ ${fmt(t4?.stagnation_temperature_K, 0)} K`);
-  setText("pcTelPt",   `Pₜ ${fmt(t4?.stagnation_pressure_Pa / 1000, 0)} kPa`);
+  setText("pcTelT0",   `T₀ ${uval("temp", t0?.static_temperature_K, 0)}`);
+  setText("pcTelP0",   `P₀ ${uval("press", t0?.static_pressure_Pa / 1000, 1)}`);
+  setText("pcTelTt",   `Tₜ ${uval("temp", t4?.stagnation_temperature_K, 0)}`);
+  setText("pcTelPt",   `Pₜ ${uval("press", t4?.stagnation_pressure_Pa / 1000, 0)}`);
   setText("pcTelEta",  `η_th ${fmt(result?.thermal_efficiency_estimate, 2)}`);
 }
 
@@ -2382,8 +2462,8 @@ async function runSweep() {
   drawSweepChart(payload);
   $("#sweepSummary").textContent =
     `${payload.summary.successful_cases} succeeded · ${payload.summary.failed_cases} failed · ` +
-    `peak thrust ${numberFormat(payload.summary.max_thrust_N, 2)} N · ` +
-    `min TSFC ${numberFormat(payload.summary.min_TSFC_kg_per_kN_hr, 2)} kg/kN/hr`;
+    `peak thrust ${uval("thrust", payload.summary.max_thrust_N / 1000, 2)} · ` +
+    `min TSFC ${uval("tsfc", payload.summary.min_TSFC_kg_per_kN_hr, 2)}`;
   updateSweepExplanation(payload);
   updateGraphCanvases();
 }
@@ -2397,8 +2477,8 @@ function renderCompareCards(cases) {
     const title = document.createElement("h3");
     title.textContent = comparison.label;
     const lines = [
-      ["Thrust", `${numberFormat(comparison.result.thrust_kN, 2)} kN`],
-      ["TSFC", `${numberFormat(comparison.result.TSFC_kg_per_kN_hr, 2)} kg/kN/hr`],
+      ["Thrust", uval("thrust", comparison.result.thrust_kN, 2)],
+      ["TSFC", uval("tsfc", comparison.result.TSFC_kg_per_kN_hr, 2)],
       ["Fuel-air ratio", numberFormat(comparison.result.fuel_air_ratio, 4)],
       ["Nozzle", comparison.result.nozzle_choked ? "Choked" : "Not choked"],
       ["Station 4 Tt", `${numberFormat(comparison.result.station_table["4"]?.stagnation_temperature_K, 1)} K`],
@@ -2525,8 +2605,8 @@ async function runAdvancedSweep() {
   const s = payload.summary;
   $("#advancedSweepSummary").textContent =
     `${s.successful_cases} succeeded · ${s.failed_cases} failed · ` +
-    `peak thrust ${numberFormat(s.max_thrust_N / 1000, 2)} kN · ` +
-    `min TSFC ${numberFormat(s.min_TSFC_kg_per_kN_hr, 2)} kg/kN/hr`;
+    `peak thrust ${uval("thrust", s.max_thrust_N / 1000, 2)} · ` +
+    `min TSFC ${uval("tsfc", s.min_TSFC_kg_per_kN_hr, 2)}`;
 }
 
 function drawAdvancedSweepChart(payload) {
@@ -2875,6 +2955,7 @@ window.addEventListener("resize", () => {
 
 async function boot() {
   animateHeroCounters();
+  initUnitToggle();
   try {
     const response = await fetch("/api");
     if (!response.ok) throw new Error("API unavailable");
@@ -2998,8 +3079,8 @@ async function computeOffDesignEnvelope() {
   const s = payload.summary;
   $("#odStatus").textContent =
     `${s.successful} matched · ${s.failed} dropped · ` +
-    `peak ${numberFormat(s.max_thrust_kN, 1)} kN · ` +
-    `min TSFC ${numberFormat(s.min_TSFC_kg_per_kN_hr, 1)} kg/kN/hr`;
+    `peak ${uval("thrust", s.max_thrust_kN, 1)} · ` +
+    `min TSFC ${uval("tsfc", s.min_TSFC_kg_per_kN_hr, 1)}`;
 
   updateOffDesignFromSlider();
 }
@@ -3025,9 +3106,9 @@ function updateOffDesignFromSlider() {
   const pct = Number($("#odThrottle").value) / 100;
   const t = offDesign.min + (offDesign.max - offDesign.min) * pct;
   const v = interpOffDesign(t);
-  $("#odThrottleValue").textContent = `${numberFormat(t, 0)} K`;
-  $("#odThrust").textContent = `${numberFormat(v.thrust, 2)} kN`;
-  $("#odTsfc").textContent = `${numberFormat(v.tsfc, 2)} kg/kN/hr`;
+  $("#odThrottleValue").textContent = uval("temp", t, 0);
+  $("#odThrust").textContent = uval("thrust", v.thrust, 2);
+  $("#odTsfc").textContent = uval("tsfc", v.tsfc, 2);
   $("#odPr").textContent = numberFormat(v.pr, 2);
   $("#odConverged").textContent = v.converged ? "Yes" : ", ";
   drawOffDesignChart(t);
@@ -3411,10 +3492,10 @@ function setCompressorMapReadout(point) {
     return;
   }
   if (pr) pr.textContent = numberFormat(point.pressure_ratio, 2);
-  if (md) md.textContent = `${numberFormat(point.corrected_mass_flow, 1)} kg/s`;
+  if (md) md.textContent = uval("flow", point.corrected_mass_flow, 1);
   if (ef) ef.textContent = `${numberFormat(point.efficiency * 100, 1)} %`;
   if (sm) sm.textContent = `${numberFormat(point.surge_margin * 100, 1)} %`;
-  if (th) th.textContent = `${numberFormat(point.thrust_kN, 2)} kN`;
+  if (th) th.textContent = uval("thrust", point.thrust_kN, 2);
   if (ir) ir.textContent = point.in_range ? "Yes" : "Beyond map";
 }
 

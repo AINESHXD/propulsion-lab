@@ -267,6 +267,18 @@ p { margin: 0; }
   transition: color 200ms var(--ease-out);
 }
 .mission-link:hover { color: var(--text); }
+/* The unit toggle is a <button> wearing the .mission-link look; reset chrome
+   and give it a faint pill so it reads as an actionable control, not a link. */
+button.unit-toggle {
+  font-family: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 11px;
+  letter-spacing: 0.01em;
+}
+button.unit-toggle:hover { color: var(--text); border-color: var(--line-2); }
 
 .status-pill {
   display: inline-flex;
