@@ -3041,6 +3041,105 @@ function initTransient() {
 const trRunEl = document.getElementById("trRun");
 if (trRunEl) trRunEl.addEventListener("click", () => { runTransient(); });
 
+/* ---------------- Variable geometry (VAN + afterburner stability) ----------------
+ * Schedules the variable-area nozzle (how far it opens for reheat) and checks
+ * the afterburner flame-stability loop, with the lean-blowout limit vs altitude. */
+let lastVarGeo = null;
+
+async function runVariableGeometry() {
+  const status = document.getElementById("vgStatus");
+  const button = document.getElementById("vgRun");
+  const abTemp = Number(document.getElementById("vgAbTemp")?.value) || 1900;
+  if (button) { button.disabled = true; button.textContent = "Analysing…"; }
+  if (status) status.textContent = "Scheduling the nozzle and checking flame stability…";
+  try {
+    const out = await postJson("/simulate/turbojet/variable-geometry", {
+      design: readFormInput(),
+      afterburner_exit_temperature_K: Math.min(Math.max(abTemp, 1400), 2300),
+    });
+    lastVarGeo = out;
+    drawVgEnvelope(out);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const v = out.van, s = out.stability;
+    const area = (m2) => `${numberFormat(unitConvert("area", m2), 3)} ${unitLabel("area")}`;
+    set("vgOpen", `${numberFormat(v.percent_open, 0)} %`);
+    set("vgAug", `×${numberFormat(out.thrust_augmentation, 2)}`);
+    set("vgDryA", area(v.dry_throat_area_m2));
+    set("vgWetA", area(v.reheat_throat_area_m2));
+    set("vgPhi", numberFormat(s.phi, 2));
+    const label = {
+      stable: "Stable", lean_blowout: "Lean blowout", rich_blowout: "Rich blowout",
+      pressure_blowout: "Pressure blowout", velocity_blowout: "Velocity blowout",
+    }[s.status] || s.status;
+    set("vgStable", label);
+    const stEl = document.getElementById("vgStable");
+    if (stEl) stEl.style.color = s.stable ? "#37d39a" : "#f0883e";
+    if (status) status.textContent =
+      `Nozzle opens ${numberFormat(v.percent_open, 0)}% for reheat; flame ${s.stable ? "stable" : "unstable"} at the design condition.`;
+  } catch (err) {
+    if (status) status.textContent = `Analysis failed: ${err.message}`;
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "Analyse reheat"; }
+  }
+}
+
+function drawVgEnvelope(out) {
+  const canvas = document.getElementById("vgEnvelopeCanvas");
+  if (!canvas) return;
+  const { context: ctx, width: W, height: H } = canvasScale(canvas);
+  ctx.clearRect(0, 0, W, H);
+  const env = out.envelope || [];
+  if (env.length < 2) return;
+  const padL = 46, padR = 16, padT = 18, padB = 36;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const altMax = env[env.length - 1].altitude_m / 1000;
+  const phiRich = out.stability.phi_rich_limit;
+  const phiOp = out.stability.phi;
+  const yMax = Math.max(phiRich * 1.08, phiOp * 1.1, ...env.map((e) => e.phi_lean_limit), 1.7);
+  const X = (km) => padL + (km / altMax) * plotW;
+  const Y = (phi) => padT + plotH - (phi / yMax) * plotH;
+
+  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const y = padT + (plotH * i) / 4; ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke(); }
+
+  // stable band: between the rising lean limit and the rich limit
+  ctx.beginPath();
+  env.forEach((e, i) => { const x = X(e.altitude_m / 1000), y = Y(e.phi_lean_limit); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  for (let i = env.length - 1; i >= 0; i--) ctx.lineTo(X(env[i].altitude_m / 1000), Y(phiRich));
+  ctx.closePath(); ctx.fillStyle = "rgba(55,211,154,0.08)"; ctx.fill();
+
+  // rich limit (dashed)
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = "rgba(240,136,62,0.8)"; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(X(0), Y(phiRich)); ctx.lineTo(X(altMax), Y(phiRich)); ctx.stroke();
+  // lean limit (rising)
+  ctx.beginPath();
+  env.forEach((e, i) => { const x = X(e.altitude_m / 1000), y = Y(e.phi_lean_limit); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.stroke(); ctx.setLineDash([]);
+  // operating phi (solid accent)
+  ctx.strokeStyle = "#7ba7eb"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(X(0), Y(phiOp)); ctx.lineTo(X(altMax), Y(phiOp)); ctx.stroke();
+
+  // labels
+  ctx.fillStyle = "#8b9099"; ctx.font = "10px ui-monospace, monospace";
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i = 0; i <= 4; i++) { const phi = (yMax * (4 - i)) / 4; ctx.fillText(phi.toFixed(1), padL - 5, padT + (plotH * i) / 4); }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let i = 0; i <= 4; i++) { const km = (altMax * i) / 4; ctx.fillText(km.toFixed(0), X(km), padT + plotH + 6); }
+  ctx.font = "11px -apple-system, system-ui, sans-serif";
+  ctx.fillText("altitude (km)", padL + plotW / 2, H - 13);
+  ctx.fillStyle = "rgba(240,136,62,0.9)"; ctx.textAlign = "left"; ctx.fillText("rich limit", padL + 4, padT + 2);
+  ctx.fillStyle = "#7ba7eb"; ctx.fillText("operating φ", padL + 70, padT + 2);
+  ctx.fillStyle = "#8b9099"; ctx.fillText("lean limit ↑", padL + 4, padT + plotH - 12);
+}
+
+function initVariableGeometry() {
+  if (!lastVarGeo) runVariableGeometry().catch(() => {});
+  else drawVgEnvelope(lastVarGeo);
+}
+
+const vgRunEl = document.getElementById("vgRun");
+if (vgRunEl) vgRunEl.addEventListener("click", () => { runVariableGeometry(); });
+
 $("#saveProfileButton").addEventListener("click", () => { saveCurrentProfile(); });
 $("#loadProfileButton").addEventListener("click", async () => {
   if (loadCustomProfile()) { await runSimulation(); await runSweep(); }
@@ -3125,6 +3224,7 @@ document.querySelectorAll(".tab-button").forEach((button) => {
     else if (tab === "compressormap") initCompressorMap();
     else if (tab === "sensitivity") initSensitivity();
     else if (tab === "transient") initTransient();
+    else if (tab === "vargeo") initVariableGeometry();
   });
 });
 
@@ -3690,21 +3790,29 @@ function initMission() {
  * The map is synthetic (clearly labelled); a measured dataset
  * would load into the identical viewer. */
 
-const compressorMap = { data: null, line: [], designIndex: 0, markerIndex: 0 };
+const compressorMap = { engine: "turbojet", data: null, fanData: null, line: [], designIndex: 0, markerIndex: 0 };
 let compressorMapWired = false;
 
-/* Call the map-matching endpoint with the current cycle deck as the design
- * basis. Returns true on success. Turbojet only (the matching reference is a
- * dry turbojet); other architectures show a note. */
+/* Call the map-matching endpoint with the current deck as the design basis.
+ * Turbojet rides a single compressor map; turbofan rides a fan map and a core
+ * compressor (HPC) map at once. Returns true on success. */
 async function fetchMapMatch() {
   compressorMap.data = null;
+  compressorMap.fanData = null;
   compressorMap.line = [];
-  if (selectedEngine !== "turbojet") return false;
-  const inputs = readFormInput();
-  if (collectGeometryProblems(inputs).errors.length) return false;
+  compressorMap.engine = selectedEngine;
   let result;
   try {
-    result = await postJson("/simulate/turbojet/map-match", { design: inputs });
+    if (selectedEngine === "turbojet") {
+      const inputs = readFormInput();
+      if (collectGeometryProblems(inputs).errors.length) return false;
+      result = await postJson("/simulate/turbojet/map-match", { design: inputs });
+    } else if (selectedEngine === "turbofan") {
+      result = await postJson("/simulate/turbofan/map-match", { design: readAdvancedInput() });
+      compressorMap.fanData = result.fan_map || null;
+    } else {
+      return false;
+    }
   } catch {
     return false;
   }
@@ -3715,21 +3823,113 @@ async function fetchMapMatch() {
   return Boolean(compressorMap.data);
 }
 
-function compressorMapBounds() {
-  const d = compressorMap.data;
-  if (!d) return null;
+/* Extract (x = corrected mass flow, y = pressure ratio) for a running-line
+ * point. Turbojet points are flat; turbofan points nest fan / compressor. */
+function mapCoord(point, spool) {
+  const src = spool ? point[spool] : point;
+  return { x: src.corrected_mass_flow, y: src.pressure_ratio };
+}
+
+/* Generic compressor-map renderer: draws one map (speed lines, surge/choke
+ * boundaries, efficiency ridge), the running line and the operating marker.
+ * `spool` selects the nested coordinate set for turbofan points (null = flat). */
+function drawOneMap(canvas, d, line, spool, marker) {
+  if (!canvas) return;
+  const { context: ctx, width, height } = canvasScale(canvas);
+  ctx.clearRect(0, 0, width, height);
+  const pad = 52;
+  const plotW = width - pad * 2;
+  const plotH = height - pad * 2;
+  if (!d) {
+    ctx.fillStyle = palette.textDim;
+    ctx.font = "500 12px 'Inter', system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText("No map for this engine.", width / 2, height / 2);
+    ctx.textAlign = "left";
+    return;
+  }
+
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
   for (let i = 0; i < d.speeds.length; i += 1) {
     for (let j = 0; j < d.beta.length; j += 1) {
-      const x = d.mass_flow[i][j];
-      const y = d.pressure_ratio[i][j];
-      if (x < xMin) xMin = x;
-      if (x > xMax) xMax = x;
-      if (y < yMin) yMin = y;
-      if (y > yMax) yMax = y;
+      xMin = Math.min(xMin, d.mass_flow[i][j]); xMax = Math.max(xMax, d.mass_flow[i][j]);
+      yMin = Math.min(yMin, d.pressure_ratio[i][j]); yMax = Math.max(yMax, d.pressure_ratio[i][j]);
     }
   }
-  return { xMin, xMax, yMin, yMax };
+  for (const p of line) {
+    const c = mapCoord(p, spool);
+    xMin = Math.min(xMin, c.x); xMax = Math.max(xMax, c.x);
+    yMin = Math.min(yMin, c.y); yMax = Math.max(yMax, c.y);
+  }
+  const xPad = (xMax - xMin) * 0.08 || 1;
+  const yPad = (yMax - yMin) * 0.08 || 1;
+  xMin -= xPad; xMax += xPad; yMin -= yPad; yMax += yPad;
+  const xToPx = (x) => pad + ((x - xMin) / (xMax - xMin)) * plotW;
+  const yToPx = (y) => pad + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+
+  drawChartFrame(ctx, pad, pad, plotW, plotH);
+  const nb = d.beta.length;
+  d.speeds.forEach((sp, i) => {
+    ctx.strokeStyle = palette.efficiency; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    d.beta.forEach((_, j) => {
+      const px = xToPx(d.mass_flow[i][j]); const py = yToPx(d.pressure_ratio[i][j]);
+      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.stroke(); ctx.globalAlpha = 1;
+    drawSeriesLabel(ctx, Number(sp).toFixed(2),
+      xToPx(d.mass_flow[i][nb - 1]) - 2, yToPx(d.pressure_ratio[i][nb - 1]) - 4, palette.textDim);
+  });
+  const drawBoundary = (j, color, dash) => {
+    ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.setLineDash(dash);
+    ctx.beginPath();
+    d.speeds.forEach((_, i) => {
+      const px = xToPx(d.mass_flow[i][j]); const py = yToPx(d.pressure_ratio[i][j]);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  drawBoundary(nb - 1, palette.temperature, [5, 4]); // surge line
+  drawBoundary(0, palette.pressure, [2, 3]);         // choke line
+
+  ctx.strokeStyle = palette.efficiency; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.1;
+  ctx.setLineDash([3, 3]); ctx.beginPath();
+  d.speeds.forEach((_, i) => {
+    let best = 0;
+    for (let j = 1; j < nb; j += 1) if (d.efficiency[i][j] > d.efficiency[i][best]) best = j;
+    const px = xToPx(d.mass_flow[i][best]); const py = yToPx(d.pressure_ratio[i][best]);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+  if (line.length) {
+    ctx.strokeStyle = palette.accent; ctx.lineWidth = 2; ctx.beginPath();
+    line.forEach((p, i) => {
+      const c = mapCoord(p, spool);
+      if (i === 0) ctx.moveTo(xToPx(c.x), yToPx(c.y)); else ctx.lineTo(xToPx(c.x), yToPx(c.y));
+    });
+    ctx.stroke();
+  }
+  if (marker) {
+    const c = mapCoord(marker, spool);
+    const mx = xToPx(c.x), my = yToPx(c.y);
+    ctx.strokeStyle = palette.ink; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(mx - 9, my); ctx.lineTo(mx + 9, my); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx, my - 9); ctx.lineTo(mx, my + 9); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.fillStyle = palette.accent;
+    ctx.beginPath(); ctx.arc(mx, my, 4.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  drawSeriesLabel(ctx, "Pressure ratio", pad + 4, pad - 30, palette.pressure);
+  drawSeriesLabel(ctx, "surge", pad + 4, pad - 16, palette.temperature);
+  drawSeriesLabel(ctx, "running line", pad + 64, pad - 16, palette.accent);
+  ctx.fillStyle = palette.textDim; ctx.font = "500 11px 'Inter', system-ui"; ctx.textAlign = "center";
+  for (let k = 0; k <= 5; k += 1) {
+    const x = xMin + ((xMax - xMin) * k) / 5;
+    ctx.fillText(numberFormat(x, 0), xToPx(x), pad + plotH + 18);
+  }
+  ctx.fillText("Corrected mass flow [kg/s]", pad + plotW / 2, pad + plotH + 36);
+  ctx.textAlign = "left";
 }
 
 function currentMarkerPoint() {
@@ -3740,29 +3940,44 @@ function currentMarkerPoint() {
 }
 
 function setCompressorMapReadout(point) {
-  const pr = $("#cmPr"), md = $("#cmMdot"), ef = $("#cmEff");
-  const sm = $("#cmSurge"), th = $("#cmThrust"), ir = $("#cmInRange");
-  if (!point) {
-    [pr, md, ef, sm, th, ir].forEach((n) => { if (n) n.textContent = ", "; });
-    return;
+  const isFan = compressorMap.engine === "turbofan";
+  const fanRow = $("#cmFanSurgeRow");
+  if (fanRow) fanRow.hidden = !isFan;
+  const ids = ["#cmPr", "#cmMdot", "#cmEff", "#cmSurge", "#cmThrust", "#cmInRange", "#cmFanSurge"];
+  // For the turbofan the primary readout is the core compressor (HPC); the fan
+  // surge margin gets its own row.
+  const prim = !point ? null : (isFan ? point.compressor : point);
+  if (!point || !prim) { ids.forEach((id) => { const n = $(id); if (n) n.textContent = ", "; }); return; }
+  $("#cmPr").textContent = numberFormat(prim.pressure_ratio, 2);
+  $("#cmMdot").textContent = uval("flow", prim.corrected_mass_flow, 1);
+  $("#cmEff").textContent = `${numberFormat(prim.efficiency * 100, 1)} %`;
+  $("#cmSurge").textContent = `${numberFormat(prim.surge_margin * 100, 1)} %`;
+  $("#cmThrust").textContent = uval("thrust", point.thrust_kN, 2);
+  $("#cmInRange").textContent = prim.in_range ? "Yes" : "Beyond map";
+  if (isFan && $("#cmFanSurge")) {
+    $("#cmFanSurge").textContent = `${numberFormat(point.fan.surge_margin * 100, 1)} %`;
   }
-  if (pr) pr.textContent = numberFormat(point.pressure_ratio, 2);
-  if (md) md.textContent = uval("flow", point.corrected_mass_flow, 1);
-  if (ef) ef.textContent = `${numberFormat(point.efficiency * 100, 1)} %`;
-  if (sm) sm.textContent = `${numberFormat(point.surge_margin * 100, 1)} %`;
-  if (th) th.textContent = uval("thrust", point.thrust_kN, 2);
-  if (ir) ir.textContent = point.in_range ? "Yes" : "Beyond map";
 }
 
 function updateCompressorMapStatus() {
   const el = $("#cmStatus");
+  const isFan = selectedEngine === "turbofan";
+  const fanWrap = $("#cmFanWrap");
+  if (fanWrap) fanWrap.hidden = !isFan;
+  const title = $("#cmCompTitle");
+  if (title) title.textContent = isFan ? "Core compressor (HPC)" : "Compressor";
+  const prLabel = $("#cmSurgeLabel");
+  if (prLabel) prLabel.textContent = isFan ? "HPC surge margin" : "Surge margin";
   if (!el) return;
-  if (selectedEngine !== "turbojet") {
+  if (selectedEngine !== "turbojet" && selectedEngine !== "turbofan") {
     el.textContent =
-      "Map matching is available for the dry turbojet in this release. Select the turbojet on the Cycle tab.";
+      "Map matching is available for the turbojet and the separate-flow turbofan. Select one on the Cycle tab.";
   } else if (!compressorMap.line.length) {
     el.textContent =
-      "Could not match a running line for this deck (afterburning, or the nozzle unchokes here). Try the dry turbojet or a higher altitude.";
+      "Could not match a running line for this deck (afterburning, bleed, mixed flow, or the nozzle unchokes here). Try a cleaner deck or a higher altitude.";
+  } else if (isFan) {
+    el.textContent =
+      "Two-spool running line matched on the synthetic fan and core-compressor maps. Drag the throttle to move both operating points.";
   } else {
     el.textContent =
       "Off-design running line matched on the synthetic compressor map. Drag the throttle to move the operating point along the line.";
@@ -3770,143 +3985,14 @@ function updateCompressorMapStatus() {
 }
 
 function drawCompressorMap() {
-  const canvas = $("#compressorMapCanvas");
-  if (!canvas) return;
-  const { context: ctx, width, height } = canvasScale(canvas);
-  ctx.clearRect(0, 0, width, height);
-  const pad = 52;
-  const plotW = width - pad * 2;
-  const plotH = height - pad * 2;
-
-  const d = compressorMap.data;
-  if (!d) {
-    ctx.fillStyle = palette.textDim;
-    ctx.font = "500 12px 'Inter', system-ui";
-    ctx.textAlign = "center";
-    ctx.fillText("No compressor map for this engine.", width / 2, height / 2);
-    ctx.textAlign = "left";
-    return;
+  const cm = compressorMap;
+  const marker = currentMarkerPoint();
+  if (cm.engine === "turbofan") {
+    drawOneMap($("#fanMapCanvas"), cm.fanData, cm.line, "fan", marker);
+    drawOneMap($("#compressorMapCanvas"), cm.data, cm.line, "compressor", marker);
+  } else {
+    drawOneMap($("#compressorMapCanvas"), cm.data, cm.line, null, marker);
   }
-
-  const bounds = compressorMapBounds();
-  let { xMin, xMax, yMin, yMax } = bounds;
-  for (const p of compressorMap.line) {
-    xMin = Math.min(xMin, p.corrected_mass_flow);
-    xMax = Math.max(xMax, p.corrected_mass_flow);
-    yMin = Math.min(yMin, p.pressure_ratio);
-    yMax = Math.max(yMax, p.pressure_ratio);
-  }
-  const xPad = (xMax - xMin) * 0.08 || 1;
-  const yPad = (yMax - yMin) * 0.08 || 1;
-  xMin -= xPad; xMax += xPad; yMin -= yPad; yMax += yPad;
-  const xToPx = (x) => pad + ((x - xMin) / (xMax - xMin)) * plotW;
-  const yToPx = (y) => pad + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
-
-  drawChartFrame(ctx, pad, pad, plotW, plotH);
-
-  const nb = d.beta.length;
-  // Constant corrected-speed lines.
-  d.speeds.forEach((sp, i) => {
-    ctx.strokeStyle = palette.efficiency;
-    ctx.globalAlpha = 0.5;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    d.beta.forEach((_, j) => {
-      const px = xToPx(d.mass_flow[i][j]);
-      const py = yToPx(d.pressure_ratio[i][j]);
-      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    });
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    drawSeriesLabel(
-      ctx,
-      Number(sp).toFixed(2),
-      xToPx(d.mass_flow[i][nb - 1]) - 2,
-      yToPx(d.pressure_ratio[i][nb - 1]) - 4,
-      palette.textDim,
-    );
-  });
-
-  // Boundary helper: connect one beta column across all speed lines.
-  const drawBoundary = (j, color, dash) => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.4;
-    ctx.setLineDash(dash);
-    ctx.beginPath();
-    d.speeds.forEach((_, i) => {
-      const px = xToPx(d.mass_flow[i][j]);
-      const py = yToPx(d.pressure_ratio[i][j]);
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    });
-    ctx.stroke();
-    ctx.setLineDash([]);
-  };
-  drawBoundary(nb - 1, palette.temperature, [5, 4]); // surge line
-  drawBoundary(0, palette.pressure, [2, 3]);         // choke line
-
-  // Peak-efficiency ridge.
-  ctx.strokeStyle = palette.efficiency;
-  ctx.globalAlpha = 0.7;
-  ctx.lineWidth = 1.1;
-  ctx.setLineDash([3, 3]);
-  ctx.beginPath();
-  d.speeds.forEach((_, i) => {
-    let best = 0;
-    for (let j = 1; j < nb; j += 1) {
-      if (d.efficiency[i][j] > d.efficiency[i][best]) best = j;
-    }
-    const px = xToPx(d.mass_flow[i][best]);
-    const py = yToPx(d.pressure_ratio[i][best]);
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  });
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-
-  // Matched off-design running line.
-  if (compressorMap.line.length) {
-    ctx.strokeStyle = palette.accent;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    compressorMap.line.forEach((p, i) => {
-      const px = xToPx(p.corrected_mass_flow);
-      const py = yToPx(p.pressure_ratio);
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    });
-    ctx.stroke();
-  }
-
-  // Operating-point marker on the running line.
-  const point = currentMarkerPoint();
-  if (point) {
-    const mx = xToPx(point.corrected_mass_flow);
-    const my = yToPx(point.pressure_ratio);
-    ctx.strokeStyle = palette.ink;
-    ctx.globalAlpha = 0.5;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(mx - 9, my); ctx.lineTo(mx + 9, my); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(mx, my - 9); ctx.lineTo(mx, my + 9); ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = palette.accent;
-    ctx.beginPath();
-    ctx.arc(mx, my, 4.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Legend + axes.
-  drawSeriesLabel(ctx, "Pressure ratio", pad + 4, pad - 30, palette.pressure);
-  drawSeriesLabel(ctx, "surge", pad + 4, pad - 16, palette.temperature);
-  drawSeriesLabel(ctx, "running line", pad + 64, pad - 16, palette.accent);
-  ctx.fillStyle = palette.textDim;
-  ctx.font = "500 11px 'Inter', system-ui";
-  ctx.textAlign = "center";
-  const ticks = 5;
-  for (let k = 0; k <= ticks; k += 1) {
-    const x = xMin + ((xMax - xMin) * k) / ticks;
-    ctx.fillText(numberFormat(x, 0), xToPx(x), pad + plotH + 18);
-  }
-  ctx.fillText("Corrected mass flow [kg/s]", pad + plotW / 2, pad + plotH + 36);
-  ctx.textAlign = "left";
 }
 
 function updateCompressorMapFromSlider() {

@@ -935,6 +935,32 @@ class TurbojetTransientOutput(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Turbofan map-matching + variable geometry
+# ---------------------------------------------------------------------------
+
+
+class TurbofanMapMatchInput(BaseModel):
+    """Turbofan design deck + flight condition + throttle sweep for map matching."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    design: TurbofanInput = Field(default_factory=TurbofanInput)
+    altitude_m: float | None = Field(default=None, ge=-500.0, le=25000.0)
+    mach: float | None = Field(default=None, ge=0.0, le=3.0)
+    throttles_K: list[float] | None = Field(default=None, min_length=1, max_length=60)
+
+
+class VariableGeometryInput(BaseModel):
+    """Afterburning-turbojet deck for the VAN schedule + AB stability analysis."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    design: TurbojetInput = Field(default_factory=TurbojetInput)
+    afterburner_exit_temperature_K: float = Field(1900.0, gt=1000.0, le=2400.0)
+    afterburner_efficiency: float | None = Field(default=None, gt=0.0, le=1.0)
+
+
+# ---------------------------------------------------------------------------
 # Cloud-CFD job control plane (future / Pro feature — gated off at launch)
 # ---------------------------------------------------------------------------
 

@@ -9,7 +9,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20260603-units" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20260603-tjtag" />
   </head>
   <body>
 
@@ -249,6 +249,7 @@
           <button type="button" class="tab-button" data-tab="optimize">Optimize</button>
           <button type="button" class="tab-button" data-tab="sensitivity">Sensitivity</button>
           <button type="button" class="tab-button" data-tab="transient">Transient</button>
+          <button type="button" class="tab-button" data-tab="vargeo">Var-geometry</button>
           <button type="button" class="tab-button" data-tab="casestudies">Case studies</button>
           <button type="button" class="tab-button" data-tab="manual">User manual</button>
         </nav>
@@ -1051,7 +1052,14 @@
 
             <div class="od-body">
               <div class="od-chart-wrap">
-                <canvas id="compressorMapCanvas" width="560" height="320"></canvas>
+                <div id="cmFanWrap" class="map-canvas-block" hidden>
+                  <div class="map-canvas-title">Fan</div>
+                  <canvas id="fanMapCanvas" width="560" height="280"></canvas>
+                </div>
+                <div class="map-canvas-block">
+                  <div class="map-canvas-title" id="cmCompTitle">Compressor</div>
+                  <canvas id="compressorMapCanvas" width="560" height="300"></canvas>
+                </div>
               </div>
               <div class="od-readout">
                 <div class="od-throttle">
@@ -1060,10 +1068,11 @@
                   <output id="cmThrottleValue">, </output>
                 </div>
                 <dl class="od-metrics">
-                  <div class="od-metric"><dt>Pressure ratio</dt><dd id="cmPr">, </dd></div>
+                  <div class="od-metric"><dt id="cmPrLabel">Pressure ratio</dt><dd id="cmPr">, </dd></div>
                   <div class="od-metric"><dt>Corrected mass flow</dt><dd id="cmMdot">, </dd></div>
                   <div class="od-metric"><dt>Map efficiency</dt><dd id="cmEff">, </dd></div>
-                  <div class="od-metric"><dt>Surge margin</dt><dd id="cmSurge">, </dd></div>
+                  <div class="od-metric"><dt id="cmSurgeLabel">Surge margin</dt><dd id="cmSurge">, </dd></div>
+                  <div class="od-metric" id="cmFanSurgeRow" hidden><dt>Fan surge margin</dt><dd id="cmFanSurge">, </dd></div>
                   <div class="od-metric"><dt>Thrust</dt><dd id="cmThrust">, </dd></div>
                   <div class="od-metric"><dt>On map</dt><dd id="cmInRange">, </dd></div>
                 </dl>
@@ -1085,6 +1094,7 @@
           <section class="panel od-panel">
             <div class="panel-heading">
               <h2>Multi-objective design optimization · NSGA-II</h2>
+              <span class="scope-tag" title="Turbojet-only feature. It runs on the turbojet deck from the Cycle tab, regardless of which engine is selected.">Turbojet only</span>
             </div>
             <p class="report-copy">
               A genetic algorithm (NSGA-II, non-dominated sorting, crowding
@@ -1142,6 +1152,7 @@
           <section class="panel od-panel">
             <div class="panel-heading">
               <h2>Sensitivity · tornado chart</h2>
+              <span class="scope-tag" title="Turbojet-only feature. It runs on the turbojet deck from the Cycle tab, regardless of which engine is selected.">Turbojet only</span>
             </div>
             <p class="report-copy">
               Each design input from the Cycle tab is nudged up and down by a
@@ -1196,6 +1207,7 @@
           <section class="panel od-panel">
             <div class="panel-heading">
               <h2>Transient spool dynamics</h2>
+              <span class="scope-tag" title="Turbojet-only feature. It runs on the turbojet deck from the Cycle tab, regardless of which engine is selected.">Turbojet only</span>
             </div>
             <p class="report-copy">
               Slam the throttle and watch the engine catch up. The fuel, and
@@ -1244,6 +1256,55 @@
                   the spool is the lag. Add inertia and it spools up slower. This
                   is the bare inertial response, a real fuel controller ramps the
                   throttle to protect surge margin, slowing it further.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============== VARIABLE GEOMETRY TAB ============== -->
+        <div id="vargeoTab" class="tab-panel" data-tab-panel="vargeo">
+          <section class="panel od-panel">
+            <div class="panel-heading">
+              <h2>Variable geometry · reheat nozzle &amp; flame stability</h2>
+              <span class="scope-tag" title="Turbojet-only feature. It runs on the turbojet deck from the Cycle tab, regardless of which engine is selected.">Turbojet only</span>
+            </div>
+            <p class="report-copy">
+              Lighting the afterburner makes the exhaust much hotter, so the
+              nozzle throat must <strong>open</strong> to pass it without backing
+              pressure onto the turbine, and the reheat flame only stays lit
+              inside a stability loop. Uses the turbojet deck from the Cycle tab.
+            </p>
+
+            <div class="od-controls">
+              <label>
+                <span>Afterburner exit T <span class="unit">K</span></span>
+                <input id="vgAbTemp" type="number" step="25" min="1400" max="2300" value="1900" />
+              </label>
+              <button type="button" id="vgRun" class="primary-button">Analyse reheat</button>
+            </div>
+
+            <p id="vgStatus" class="od-status">Press “Analyse reheat” to schedule the nozzle.</p>
+
+            <div class="od-body">
+              <div class="od-chart-wrap">
+                <canvas id="vgEnvelopeCanvas" width="560" height="300"></canvas>
+              </div>
+              <div class="od-readout">
+                <dl class="od-metrics">
+                  <div class="od-metric"><dt>Nozzle opens</dt><dd id="vgOpen">, </dd></div>
+                  <div class="od-metric"><dt>Thrust augmentation</dt><dd id="vgAug">, </dd></div>
+                  <div class="od-metric"><dt>Dry throat area</dt><dd id="vgDryA">, </dd></div>
+                  <div class="od-metric"><dt>Reheat throat area</dt><dd id="vgWetA">, </dd></div>
+                  <div class="od-metric"><dt>AB equivalence φ</dt><dd id="vgPhi">, </dd></div>
+                  <div class="od-metric"><dt>Flame state</dt><dd id="vgStable">, </dd></div>
+                </dl>
+                <p class="od-note">
+                  The chart shows the <strong>lean-blowout</strong> equivalence
+                  ratio climbing with altitude as the afterburner-inlet pressure
+                  falls, the stability loop shrinks, and below the relight floor
+                  the burner cannot stay lit. Throat areas and stability limits
+                  are reduced-order educational estimates, not combustor CFD.
                 </p>
               </div>
             </div>
@@ -1357,7 +1418,7 @@
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260603-fix"></script>
+    <script src="/lab/app.js?v=20260603-vg"></script>
     <script src="/lab/tour.js?v=20260603-dedash"></script>
     <script src="/lab/help.js?v=20260603-trans"></script>
     <script src="/lab/casestudies.js?v=20260603-dedash"></script>
