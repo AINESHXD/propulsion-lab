@@ -248,6 +248,7 @@
           <button type="button" class="tab-button" data-tab="compressormap">Compressor map</button>
           <button type="button" class="tab-button" data-tab="optimize">Optimize</button>
           <button type="button" class="tab-button" data-tab="sensitivity">Sensitivity</button>
+          <button type="button" class="tab-button" data-tab="transient">Transient</button>
           <button type="button" class="tab-button" data-tab="casestudies">Case studies</button>
           <button type="button" class="tab-button" data-tab="manual">User manual</button>
         </nav>
@@ -1190,6 +1191,65 @@
           </section>
         </div>
 
+        <!-- ============== TRANSIENT TAB ============== -->
+        <div id="transientTab" class="tab-panel" data-tab-panel="transient">
+          <section class="panel od-panel">
+            <div class="panel-heading">
+              <h2>Transient spool dynamics</h2>
+            </div>
+            <p class="report-copy">
+              Slam the throttle and watch the engine catch up. The fuel, and
+              turbine temperature, respond almost at once, but the spinning spool
+              has <strong>inertia</strong>, so its speed, and the thrust, lag
+              behind. This integrates the rotor equation of motion
+              (I·Ω·dΩ/dt = turbine power − compressor power) through the step.
+            </p>
+
+            <div class="od-controls">
+              <label>
+                <span>Idle throttle <span class="unit">% Tt₄</span></span>
+                <input id="trIdle" type="number" step="1" min="40" max="95" value="70" />
+              </label>
+              <label>
+                <span>Command throttle <span class="unit">% Tt₄</span></span>
+                <input id="trCommand" type="number" step="1" min="40" max="100" value="100" />
+              </label>
+              <label>
+                <span>Rotor inertia <span class="unit">kg·m²</span></span>
+                <input id="trInertia" type="number" step="1" min="1" max="200" value="20" />
+              </label>
+              <label>
+                <span>Run time <span class="unit">s</span></span>
+                <input id="trTime" type="number" step="1" min="2" max="30" value="8" />
+              </label>
+              <button type="button" id="trRun" class="primary-button">Run transient</button>
+            </div>
+
+            <p id="trStatus" class="od-status">Press “Run transient” to slam the throttle.</p>
+
+            <div class="od-body">
+              <div class="od-chart-wrap">
+                <canvas id="transientCanvas" width="560" height="320"></canvas>
+              </div>
+              <div class="od-readout">
+                <dl class="od-metrics">
+                  <div class="od-metric"><dt>Spool τ₀</dt><dd id="trTau">, </dd></div>
+                  <div class="od-metric"><dt>Settling (95%)</dt><dd id="trSettle">, </dd></div>
+                  <div class="od-metric"><dt>Idle thrust</dt><dd id="trIdleThrust">, </dd></div>
+                  <div class="od-metric"><dt>Final thrust</dt><dd id="trFinalThrust">, </dd></div>
+                </dl>
+                <p class="od-note">
+                  Blue is spool speed (% of design), amber is thrust; the dashed
+                  step is the throttle command. The gap between the command and
+                  the spool is the lag. Add inertia and it spools up slower. This
+                  is the bare inertial response, a real fuel controller ramps the
+                  throttle to protect surge margin, slowing it further.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
         <!-- ============== CASE STUDIES TAB ============== -->
         <div id="caseStudiesTab" class="tab-panel" data-tab-panel="casestudies">
           <section class="panel case-study-panel">
@@ -1297,9 +1357,9 @@
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260603-dedash"></script>
+    <script src="/lab/app.js?v=20260603-trans"></script>
     <script src="/lab/tour.js?v=20260603-dedash"></script>
-    <script src="/lab/help.js?v=20260603-dedash"></script>
+    <script src="/lab/help.js?v=20260603-trans"></script>
     <script src="/lab/casestudies.js?v=20260603-dedash"></script>
   </body>
 </html>
