@@ -547,6 +547,23 @@ button.unit-toggle:hover { color: var(--text); border-color: var(--line-2); }
   color: var(--text);
   margin: 0;
 }
+/* "Turbojet only" scope badge on features that run on the turbojet deck
+   regardless of the engine selected on the Cycle tab. */
+.scope-tag {
+  margin-right: auto;
+  align-self: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(123, 167, 235, 0.4);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+  cursor: help;
+}
 .panel-actions {
   display: flex;
   align-items: center;
@@ -2094,6 +2111,14 @@ a:focus-visible,
   padding: 8px;
 }
 #offDesignCanvas { width: 100%; height: auto; display: block; }
+/* Map tab: stack the fan + core-compressor canvases for the turbofan. */
+.map-canvas-block { margin-bottom: 10px; }
+.map-canvas-block:last-child { margin-bottom: 0; }
+.map-canvas-block canvas { width: 100%; height: auto; display: block; }
+.map-canvas-title {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-3); margin: 2px 0 4px 4px;
+}
 
 .od-readout { display: flex; flex-direction: column; gap: 16px; }
 .od-throttle { display: flex; flex-direction: column; gap: 8px; }

@@ -65,6 +65,11 @@ from app.engine_core.map_matching import (
     default_maps_for_reference,
     match_turbojet_on_maps,
 )
+from app.engine_core.turbofan_map_matching import (
+    default_maps_for_turbofan,
+    match_turbofan_on_maps,
+)
+from app.engine_core.variable_geometry import variable_geometry_analysis
 from app.engine_core.turbofan import TurbofanCycleInputs
 from app.engine_core.turbojet import simulate_turbojet_cycle
 from app.engine_core.types import CycleCalculationError
@@ -104,6 +109,8 @@ from app.schemas import (
     TurbojetSensitivityOutput,
     TurbojetTransientInput,
     TurbojetTransientOutput,
+    TurbofanMapMatchInput,
+    VariableGeometryInput,
     TurbofanMissionInput,
     TurbojetMissionInput,
     RamjetInput,
@@ -215,6 +222,8 @@ def root() -> dict[str, Any]:
             "POST /simulate/turbojet/sweep",
             "POST /simulate/turbojet/off-design",
             "POST /simulate/turbojet/map-match",
+            "POST /simulate/turbofan/map-match",
+            "POST /simulate/turbojet/variable-geometry",
             "POST /simulate/turbojet/from-profile",
             "POST /simulate/turbofan",
             "POST /simulate/turbofan/sweep",
@@ -1060,6 +1069,106 @@ def map_match_turbojet(inputs: MapMatchInput) -> dict[str, Any]:
         "compressor_map": compressor_map.to_dict(),
         "points": points,
     }
+
+
+@app.post("/simulate/turbofan/map-match")
+def map_match_turbofan(inputs: TurbofanMapMatchInput) -> dict[str, Any]:
+    """Match a two-spool turbofan running line on synthetic fan + HPC maps.
+
+    Calibrates the off-design reference, sizes a fan map and a core-compressor
+    map to the design point, then projects the matched operating point onto both
+    at each throttle of a sweep. Returns both maps and the running line with fan
+    and HPC coordinates + surge margins, so the console can draw both operating
+    lines.
+    """
+
+    try:
+        design = TurbofanCycleInputs(**inputs.design.model_dump())
+        reference = calibrate_turbofan_reference(design)
+        fan_map, hpc_map = default_maps_for_turbofan(reference)
+    except CycleCalculationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    altitude_m = inputs.altitude_m if inputs.altitude_m is not None else inputs.design.altitude_m
+    mach = inputs.mach if inputs.mach is not None else inputs.design.mach
+    design_tt4 = reference.design_tt4_K
+
+    if inputs.throttles_K:
+        throttles = list(inputs.throttles_K)
+    else:
+        fractions = [0.90 + 0.01 * k for k in range(0, 17)]
+        throttles = sorted({round(design_tt4 * f, 4) for f in fractions} | {design_tt4})
+
+    points: list[dict[str, Any]] = []
+    for throttle_K in throttles:
+        try:
+            result = match_turbofan_on_maps(
+                reference,
+                altitude_m=altitude_m,
+                mach=mach,
+                turbine_inlet_temperature_K=throttle_K,
+                fan_map=fan_map,
+                hpc_map=hpc_map,
+            )
+        except CycleCalculationError:
+            continue
+        fan = result["maps"]["fan"]
+        hpc = result["maps"]["compressor"]
+        points.append({
+            "throttle_K": throttle_K,
+            "fan": {k: fan[k] for k in ("corrected_speed", "beta", "corrected_mass_flow",
+                                        "pressure_ratio", "efficiency", "surge_margin", "in_range")},
+            "compressor": {k: hpc[k] for k in ("corrected_speed", "beta", "corrected_mass_flow",
+                                               "pressure_ratio", "efficiency", "surge_margin", "in_range")},
+            "thrust_kN": result.get("thrust_kN"),
+            "TSFC_kg_per_kN_hr": result.get("TSFC_kg_per_kN_hr"),
+            "bypass_ratio": result.get("bypass_ratio"),
+            "converged": result["maps"]["converged"],
+        })
+
+    points.sort(key=lambda p: p["fan"]["corrected_mass_flow"])
+    design_index = (
+        min(range(len(points)), key=lambda i: abs(points[i]["throttle_K"] - design_tt4))
+        if points else None
+    )
+
+    return {
+        "engine_type": "turbofan",
+        "altitude_m": altitude_m,
+        "mach": mach,
+        "design_throttle_K": design_tt4,
+        "design_index": design_index,
+        "synthetic": bool(fan_map.is_synthetic and hpc_map.is_synthetic),
+        "fan_map": fan_map.to_dict(),
+        "compressor_map": hpc_map.to_dict(),
+        "points": points,
+        "notes": [
+            "Two-spool running line projected onto synthetic fan + HPC maps. Bypass "
+            "ratio held at the design value; map efficiencies read at the matched "
+            "point (not iterated back into the flow).",
+        ],
+    }
+
+
+@app.post("/simulate/turbojet/variable-geometry")
+def variable_geometry_turbojet(inputs: VariableGeometryInput) -> dict[str, Any]:
+    """Variable-area nozzle schedule + afterburner flame-stability for a turbojet.
+
+    Computes the choked throat area dry and with reheat (how far the nozzle must
+    open when the afterburner lights), and assesses the reheat operating point
+    against a reduced-order flame-stability loop, including how the lean-blowout
+    limit climbs with altitude.
+    """
+
+    try:
+        result = variable_geometry_analysis(
+            inputs.design.to_cycle_inputs(),
+            inputs.afterburner_exit_temperature_K,
+            afterburner_efficiency=inputs.afterburner_efficiency,
+        )
+    except CycleCalculationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result
 
 
 @app.post("/simulate/turbofan/off-design", response_model=OffDesignEnvelopeOutput)
