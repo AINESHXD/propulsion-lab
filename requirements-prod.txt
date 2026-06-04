@@ -7,6 +7,11 @@ scipy>=1.11.0
 uvicorn[standard]>=0.30.0
 gunicorn>=22.0.0
 
+# Used only to embed the DAS LABS / PropulsionLab PNG logos in generated PDF
+# reports. The report generator degrades to a vector mark if this is absent, so
+# the app still runs without it, but it is installed so deployed PDFs match dev.
+pillow>=10.0.0
+
 # Optional, activated only when SENTRY_DSN is set at runtime. Safe to install;
 # the app no-ops error reporting when the DSN is absent.
 sentry-sdk[fastapi]>=2.0.0
