@@ -159,6 +159,14 @@ def pro_stub() -> FileResponse:
     return FileResponse(STATIC_PATH / "pro" / "index.html")
 
 
+@app.get("/classroom", include_in_schema=False)
+@app.get("/classroom/", include_in_schema=False)
+def classroom() -> FileResponse:
+    """Serve the PropulsionLab Classroom (guided design challenges)."""
+
+    return FileResponse(STATIC_PATH / "classroom" / "index.html")
+
+
 @app.get("/piston", include_in_schema=False)
 @app.get("/piston/", include_in_schema=False)
 def piston_lab() -> FileResponse:
