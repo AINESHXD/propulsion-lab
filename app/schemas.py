@@ -893,6 +893,47 @@ class TurbojetSensitivityOutput(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Transient spool dynamics (throttle slam / chop)
+# ---------------------------------------------------------------------------
+
+
+class TurbojetTransientInput(BaseModel):
+    """A throttle step on a turbojet deck with a physical rotor inertia."""
+
+    design: TurbojetInput = Field(default_factory=TurbojetInput)
+    polar_moment_of_inertia_kg_m2: float = Field(20.0, gt=0.0, le=2000.0)
+    design_spool_speed_rpm: float = Field(12000.0, gt=0.0, le=60000.0)
+    idle_throttle_fraction: float = Field(0.7, ge=0.3, lt=1.0)
+    command_throttle_fraction: float = Field(1.0, ge=0.3, le=1.0)
+    slam_time_s: float = Field(1.0, ge=0.0, le=30.0)
+    total_time_s: float = Field(8.0, gt=0.0, le=60.0)
+    dt_s: float = Field(0.04, gt=0.0, le=0.5)
+
+
+class TransientSample(BaseModel):
+    """One integration step of the spool transient."""
+
+    t_s: float
+    throttle_K: float
+    spool_fraction: float
+    spool_target: float
+    thrust_kN: float
+    TSFC_kg_per_kN_hr: float
+
+
+class TurbojetTransientOutput(BaseModel):
+    """Spool-transient time series + summary."""
+
+    tau0_s: float
+    settling_time_s: float | None = None
+    initial_spool_fraction: float
+    final_spool_fraction: float
+    spool_min: float
+    spool_max: float
+    samples: list[TransientSample]
+    notes: list[str] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Cloud-CFD job control plane (future / Pro feature — gated off at launch)
 # ---------------------------------------------------------------------------

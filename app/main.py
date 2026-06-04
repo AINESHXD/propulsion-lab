@@ -54,6 +54,11 @@ from app.engine_core.emissions import (
 )
 from app.engine_core.optimization import TurbojetDesignProblem, nsga2
 from app.engine_core.sensitivity import turbojet_sensitivity
+from app.engine_core.transient import (
+    calibrate_spool_reference,
+    simulate_spool_transient,
+    step_throttle_schedule,
+)
 from app.cfd import CFDCase, cfd_enabled, service as cfd_service
 from app.engine_core.compressor_maps import synthetic_compressor_map
 from app.engine_core.map_matching import (
@@ -97,6 +102,8 @@ from app.schemas import (
     TurbojetOptimizeOutput,
     TurbojetSensitivityInput,
     TurbojetSensitivityOutput,
+    TurbojetTransientInput,
+    TurbojetTransientOutput,
     TurbofanMissionInput,
     TurbojetMissionInput,
     RamjetInput,
@@ -218,6 +225,7 @@ def root() -> dict[str, Any]:
             "POST /emissions/turbojet/lto",
             "POST /optimize/turbojet",
             "POST /analyze/turbojet/sensitivity",
+            "POST /simulate/turbojet/transient",
             "POST /export/python",
             "GET /maps/compressor",
             "POST /simulate/turboprop",
@@ -580,6 +588,55 @@ def analyze_turbojet_sensitivity(
 
 
 # ---------------------------------------------------------------------------
+# Transient spool dynamics (throttle slam / chop)
+# ---------------------------------------------------------------------------
+
+
+@app.post("/simulate/turbojet/transient", response_model=TurbojetTransientOutput)
+def simulate_turbojet_transient(inputs: TurbojetTransientInput) -> TurbojetTransientOutput:
+    """Integrate the rotor-inertia spool ODE through a throttle step.
+
+    Calibrates the steady operating line from the deck, then marches the spool
+    speed (RK4) under a throttle that holds at idle and slams to the commanded
+    setting at ``slam_time_s``. The spool, and thrust with it, lags the fuel.
+    """
+
+    if inputs.slam_time_s >= inputs.total_time_s:
+        raise HTTPException(
+            status_code=400, detail="slam_time_s must be before total_time_s."
+        )
+    try:
+        ref = calibrate_spool_reference(
+            inputs.design.to_cycle_inputs(),
+            polar_moment_of_inertia_kg_m2=inputs.polar_moment_of_inertia_kg_m2,
+            design_spool_speed_rpm=inputs.design_spool_speed_rpm,
+            idle_throttle_fraction=inputs.idle_throttle_fraction,
+        )
+        schedule = step_throttle_schedule(
+            ref,
+            idle_fraction=inputs.idle_throttle_fraction,
+            command_fraction=inputs.command_throttle_fraction,
+            slam_time_s=inputs.slam_time_s,
+        )
+        result = simulate_spool_transient(
+            ref, schedule, total_time_s=inputs.total_time_s, dt_s=inputs.dt_s,
+        )
+    except CycleCalculationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    accel = inputs.command_throttle_fraction > inputs.idle_throttle_fraction
+    notes = [
+        "Bare rotor-inertia response (RK4 on I·Ω·dΩ/dt = P_turbine − P_compressor). "
+        "Real engines add a fuel-control acceleration schedule that limits spool-up "
+        "further to protect surge margin and turbine temperature.",
+        f"Spool time constant tau0 = {result['tau0_s']:.2f} s "
+        f"(from rotor inertia, design speed and design spool power).",
+    ]
+    if accel:
+        notes.append("Throttle slam (idle → command): watch thrust lag the fuel.")
+    return TurbojetTransientOutput(notes=notes, **result)
+
+
 # ---------------------------------------------------------------------------
 # Cloud-CFD job control plane (future / Pro — gated behind ENABLE_CFD)
 # ---------------------------------------------------------------------------

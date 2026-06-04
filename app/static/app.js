@@ -2911,6 +2911,124 @@ if (sensRunEl) sensRunEl.addEventListener("click", () => { runSensitivity(); });
 const sensMetricEl = document.getElementById("sensMetric");
 if (sensMetricEl) sensMetricEl.addEventListener("change", () => { runSensitivity(); });
 
+/* ---------------- Transient spool dynamics ----------------
+ * Slam the throttle and integrate the rotor equation of motion; the spool (and
+ * thrust) lag the fuel. Plots spool speed % and thrust against time, with the
+ * commanded-spool step shown dashed so the lag is visible. */
+let lastTransient = null;
+
+async function runTransient() {
+  const status = document.getElementById("trStatus");
+  const button = document.getElementById("trRun");
+  const num = (id, d) => { const v = Number(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  if (button) { button.disabled = true; button.textContent = "Running…"; }
+  if (status) status.textContent = "Calibrating the operating line and integrating the spool…";
+  try {
+    const idle = Math.min(Math.max(num("trIdle", 70) / 100, 0.4), 0.95);
+    const command = Math.min(Math.max(num("trCommand", 100) / 100, 0.4), 1.0);
+    const total = Math.min(Math.max(num("trTime", 8), 2), 30);
+    const out = await postJson("/simulate/turbojet/transient", {
+      design: readFormInput(),
+      polar_moment_of_inertia_kg_m2: Math.min(Math.max(num("trInertia", 20), 1), 200),
+      idle_throttle_fraction: idle,
+      command_throttle_fraction: command,
+      slam_time_s: Math.min(1.0, total * 0.1),
+      total_time_s: total,
+      dt_s: total > 16 ? 0.06 : 0.04,
+    });
+    lastTransient = out;
+    drawTransient(out);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const s = out.samples;
+    set("trTau", `${numberFormat(out.tau0_s, 2)} s`);
+    set("trSettle", out.settling_time_s == null ? "—" : `${numberFormat(out.settling_time_s, 2)} s`);
+    set("trIdleThrust", uval("thrust", s[0].thrust_kN, 2));
+    set("trFinalThrust", uval("thrust", s[s.length - 1].thrust_kN, 2));
+    if (status) status.textContent =
+      `Slam ${Math.round(idle * 100)}% → ${Math.round(command * 100)}% Tt₄. Spool τ₀ = ${numberFormat(out.tau0_s, 2)} s.`;
+  } catch (err) {
+    if (status) status.textContent = `Transient failed: ${err.message}`;
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "Run transient"; }
+  }
+}
+
+function drawTransient(out) {
+  const canvas = document.getElementById("transientCanvas");
+  if (!canvas) return;
+  const { context: ctx, width: W, height: H } = canvasScale(canvas);
+  ctx.clearRect(0, 0, W, H);
+  const s = out.samples || [];
+  if (s.length < 2) return;
+
+  const padL = 48, padR = 52, padT = 16, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const tMax = s[s.length - 1].t_s || 1;
+  // spool axis in %
+  const spoolVals = s.flatMap((p) => [p.spool_fraction, p.spool_target]);
+  let nMin = Math.min(...spoolVals), nMax = Math.max(...spoolVals);
+  nMin = Math.max(0, nMin - (nMax - nMin) * 0.12 - 0.02);
+  nMax = nMax + (nMax - nMin) * 0.05 + 0.01;
+  // thrust axis (converted)
+  const thr = s.map((p) => unitConvert("thrust", p.thrust_kN));
+  const thrMax = Math.max(...thr) * 1.12 || 1;
+
+  const X = (t) => padL + (t / tMax) * plotW;
+  const Yn = (n) => padT + plotH - ((n - nMin) / (nMax - nMin)) * plotH;
+  const Yt = (v) => padT + plotH - (v / thrMax) * plotH;
+
+  // grid + frame
+  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (plotH * i) / 4;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+  }
+
+  const line = (fn, color, dash) => {
+    ctx.beginPath();
+    ctx.setLineDash(dash || []);
+    s.forEach((p, i) => { const x = X(p.t_s), y = fn(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  // commanded spool (dashed grey), actual spool (blue), thrust (amber)
+  line((p) => Yn(p.spool_target), "rgba(180,186,196,0.5)", [5, 4]);
+  line((p) => Yn(p.spool_fraction), "#7ba7eb");
+  line((p) => Yt(unitConvert("thrust", p.thrust_kN)), "#f0883e");
+
+  // axes labels + ticks
+  ctx.fillStyle = "#8b9099"; ctx.font = "10px ui-monospace, monospace";
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i = 0; i <= 4; i++) {
+    const n = nMin + ((nMax - nMin) * (4 - i)) / 4;
+    ctx.fillText(`${Math.round(n * 100)}`, padL - 5, padT + (plotH * i) / 4);
+  }
+  ctx.textAlign = "left"; ctx.fillStyle = "rgba(240,136,62,0.9)";
+  for (let i = 0; i <= 4; i++) {
+    const v = (thrMax * (4 - i)) / 4;
+    ctx.fillText(`${numberFormat(v, 0)}`, W - padR + 5, padT + (plotH * i) / 4);
+  }
+  ctx.fillStyle = "#8b9099"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let i = 0; i <= 5; i++) {
+    const t = (tMax * i) / 5;
+    ctx.fillText(`${numberFormat(t, 1)}`, X(t), padT + plotH + 6);
+  }
+  ctx.font = "11px -apple-system, system-ui, sans-serif";
+  ctx.fillStyle = "#7ba7eb"; ctx.fillText("spool % N", padL + 30, 4);
+  ctx.fillStyle = "rgba(240,136,62,0.9)"; ctx.textAlign = "right";
+  ctx.fillText(`thrust ${unitLabel("thrust")}`, W - padR, 4);
+  ctx.fillStyle = "#8b9099"; ctx.textAlign = "center";
+  ctx.fillText("time (s)", padL + plotW / 2, H - 12);
+}
+
+function initTransient() {
+  if (!lastTransient) runTransient().catch(() => {});
+  else drawTransient(lastTransient);
+}
+
+const trRunEl = document.getElementById("trRun");
+if (trRunEl) trRunEl.addEventListener("click", () => { runTransient(); });
+
 $("#saveProfileButton").addEventListener("click", () => { saveCurrentProfile(); });
 $("#loadProfileButton").addEventListener("click", async () => {
   if (loadCustomProfile()) { await runSimulation(); await runSweep(); }
@@ -2994,6 +3112,7 @@ document.querySelectorAll(".tab-button").forEach((button) => {
     else if (tab === "mission") initMission();
     else if (tab === "compressormap") initCompressorMap();
     else if (tab === "sensitivity") initSensitivity();
+    else if (tab === "transient") initTransient();
   });
 });
 

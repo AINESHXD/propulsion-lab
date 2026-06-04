@@ -78,6 +78,16 @@
       ],
       where: "It tells you where to spend effort and where tolerances bite. If turbine temperature dominates the chart, that's the parameter to measure and control carefully; inputs with stubby bars barely matter. It's a local, one-at-a-time view, so it shows slope and sign near your operating point, not how inputs interact.",
     },
+    transient: {
+      title: "Transient spool dynamics",
+      what: "Steps the throttle and shows the engine catching up over time. Fuel and turbine temperature respond almost instantly, but the spinning spool has inertia, so its speed, and thrust, lag behind. It integrates the rotor equation of motion through the step.",
+      howto: [
+        "Set the idle and command throttle, and the rotor inertia.",
+        "Press Run transient to slam from idle to the command.",
+        "Read the gap between the dashed command and the blue spool line, that's the lag. Add inertia and it spools up slower.",
+      ],
+      where: "Throttle response is a real engine's manners: how fast it spools from idle to go-around thrust, whether it surges on a slam. This is why you can't get instant thrust. It's the bare inertial response; a real fuel controller ramps the throttle to protect surge margin, slowing it further.",
+    },
   };
 
   function injectStyles() {
