@@ -9,7 +9,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20260603-wm2" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20260603-units" />
   </head>
   <body>
 
@@ -47,6 +47,8 @@
       </div>
       <div class="mission-bar-right">
         <span id="apiStatus" class="status-pill">Linking</span>
+        <button class="mission-link unit-toggle" type="button" id="unitToggle"
+                title="Switch between SI and US customary units">Units: SI</button>
         <a class="mission-link" href="#" id="tutorialButton">Tutorial</a>
         <a class="mission-link" href="/lab/viewer3d.html">3D viewer</a>
         <a class="mission-link" href="/lab/mlsuite.html">ML suite</a>
@@ -484,12 +486,12 @@
                     <tr>
                       <th>Stn</th>
                       <th>Name</th>
-                      <th>Tt [K]</th>
-                      <th>Pt [kPa]</th>
-                      <th>Static T [K]</th>
-                      <th>Static P [kPa]</th>
+                      <th>Tt <span data-u="temp">[K]</span></th>
+                      <th>Pt <span data-u="press">[kPa]</span></th>
+                      <th>Static T <span data-u="temp">[K]</span></th>
+                      <th>Static P <span data-u="press">[kPa]</span></th>
                       <th>Mach</th>
-                      <th>V [m/s]</th>
+                      <th>V <span data-u="vel">[m/s]</span></th>
                       <th>Notes</th>
                     </tr>
                   </thead>
@@ -555,12 +557,12 @@
                     <tr>
                       <th>Stn</th>
                       <th>Name</th>
-                      <th>Tt [K]</th>
-                      <th>Pt [kPa]</th>
-                      <th>Static T [K]</th>
-                      <th>Static P [kPa]</th>
+                      <th>Tt <span data-u="temp">[K]</span></th>
+                      <th>Pt <span data-u="press">[kPa]</span></th>
+                      <th>Static T <span data-u="temp">[K]</span></th>
+                      <th>Static P <span data-u="press">[kPa]</span></th>
                       <th>Mach</th>
-                      <th>V [m/s]</th>
+                      <th>V <span data-u="vel">[m/s]</span></th>
                       <th>Notes</th>
                     </tr>
                   </thead>
