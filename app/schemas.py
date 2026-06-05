@@ -584,6 +584,8 @@ class OffDesignPointOutput(BaseModel):
     success: bool
     error: str | None = None
     converged: bool | None = None
+    iterations: int | None = None
+    work_residual_relative: float | None = None
     thrust_kN: float | None = None
     TSFC_kg_per_kN_hr: float | None = None
     overall_efficiency_estimate: float | None = None

@@ -3368,7 +3368,7 @@ boot();
 
 const offDesign = {
   engine: "turbojet",
-  throttles: [], thrust: [], tsfc: [], pr: [], converged: [],
+  throttles: [], thrust: [], tsfc: [], pr: [], converged: [], iterations: [], residual: [],
   min: 0, max: 1, ready: false,
 };
 
@@ -3434,6 +3434,8 @@ async function computeOffDesignEnvelope() {
     engine === "turbofan" ? p.overall_pressure_ratio : p.compressor_pressure_ratio,
   );
   offDesign.converged = ok.map((p) => p.converged);
+  offDesign.iterations = ok.map((p) => p.iterations);
+  offDesign.residual = ok.map((p) => p.work_residual_relative);
   offDesign.min = offDesign.throttles[0];
   offDesign.max = offDesign.throttles[offDesign.throttles.length - 1];
   offDesign.ready = true;
@@ -3460,11 +3462,14 @@ function interpOffDesign(t) {
   const j = Math.min(i + 1, xs.length - 1);
   const f = xs[j] > xs[i] ? (t - xs[i]) / (xs[j] - xs[i]) : 0;
   const lerp = (a) => a[i] + (a[j] - a[i]) * f;
+  const k = f < 0.5 ? i : j;
   return {
     thrust: lerp(offDesign.thrust),
     tsfc: lerp(offDesign.tsfc),
     pr: lerp(offDesign.pr),
-    converged: offDesign.converged[f < 0.5 ? i : j],
+    converged: offDesign.converged[k],
+    iterations: offDesign.iterations[k],
+    residual: offDesign.residual[k],
   };
 }
 
@@ -3477,7 +3482,13 @@ function updateOffDesignFromSlider() {
   $("#odThrust").textContent = uval("thrust", v.thrust, 2);
   $("#odTsfc").textContent = uval("tsfc", v.tsfc, 2);
   $("#odPr").textContent = numberFormat(v.pr, 2);
-  $("#odConverged").textContent = v.converged ? "Yes" : ", ";
+  $("#odConverged").textContent = v.converged ? "Yes" : "No";
+  const odDiag = $("#odDiag");
+  if (odDiag) {
+    const its = Number.isFinite(v.iterations) ? `${v.iterations} it` : "—";
+    const res = Number.isFinite(v.residual) ? v.residual.toExponential(1) : "—";
+    odDiag.textContent = `${its} · res ${res}`;
+  }
   drawOffDesignChart(t);
 }
 

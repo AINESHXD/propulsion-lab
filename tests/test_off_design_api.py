@@ -142,3 +142,22 @@ def test_off_design_envelope_point_cap_enforced() -> None:
             TurbojetOffDesignInput(design=TurbojetInput(), grid=grid)
         )
     assert exc.value.status_code == 400
+
+
+def test_off_design_points_carry_solver_diagnostics() -> None:
+    """The matched points surface iterations + the work residual for the UI."""
+    from app.main import simulate_turbojet_off_design
+    from app.schemas import OffDesignGridInput, TurbojetInput, TurbojetOffDesignInput
+
+    out = simulate_turbojet_off_design(
+        TurbojetOffDesignInput(
+            design=TurbojetInput(),
+            grid=OffDesignGridInput(throttles_K=[1300.0, 1400.0, 1500.0]),
+        )
+    )
+    ok = [p for p in out.points if p.success]
+    assert ok, "expected matched points"
+    for p in ok:
+        assert p.iterations is not None and p.iterations >= 1
+        assert p.work_residual_relative is not None
+        assert p.work_residual_relative < 1e-3  # the matcher drives it to ~0

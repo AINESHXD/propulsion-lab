@@ -979,12 +979,21 @@ def _off_design_point_output(
     """Project a solver result dict onto the envelope point schema."""
 
     off = result.get("off_design", {})
+    # Surface a single representative work residual: the turbojet reports one, the
+    # two-spool turbofan reports an HP and an LP residual (take the larger).
+    work_res = off.get("work_residual_relative")
+    if work_res is None:
+        spool_res = [off.get("hp_work_residual_relative"), off.get("lp_work_residual_relative")]
+        spool_res = [r for r in spool_res if r is not None]
+        work_res = max(spool_res) if spool_res else None
     return OffDesignPointOutput(
         altitude_m=altitude_m,
         mach=mach,
         turbine_inlet_temperature_K=throttle_K,
         success=True,
         converged=off.get("converged"),
+        iterations=off.get("iterations"),
+        work_residual_relative=work_res,
         thrust_kN=result.get("thrust_kN"),
         TSFC_kg_per_kN_hr=result.get("TSFC_kg_per_kN_hr"),
         overall_efficiency_estimate=result.get("overall_efficiency_estimate"),
