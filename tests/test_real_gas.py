@@ -179,6 +179,86 @@ def test_turbine_drop_gap_grows_with_inlet_temperature() -> None:
     assert gap(1700.0) > gap(1300.0) > 0.0
 
 
+# ---------------------------------------------------------------------------
+# Whole-cycle real gas — cold side (compressor) + the real_gas_cycle block
+# ---------------------------------------------------------------------------
+
+from app.engine_core.real_gas import (  # noqa: E402
+    compressor_exit_temperature_real_gas,
+)
+
+
+@cantera_only
+def test_compressor_real_gas_cooler_than_constant_cp() -> None:
+    """Variable-cp air (cp rises with T) gives a slightly smaller compressor
+    temperature rise than the constant-cp model for the same PR and efficiency."""
+
+    inlet_T, inlet_P, pr, eta = 280.0, 4.0e4, 12.0, 0.86
+    rg = compressor_exit_temperature_real_gas(inlet_T, inlet_P, pr, eta)
+    # constant-cp deck exit T for the same inputs
+    from app.engine_core.constants import gamma_air
+    ratio = pr ** ((gamma_air - 1.0) / gamma_air)
+    cc_exit = inlet_T + (inlet_T * ratio - inlet_T) / eta
+    assert rg.source == "cantera"
+    assert rg.exit_temperature_K < cc_exit          # real gas a touch cooler
+    assert (cc_exit - rg.exit_temperature_K) < 30.0  # but only modestly
+    assert 1004.0 < rg.cp_mean_J_per_kg_K < 1120.0   # physical mean cp band
+
+
+@cantera_only
+def test_real_gas_cycle_block_spans_cold_and_hot() -> None:
+    """The real_gas toggle attaches a whole-cycle block: compressor (cooler),
+    turbine and nozzle (hotter), each paired against the constant-cp deck."""
+
+    base = dict(altitude_m=10000.0, mach=0.8, compressor_pressure_ratio=12.0,
+                turbine_inlet_temperature_K=1500.0)
+    off = simulate_turbojet_cycle(TurbojetCycleInputs(real_gas=False, **base))
+    on = simulate_turbojet_cycle(TurbojetCycleInputs(real_gas=True, **base))
+
+    assert off["real_gas_cycle"] is None
+    rg = on["real_gas_cycle"]
+    assert rg is not None and "error" not in rg and rg["source"] == "cantera"
+    by_station = {s["station"]: s for s in rg["stations"]}
+    assert set(by_station) == {3, 5, 9}
+    # Compressor (3) real gas cooler; turbine (5) and nozzle (9) hotter.
+    assert by_station[3]["delta_K"] < 0.0
+    assert by_station[5]["delta_K"] > 0.0
+    assert by_station[9]["delta_K"] > 0.0
+    # Constant-cp columns equal the actual deck station values.
+    assert by_station[3]["constant_cp_K"] == pytest.approx(
+        off["station_table"][3]["stagnation_temperature_K"]
+    )
+    assert by_station[5]["constant_cp_K"] == pytest.approx(
+        off["station_table"][5]["stagnation_temperature_K"]
+    )
+    # The toggle does not perturb the core constant-cp deck.
+    for st in (3, 5):
+        assert on["station_table"][st]["stagnation_temperature_K"] == pytest.approx(
+            off["station_table"][st]["stagnation_temperature_K"]
+        )
+    assert on["thrust_N"] == pytest.approx(off["thrust_N"])
+
+
+def test_real_gas_cycle_default_off() -> None:
+    """No toggle -> no whole-cycle block (backward compatible)."""
+
+    result = simulate_turbojet_cycle(TurbojetCycleInputs(turbine_inlet_temperature_K=1500.0))
+    assert result["real_gas_cycle"] is None
+
+
+def test_compressor_real_gas_fallback_matches_constant_cp(monkeypatch) -> None:
+    """With Cantera off, the compressor real-gas walk reduces to constant-cp."""
+
+    monkeypatch.setattr(gas_service, "_CANTERA_AVAILABLE", False)
+    from app.engine_core.constants import gamma_air
+    inlet_T, inlet_P, pr, eta = 288.0, 1.0e5, 10.0, 0.88
+    rg = compressor_exit_temperature_real_gas(inlet_T, inlet_P, pr, eta)
+    ratio = pr ** ((gamma_air - 1.0) / gamma_air)
+    cc_exit = inlet_T + (inlet_T * ratio - inlet_T) / eta
+    assert rg.source == "constant-cp"
+    assert rg.exit_temperature_K == pytest.approx(cc_exit, rel=1e-9)
+
+
 @cantera_only
 def test_hot_section_nozzle_cools_and_accelerates() -> None:
     """Gas cools monotonically through HPT, LPT and the nozzle, and leaves with

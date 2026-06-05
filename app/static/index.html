@@ -9,7 +9,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20260603-tjtag" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20260605-realgas" />
   </head>
   <body>
 
@@ -429,6 +429,10 @@
                   <input name="use_inlet_area_mass_flow" type="checkbox" />
                   Estimate ṁ from inlet area
                 </label>
+                <label class="checkbox-line" title="Recompute compressor, turbine and nozzle temperatures with temperature-dependent (Cantera) gas properties, alongside the constant-cp deck.">
+                  <input name="real_gas" type="checkbox" />
+                  Real-gas cycle (variable cp)
+                </label>
                 <button type="submit" class="primary-button" id="runSimulationButton">Run cycle</button>
               </div>
             </form>
@@ -474,6 +478,13 @@
                   <button type="button" id="ltoButton" class="ghost-button">Estimate ICAO LTO NOx →</button>
                 </div>
                 <div id="ltoResult" class="table-wrap" hidden></div>
+              </section>
+
+              <!-- Real-gas whole-cycle comparison (variable-cp via Cantera). -->
+              <section class="insights-panel" id="realGasPanel" aria-labelledby="realGasHeading" hidden>
+                <p id="realGasHeading" class="insight-heading">REAL-GAS CYCLE · VARIABLE c<sub>p</sub> vs CONSTANT-c<sub>p</sub></p>
+                <div id="realGasBody" class="table-wrap"></div>
+                <p id="realGasNote" class="insight-sub"></p>
               </section>
 
               <div class="visual-row">
@@ -646,7 +657,7 @@
               <li>Educational, preliminary-performance analysis. Not certified design software.</li>
               <li>Compressor/turbine maps are synthetic illustrative characteristics sized to the design point, not measured manufacturer data.</li>
               <li>Transient spool dynamics is the bare rotor-inertia response (turbojet single-spool, turbofan two-spool); no fuel-control acceleration schedule.</li>
-              <li>Equilibrium chemistry is an optional Cantera hot-section correction; the rest of the cycle stays constant-cp. No blade-row CFD.</li>
+              <li>Real-gas chemistry is an optional Cantera correction across the whole cycle (variable-cp compressor, turbine and nozzle), reported beside the constant-cp deck. Default and core table stay constant-cp. No blade-row CFD.</li>
               <li>Inlet capture-area mass flow is a first-order ρ·V·A estimate; no distortion or boundary-layer model.</li>
             </ul>
           </section>
@@ -1433,7 +1444,7 @@
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260603-tft"></script>
+    <script src="/lab/app.js?v=20260605-realgas"></script>
     <script src="/lab/tour.js?v=20260603-dedash"></script>
     <script src="/lab/help.js?v=20260603-trans"></script>
     <script src="/lab/casestudies.js?v=20260603-dedash"></script>

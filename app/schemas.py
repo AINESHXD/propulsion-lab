@@ -80,10 +80,14 @@ class TurbojetInput(BaseModel):
     real_gas: bool = Field(
         default=False,
         description=(
-            "Attach a real-gas (variable-cp) hot-section correction to the "
-            "result: turbine-exit and nozzle-exit temperatures recomputed with "
-            "temperature-dependent burned-gas properties via Cantera. The core "
-            "cycle stays constant-cp; this adds a `real_gas_hot_section` block."
+            "Attach a real-gas (variable-cp) whole-cycle correction to the "
+            "result: compressor-exit (cold side) plus turbine-exit and "
+            "nozzle-exit (hot side) temperatures recomputed with "
+            "temperature-dependent gas properties via Cantera, for the same "
+            "component work and pressure ratios. The core cycle stays "
+            "constant-cp; this adds a `real_gas_cycle` block (and retains "
+            "`real_gas_hot_section`). Degrades to constant-cp when Cantera "
+            "is unavailable."
         ),
     )
 
@@ -177,6 +181,7 @@ class TurbojetOutput(BaseModel):
     hpt_inlet_stagnation_temperature_K: float | None = None
     station_table: dict[int, StationData]
     real_gas_hot_section: dict[str, Any] | None = None
+    real_gas_cycle: dict[str, Any] | None = None
     warnings: list[str]
 
 

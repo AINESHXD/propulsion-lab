@@ -344,6 +344,39 @@ def isentropic_exit_temperature(
     return float(gas.T)
 
 
+def air_isentropic_exit_temperature(
+    inlet_temperature_K: float,
+    inlet_pressure_Pa: float,
+    exit_pressure_Pa: float,
+) -> float:
+    """Isentropic exit temperature for dry air taken from inlet to exit pressure.
+
+    Real-gas (variable cp/gamma) via Cantera: hold entropy constant from the
+    inlet air state to the exit pressure, composition frozen (air does not react
+    in the cold section). This is the cold-side counterpart of
+    :func:`isentropic_exit_temperature`, used for the variable-cp compressor
+    walk. Falls back to the constant-gamma isentropic relation when Cantera is
+    unavailable, so it reduces exactly to the educational model.
+    """
+
+    if exit_pressure_Pa <= 0.0 or inlet_pressure_Pa <= 0.0:
+        raise ValueError("Pressures must be positive.")
+    if inlet_temperature_K <= 0.0:
+        raise ValueError("Temperature must be positive.")
+
+    if not _CANTERA_AVAILABLE:
+        return inlet_temperature_K * (
+            exit_pressure_Pa / inlet_pressure_Pa
+        ) ** ((gamma_air - 1.0) / gamma_air)
+
+    gas = _solution()
+    gas.TPX = inlet_temperature_K, inlet_pressure_Pa, "O2:0.21, N2:0.79"
+    entropy = float(gas.entropy_mass)
+    # Composition is held (no equilibration): SP keeps the frozen air mixture.
+    gas.SP = entropy, exit_pressure_Pa
+    return float(gas.T)
+
+
 def adiabatic_flame_temperature(
     inlet_temperature_K: float,
     pressure_Pa: float,

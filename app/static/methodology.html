@@ -35,8 +35,9 @@
         pressure. There is no spatial flow field, no blade-row geometry, no swirl.</p>
       <p><strong>Perfect gas with constant specific heats by region.</strong> The working fluid is air,
         then combustion products, each with a fixed cp and gamma (a cold-side and a hot-side value). An
-        optional Cantera-backed real-gas correction is available for the hot section, but the default is
-        constant-cp.</p>
+        optional Cantera-backed real-gas correction recomputes the whole cycle — compressor, turbine and
+        nozzle — with temperature-dependent (variable-cp) properties and reports it side by side with the
+        constant-cp deck; the default, and the core station table, stay constant-cp.</p>
       <p><strong>Isentropic processes with component efficiencies.</strong> Compression and expansion are
         reversible-adiabatic, scaled by an isentropic efficiency you set; the combustor adds heat with an
         efficiency and a pressure loss. These are the standard preliminary-design idealisations.</p>

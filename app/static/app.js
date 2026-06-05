@@ -34,6 +34,7 @@ const defaultInput = {
   afterburner_exit_temperature_K: null,
   afterburner_efficiency: 0.95,
   afterburner_pressure_loss_fraction: 0.06,
+  real_gas: false,
 };
 
 const engineLabels = {
@@ -360,6 +361,7 @@ function rerenderUnits() {
     updateMetrics(lastResult);
     updateNozzlePanel(lastResult);
     updateStationTable(lastResult.station_table);
+    updateRealGasPanel(lastResult);
   } else {
     updateAdvancedMetrics(lastResult);
     if (typeof advancedStationTableBody !== "undefined" && advancedStationTableBody) {
@@ -2160,8 +2162,68 @@ async function runSimulation() {
   updateHeroTelemetry(result, inputs);
   updateCycleInsights(result, inputs);
   updateEmissions(result);
+  updateRealGasPanel(result);
   $("#caseLabel").textContent = "Latest run";
   return result;
+}
+
+/* ---------------- Real-gas whole-cycle comparison ----------------
+ * When the run was made with the real-gas toggle on, show the variable-cp
+ * (Cantera) compressor / turbine / nozzle temperatures next to the constant-cp
+ * deck, with the per-station delta. The panel stays hidden otherwise. */
+function updateRealGasPanel(result) {
+  const panel = document.getElementById("realGasPanel");
+  const body = document.getElementById("realGasBody");
+  const note = document.getElementById("realGasNote");
+  if (!panel || !body) return;
+  const rg = result?.real_gas_cycle;
+  if (!rg || rg.error || !Array.isArray(rg.stations)) {
+    panel.hidden = true;
+    if (rg && rg.error && note) {
+      panel.hidden = false;
+      body.innerHTML = "";
+      note.textContent = `Real-gas correction unavailable: ${rg.error}`;
+    }
+    return;
+  }
+  panel.hidden = false;
+  const u = unitLabel("temp");
+  const rows = rg.stations
+    .map((s) => {
+      const sign = s.delta_K >= 0 ? "+" : "−";
+      const cls = s.delta_K >= 0 ? "delta-up" : "delta-down";
+      const dMag = numberFormat(Math.abs(unitConvert("temp", s.delta_K)), 1);
+      return `<tr>
+        <td>${s.station}</td>
+        <td>${s.label}</td>
+        <td>${unum("temp", s.constant_cp_K, 1)}</td>
+        <td>${unum("temp", s.real_gas_K, 1)}</td>
+        <td class="${cls}">${sign}${dMag}</td>
+        <td class="${cls}">${sign}${numberFormat(Math.abs(s.delta_pct), 2)}%</td>
+      </tr>`;
+    })
+    .join("");
+  body.innerHTML = `<table>
+      <thead><tr>
+        <th>Stn</th><th>Station</th>
+        <th>Const-c<sub>p</sub> [${u}]</th>
+        <th>Real-gas [${u}]</th>
+        <th>Δ [${u}]</th><th>Δ%</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  const src = rg.source === "cantera"
+    ? "Variable-cₚ properties from Cantera (frozen burned-gas composition through the hot section)."
+    : "Cantera not installed — values fell back to the constant-cₚ model, so the columns match.";
+  const cpMean = rg.compressor_cp_mean_J_per_kg_K;
+  const cpTxt = Number.isFinite(cpMean)
+    ? ` Mean compressor cₚ ≈ ${numberFormat(cpMean, 0)} J/kg·K.`
+    : "";
+  if (note) {
+    note.textContent =
+      `${src}${cpTxt} The core station table above is unchanged — this is an additive, ` +
+      `side-by-side correction for the same component work and pressure ratios.`;
+  }
 }
 
 /* ---------------- Reactor-network combustor emissions ----------------

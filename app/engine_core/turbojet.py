@@ -15,7 +15,10 @@ from app.engine_core.secondary_air import apply_bleed_and_cooling
 from app.engine_core.inlet import calculate_freestream_state, calculate_inlet_exit
 from app.engine_core.nozzle import calculate_nozzle_exit
 from app.engine_core.performance import compute_turbojet_performance
-from app.engine_core.real_gas import hot_section_temperatures
+from app.engine_core.real_gas import (
+    compressor_exit_temperature_real_gas,
+    hot_section_temperatures,
+)
 from app.engine_core.turbine import calculate_turbine_exit
 from app.engine_core.types import CycleCalculationError, StationState, TurbojetCycleInputs
 
@@ -257,18 +260,28 @@ def simulate_turbojet_cycle(inputs: TurbojetCycleInputs) -> dict[str, Any]:
         station_states.append(afterburner_state)
     station_states.append(nozzle.state)
 
-    # ---- Optional real-gas hot-section correction (Day 19) ----------------
-    # Recompute turbine-exit and nozzle-exit temperatures with variable-cp
-    # burned-gas properties for the *same* turbine work. Additive and default
-    # off; the core constant-cp station table above is unchanged. The dry
+    # ---- Optional real-gas whole-cycle correction (Day 19 + cold side) -----
+    # Recompute compressor-exit (cold side), turbine-exit and nozzle-exit (hot
+    # side) temperatures with variable-cp properties for the *same* component
+    # work and pressure ratios. Additive and default off; the core constant-cp
+    # station table above is unchanged. ``real_gas_hot_section`` is retained for
+    # backward compatibility; ``real_gas_cycle`` is the whole-cycle, station-by-
+    # station comparison (cold + hot) against the constant-cp deck. The dry
     # turbojet has a single turbine, so all the work is "HPT" and LPT work is 0.
     real_gas_hot_section: dict[str, Any] | None = None
+    real_gas_cycle: dict[str, Any] | None = None
     if getattr(inputs, "real_gas", False) and inputs.engine_variant == "turbojet" \
             and core_fuel_air_ratio > 0.0:
         turbine_specific_work = compressor_specific_work / (
             secondary.gas_mass_flow_ratio * inputs.mechanical_efficiency
         )
         try:
+            comp_rg = compressor_exit_temperature_real_gas(
+                inlet_temperature_K=inlet.state.stagnation_temperature_K,
+                inlet_pressure_Pa=inlet.state.stagnation_pressure_Pa,
+                pressure_ratio=inputs.compressor_pressure_ratio,
+                compressor_efficiency=inputs.compressor_efficiency,
+            )
             hot = hot_section_temperatures(
                 turbine_inlet_temperature_K=secondary.turbine_inlet_state.stagnation_temperature_K,
                 turbine_inlet_pressure_Pa=combustor.state.stagnation_pressure_Pa,
@@ -288,8 +301,51 @@ def simulate_turbojet_cycle(inputs: TurbojetCycleInputs) -> dict[str, Any]:
                 "constant_cp_turbine_exit_temperature_K": turbine.state.stagnation_temperature_K,
                 "source": hot.source,
             }
+            constant_cp_nozzle_static_K = nozzle.state.static_temperature_K
+            stations = [
+                {
+                    "station": 3,
+                    "label": "Compressor exit",
+                    "real_gas_K": comp_rg.exit_temperature_K,
+                    "constant_cp_K": compressor.state.stagnation_temperature_K,
+                },
+                {
+                    "station": 5,
+                    "label": "Turbine exit",
+                    "real_gas_K": hot.hpt_exit_temperature_K,
+                    "constant_cp_K": turbine.state.stagnation_temperature_K,
+                },
+            ]
+            if constant_cp_nozzle_static_K is not None:
+                stations.append(
+                    {
+                        "station": 9,
+                        "label": "Nozzle exit (static)",
+                        "real_gas_K": hot.nozzle_exit_static_temperature_K,
+                        "constant_cp_K": constant_cp_nozzle_static_K,
+                    }
+                )
+            for entry in stations:
+                base = entry["constant_cp_K"]
+                entry["delta_K"] = entry["real_gas_K"] - base
+                entry["delta_pct"] = (
+                    100.0 * entry["delta_K"] / base if base else 0.0
+                )
+            real_gas_cycle = {
+                "source": hot.source,
+                "mode": "frozen",
+                "compressor_exit_temperature_K": comp_rg.exit_temperature_K,
+                "constant_cp_compressor_exit_temperature_K": compressor.state.stagnation_temperature_K,
+                "compressor_cp_mean_J_per_kg_K": comp_rg.cp_mean_J_per_kg_K,
+                "turbine_exit_temperature_K": hot.hpt_exit_temperature_K,
+                "constant_cp_turbine_exit_temperature_K": turbine.state.stagnation_temperature_K,
+                "nozzle_exit_static_temperature_K": hot.nozzle_exit_static_temperature_K,
+                "constant_cp_nozzle_exit_static_temperature_K": constant_cp_nozzle_static_K,
+                "stations": stations,
+            }
         except Exception as exc:  # pragma: no cover - defensive, never break the run
             real_gas_hot_section = {"error": str(exc)}
+            real_gas_cycle = {"error": str(exc)}
 
     return {
         **performance,
@@ -317,5 +373,6 @@ def simulate_turbojet_cycle(inputs: TurbojetCycleInputs) -> dict[str, Any]:
         "nozzle_expansion_status": str(nozzle.metadata["nozzle_expansion_status"]),
         "station_table": _station_table(*station_states),
         "real_gas_hot_section": real_gas_hot_section,
+        "real_gas_cycle": real_gas_cycle,
         "warnings": warnings,
     }
