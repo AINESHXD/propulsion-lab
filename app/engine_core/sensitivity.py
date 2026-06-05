@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+from app.engine_core.advanced_cycles import simulate_turbofan_cycle
 from app.engine_core.turbojet import simulate_turbojet_cycle
 from app.engine_core.types import CycleCalculationError, TurbojetCycleInputs
 
@@ -34,6 +35,22 @@ SENSITIVITY_PARAMS: list[tuple[str, str, bool]] = [
     ("inlet_pressure_recovery", "Inlet recovery", True),
 ]
 
+# Two-spool separate-flow turbofan. Same idea, different design variables.
+TURBOFAN_SENSITIVITY_PARAMS: list[tuple[str, str, bool]] = [
+    ("turbine_inlet_temperature_K", "Turbine inlet T", False),
+    ("bypass_ratio", "Bypass ratio", False),
+    ("fan_pressure_ratio", "Fan PR", False),
+    ("core_compressor_pressure_ratio", "Core PR", False),
+    ("total_mass_flow_air_kg_s", "Air mass flow", False),
+    ("mach", "Flight Mach", False),
+    ("altitude_m", "Altitude", False),
+    ("fan_efficiency", "Fan η", True),
+    ("compressor_efficiency", "Compressor η", True),
+    ("hp_turbine_efficiency", "HP turbine η", True),
+    ("lp_turbine_efficiency", "LP turbine η", True),
+    ("combustor_efficiency", "Combustor η", True),
+]
+
 METRIC_LABELS: dict[str, str] = {
     "thrust_kN": "Thrust",
     "TSFC_kg_per_kN_hr": "TSFC",
@@ -42,13 +59,14 @@ METRIC_LABELS: dict[str, str] = {
 }
 
 
-def turbojet_sensitivity(
-    base_inputs: TurbojetCycleInputs,
-    metric: str = "thrust_kN",
-    delta_fraction: float = 0.1,
-    params: list[tuple[str, str, bool]] | None = None,
+def _sensitivity(
+    base_inputs: Any,
+    simulate_fn: Any,
+    params: list[tuple[str, str, bool]],
+    metric: str,
+    delta_fraction: float,
 ) -> dict[str, Any]:
-    """Return a sorted tornado-chart payload for the turbojet cycle.
+    """Engine-agnostic one-at-a-time sensitivity (tornado) over ``params``.
 
     Each row carries the input's low/high perturbed values and the resulting
     change in ``metric`` relative to the baseline run. A perturbation that drives
@@ -61,16 +79,16 @@ def turbojet_sensitivity(
     if not 0.0 < delta_fraction < 0.9:
         raise ValueError("delta_fraction must be between 0 and 0.9.")
 
-    base_metric = float(simulate_turbojet_cycle(base_inputs)[metric])
+    base_metric = float(simulate_fn(base_inputs)[metric])
 
     def run(field: str, value: float) -> float | None:
         try:
-            return float(simulate_turbojet_cycle(replace(base_inputs, **{field: value}))[metric])
+            return float(simulate_fn(replace(base_inputs, **{field: value}))[metric])
         except CycleCalculationError:
             return None
 
     rows: list[dict[str, Any]] = []
-    for field, label, is_fraction in (params or SENSITIVITY_PARAMS):
+    for field, label, is_fraction in params:
         base_val = getattr(base_inputs, field, None)
         if base_val is None or base_val == 0:
             continue  # nothing to scale (e.g. sea-level Mach 0); skip cleanly
@@ -105,3 +123,29 @@ def turbojet_sensitivity(
         "delta_fraction": delta_fraction,
         "rows": rows,
     }
+
+
+def turbojet_sensitivity(
+    base_inputs: TurbojetCycleInputs,
+    metric: str = "thrust_kN",
+    delta_fraction: float = 0.1,
+    params: list[tuple[str, str, bool]] | None = None,
+) -> dict[str, Any]:
+    """Tornado-chart sensitivity payload for the turbojet cycle."""
+
+    return _sensitivity(
+        base_inputs, simulate_turbojet_cycle, params or SENSITIVITY_PARAMS, metric, delta_fraction
+    )
+
+
+def turbofan_sensitivity(
+    base_inputs: Any,
+    metric: str = "thrust_kN",
+    delta_fraction: float = 0.1,
+    params: list[tuple[str, str, bool]] | None = None,
+) -> dict[str, Any]:
+    """Tornado-chart sensitivity payload for the separate-flow turbofan cycle."""
+
+    return _sensitivity(
+        base_inputs, simulate_turbofan_cycle, params or TURBOFAN_SENSITIVITY_PARAMS, metric, delta_fraction
+    )

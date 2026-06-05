@@ -892,6 +892,30 @@ class TurbojetSensitivityOutput(BaseModel):
     rows: list[SensitivityRow]
 
 
+class TurbofanSensitivityInput(BaseModel):
+    """Turbofan deck + which output metric to rank the design inputs against."""
+
+    design: TurbofanInput = Field(default_factory=TurbofanInput)
+    metric: str = "thrust_kN"
+    delta_fraction: float = Field(0.1, gt=0.0, lt=0.9)
+
+
+class TurbofanOptimizeInput(BaseModel):
+    """NSGA-II design optimisation of the separate-flow turbofan."""
+
+    design: TurbofanInput = Field(default_factory=TurbofanInput)
+    objectives: list[str] = Field(default_factory=lambda: ["tsfc", "specific_thrust"])
+    bpr_min: float = Field(1.0, ge=0.5, le=20.0)
+    bpr_max: float = Field(14.0, ge=0.5, le=20.0)
+    fpr_min: float = Field(1.2, ge=1.05, le=3.0)
+    fpr_max: float = Field(2.2, ge=1.05, le=3.0)
+    tt3_max_K: float = Field(950.0, ge=400.0, le=1400.0)
+    thrust_min_kN: float = Field(20.0, ge=0.0, le=500.0)
+    population_size: int = Field(40, ge=8, le=120)
+    generations: int = Field(40, ge=5, le=120)
+    seed: int = 0
+
+
 # ---------------------------------------------------------------------------
 # Transient spool dynamics (throttle slam / chop)
 # ---------------------------------------------------------------------------

@@ -2239,11 +2239,17 @@ async function runOptimization() {
   const status = document.getElementById("optStatus");
   const button = document.getElementById("optRun");
   const num = (id, d) => { const v = Number(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  const isFan = selectedEngine === "turbofan";
+  if (selectedEngine !== "turbojet" && !isFan) {
+    if (status) status.textContent =
+      "Design optimisation runs on the turbojet or turbofan. Select one on the Cycle tab.";
+    return;
+  }
   if (button) { button.disabled = true; button.textContent = "Optimizing…"; }
   if (status) status.textContent = "Running NSGA-II… (this evaluates the cycle thousands of times)";
   try {
-    const out = await postJson("/optimize/turbojet", {
-      design: readFormInput(),
+    const out = await postJson(isFan ? "/optimize/turbofan" : "/optimize/turbojet", {
+      design: isFan ? readAdvancedInput() : readFormInput(),
       tt3_max_K: num("optTt3Max", 950),
       population_size: Math.round(num("optPop", 40)),
       generations: Math.round(num("optGen", 40)),
@@ -2835,11 +2841,17 @@ async function runSensitivity() {
   const button = document.getElementById("sensRun");
   const metric = document.getElementById("sensMetric")?.value || "thrust_kN";
   const pct = Number(document.getElementById("sensDelta")?.value) || 10;
+  const isFan = selectedEngine === "turbofan";
+  if (selectedEngine !== "turbojet" && !isFan) {
+    if (status) status.textContent =
+      "Sensitivity runs on the turbojet or turbofan. Select one on the Cycle tab.";
+    return;
+  }
   if (button) { button.disabled = true; button.textContent = "Running…"; }
   if (status) status.textContent = "Perturbing each input…";
   try {
-    const out = await postJson("/analyze/turbojet/sensitivity", {
-      design: readFormInput(),
+    const out = await postJson(isFan ? "/analyze/turbofan/sensitivity" : "/analyze/turbojet/sensitivity", {
+      design: isFan ? readAdvancedInput() : readFormInput(),
       metric,
       delta_fraction: Math.min(Math.max(pct / 100, 0.01), 0.5),
     });
