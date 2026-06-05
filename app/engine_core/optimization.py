@@ -38,6 +38,7 @@ from typing import Any, Callable, Protocol
 
 import numpy as np
 
+from app.engine_core.turbofan import TurbofanCycleInputs, simulate_turbofan_cycle
 from app.engine_core.turbojet import simulate_turbojet_cycle
 from app.engine_core.types import CycleCalculationError, TurbojetCycleInputs
 
@@ -386,6 +387,69 @@ class TurbojetDesignProblem:
             far - self.far_max,              # rich limit
         ]
         assert len(G) == _N_CONSTRAINTS
+        return F, [float(g) for g in G]
+
+    def evaluate(self, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        F_rows, G_rows = [], []
+        for row in X:
+            F, G = self._evaluate_one(float(row[0]), float(row[1]))
+            F_rows.append(F)
+            G_rows.append(G)
+        return np.asarray(F_rows, float), np.asarray(G_rows, float)
+
+
+_N_CONSTRAINTS_TURBOFAN = 2  # Tt3 cap, thrust floor
+
+
+@dataclass
+class TurbofanDesignProblem:
+    """Design-variable optimisation of the separate-flow turbofan cycle.
+
+    Decision variables are the bypass ratio and the fan pressure ratio, the two
+    knobs that set the propulsive/thermal-efficiency split; the flight condition
+    and everything else come from ``base``. Objectives default to (minimise TSFC,
+    maximise specific thrust) — high bypass cuts TSFC but also specific thrust, so
+    the front is the classic fan trade. Constraints cap the compressor-exit
+    temperature and hold thrust above a floor.
+    """
+
+    base: TurbofanCycleInputs
+    bpr_bounds: tuple[float, float] = (1.0, 14.0)
+    fpr_bounds: tuple[float, float] = (1.2, 2.2)
+    objectives: tuple[str, ...] = ("tsfc", "specific_thrust")
+    tt3_max_K: float = 950.0
+    thrust_min_kN: float = 20.0
+    objective_labels: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        for name in self.objectives:
+            if name not in _OBJECTIVES:
+                raise ValueError(f"Unknown objective: {name!r}")
+        self.objective_labels = [_OBJECTIVES[n][0] for n in self.objectives]
+
+    @property
+    def xl(self) -> np.ndarray:
+        return np.array([self.bpr_bounds[0], self.fpr_bounds[0]])
+
+    @property
+    def xu(self) -> np.ndarray:
+        return np.array([self.bpr_bounds[1], self.fpr_bounds[1]])
+
+    def _evaluate_one(self, bpr: float, fpr: float) -> tuple[list[float], list[float]]:
+        inputs = replace(self.base, bypass_ratio=bpr, fan_pressure_ratio=fpr)
+        try:
+            r = simulate_turbofan_cycle(inputs)
+        except CycleCalculationError:
+            big = [1.0e6] * len(self.objectives)
+            return big, [1.0e3] * _N_CONSTRAINTS_TURBOFAN
+        F = [_OBJECTIVES[name][1](r) for name in self.objectives]
+        tt3 = float(r["station_table"][3]["stagnation_temperature_K"])
+        thrust_kN = float(r["thrust_kN"])
+        G = [
+            tt3 - self.tt3_max_K,              # material temperature limit
+            self.thrust_min_kN - thrust_kN,    # thrust floor
+        ]
+        assert len(G) == _N_CONSTRAINTS_TURBOFAN
         return F, [float(g) for g in G]
 
     def evaluate(self, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

@@ -80,3 +80,36 @@ def test_all_default_params_are_known_metrics_and_fields() -> None:
     base = _base()
     for field, _label, _frac in SENSITIVITY_PARAMS:
         assert hasattr(base, field), f"unknown field {field}"
+
+
+# ---------------------------------------------------------------------------
+# Turbofan sensitivity (same machinery, turbofan design variables)
+# ---------------------------------------------------------------------------
+
+from app.engine_core.sensitivity import TURBOFAN_SENSITIVITY_PARAMS, turbofan_sensitivity  # noqa: E402
+from app.engine_core.turbofan import TurbofanCycleInputs  # noqa: E402
+
+
+def test_turbofan_sensitivity_ranks_and_is_sorted() -> None:
+    out = turbofan_sensitivity(TurbofanCycleInputs(), metric="thrust_kN")
+    swings = [r["swing"] for r in out["rows"]]
+    assert swings == sorted(swings, reverse=True)
+    assert all(s >= 0 for s in swings)
+    # turbine temperature and airflow should be among the top thrust movers
+    top = [r["parameter"] for r in out["rows"][:3]]
+    assert "turbine_inlet_temperature_K" in top
+    assert "total_mass_flow_air_kg_s" in top
+
+
+def test_turbofan_bypass_drives_tsfc() -> None:
+    out = turbofan_sensitivity(TurbofanCycleInputs(), metric="TSFC_kg_per_kN_hr")
+    bpr = next(r for r in out["rows"] if r["parameter"] == "bypass_ratio")
+    # more bypass lowers TSFC, less raises it
+    assert bpr["delta_high"] is not None and bpr["delta_high"] < 0
+    assert bpr["delta_low"] is not None and bpr["delta_low"] > 0
+
+
+def test_turbofan_params_are_real_fields() -> None:
+    base = TurbofanCycleInputs()
+    for field, _label, _frac in TURBOFAN_SENSITIVITY_PARAMS:
+        assert hasattr(base, field), f"unknown turbofan field {field}"

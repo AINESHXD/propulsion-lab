@@ -52,8 +52,12 @@ from app.engine_core.emissions import (
     combustor_emissions,
     icao_lto_nox,
 )
-from app.engine_core.optimization import TurbojetDesignProblem, nsga2
-from app.engine_core.sensitivity import turbojet_sensitivity
+from app.engine_core.optimization import (
+    TurbofanDesignProblem,
+    TurbojetDesignProblem,
+    nsga2,
+)
+from app.engine_core.sensitivity import turbofan_sensitivity, turbojet_sensitivity
 from app.engine_core.transient import (
     calibrate_spool_reference,
     simulate_spool_transient,
@@ -107,6 +111,8 @@ from app.schemas import (
     TurbojetOptimizeOutput,
     TurbojetSensitivityInput,
     TurbojetSensitivityOutput,
+    TurbofanSensitivityInput,
+    TurbofanOptimizeInput,
     TurbojetTransientInput,
     TurbojetTransientOutput,
     TurbofanMapMatchInput,
@@ -241,7 +247,9 @@ def root() -> dict[str, Any]:
             "POST /emissions/combustor",
             "POST /emissions/turbojet/lto",
             "POST /optimize/turbojet",
+            "POST /optimize/turbofan",
             "POST /analyze/turbojet/sensitivity",
+            "POST /analyze/turbofan/sensitivity",
             "POST /simulate/turbojet/transient",
             "POST /export/python",
             "GET /maps/compressor",
@@ -605,6 +613,96 @@ def analyze_turbojet_sensitivity(
     except (ValueError, CycleCalculationError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return TurbojetSensitivityOutput.model_validate(result)
+
+
+@app.post("/analyze/turbofan/sensitivity")
+def analyze_turbofan_sensitivity(inputs: TurbofanSensitivityInput) -> dict[str, Any]:
+    """Rank turbofan design inputs by their local effect on a chosen output.
+
+    Same one-at-a-time tornado as the turbojet, over the turbofan's design
+    variables (bypass ratio, fan and core pressure ratios, turbine-inlet
+    temperature, flows and efficiencies).
+    """
+
+    try:
+        design = TurbofanCycleInputs(**inputs.design.model_dump())
+        return turbofan_sensitivity(
+            design, metric=inputs.metric, delta_fraction=inputs.delta_fraction,
+        )
+    except (ValueError, CycleCalculationError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/optimize/turbofan")
+def optimize_turbofan(inputs: TurbofanOptimizeInput) -> dict[str, Any]:
+    """Trace the Pareto front of competing turbofan design objectives with NSGA-II.
+
+    Decision variables are the bypass ratio and the fan pressure ratio, the two
+    knobs that set the propulsive/thermal-efficiency split. Objectives trade off
+    subject to a compressor-exit temperature cap and a thrust floor.
+    """
+
+    if inputs.bpr_min >= inputs.bpr_max:
+        raise HTTPException(status_code=400, detail="bpr_min must be below bpr_max.")
+    if inputs.fpr_min >= inputs.fpr_max:
+        raise HTTPException(status_code=400, detail="fpr_min must be below fpr_max.")
+
+    try:
+        base = TurbofanCycleInputs(**inputs.design.model_dump())
+        problem = TurbofanDesignProblem(
+            base=base,
+            bpr_bounds=(inputs.bpr_min, inputs.bpr_max),
+            fpr_bounds=(inputs.fpr_min, inputs.fpr_max),
+            objectives=tuple(inputs.objectives),
+            tt3_max_K=inputs.tt3_max_K,
+            thrust_min_kN=inputs.thrust_min_kN,
+        )
+        result = nsga2(
+            problem, pop_size=inputs.population_size,
+            n_gen=inputs.generations, seed=inputs.seed,
+        )
+    except (CycleCalculationError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Optimization could not run: {exc}") from exc
+
+    pts: list[dict[str, Any]] = []
+    for idx in result.pareto_indices:
+        bpr, fpr = float(result.X[idx, 0]), float(result.X[idx, 1])
+        try:
+            r = simulate_turbofan_cycle(replace(base, bypass_ratio=bpr, fan_pressure_ratio=fpr))
+        except CycleCalculationError:
+            continue
+        pts.append({
+            "bypass_ratio": bpr,
+            "fan_pressure_ratio": fpr,
+            "objective_values": [float(v) for v in result.F[idx]],
+            "thrust_kN": float(r["thrust_kN"]),
+            "TSFC_kg_per_kN_hr": float(r["TSFC_kg_per_kN_hr"]),
+            "specific_thrust_N_per_kg_s": float(r["specific_thrust_N_per_kg_s"]),
+            "compressor_exit_temperature_K": float(r["station_table"][3]["stagnation_temperature_K"]),
+            "overall_efficiency_estimate": float(r["overall_efficiency_estimate"]),
+        })
+    pts.sort(key=lambda p: p["objective_values"][0])
+
+    notes = [
+        "Self-contained NSGA-II over the turbofan bypass ratio and fan pressure "
+        "ratio, constraint-dominated (compressor-exit temperature cap + thrust floor).",
+    ]
+    if result.feasible_fraction < 1.0:
+        notes.append(
+            f"{result.feasible_fraction * 100:.0f}% of the final population is feasible."
+        )
+
+    return {
+        "engine_type": "turbofan",
+        "objective_keys": list(inputs.objectives),
+        "objective_labels": problem.objective_labels,
+        "pareto_front": pts,
+        "population_size": inputs.population_size,
+        "generations": inputs.generations,
+        "evaluations": result.n_evaluations,
+        "feasible_fraction": result.feasible_fraction,
+        "notes": notes,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -200,3 +200,34 @@ def test_nsga2_runs_with_infeasible_members_in_population() -> None:
     assert result.F.shape[1] == 2
     assert result.X.shape[1] == 2
     assert 0.0 <= result.feasible_fraction <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Turbofan design optimisation (NSGA-II over bypass ratio + fan PR)
+# ---------------------------------------------------------------------------
+
+from app.engine_core.optimization import TurbofanDesignProblem  # noqa: E402
+from app.engine_core.turbofan import TurbofanCycleInputs  # noqa: E402
+
+
+def test_turbofan_optimise_traces_a_feasible_front() -> None:
+    prob = TurbofanDesignProblem(base=TurbofanCycleInputs())
+    res = nsga2(prob, pop_size=24, n_gen=8, seed=0)
+    assert len(res.pareto_indices) > 0
+    assert res.F.shape[1] == 2
+    assert res.X.shape[1] == 2
+    # decision variables stay within the bypass / fan-PR bounds
+    assert prob.bpr_bounds[0] <= res.X[:, 0].min() and res.X[:, 0].max() <= prob.bpr_bounds[1]
+    assert prob.fpr_bounds[0] <= res.X[:, 1].min() and res.X[:, 1].max() <= prob.fpr_bounds[1]
+
+
+def test_turbofan_evaluate_uniform_constraint_shape() -> None:
+    prob = TurbofanDesignProblem(
+        base=TurbofanCycleInputs(), bpr_bounds=(1.0, 14.0), fpr_bounds=(1.1, 2.6),
+        tt3_max_K=820.0, thrust_min_kN=35.0,
+    )
+    import numpy as np
+    X = np.array([[5.0, 1.6], [14.0, 2.6]])
+    F, G = prob.evaluate(X)
+    assert F.shape == (2, 2)
+    assert G.shape == (2, 2)  # Tt3 cap + thrust floor, uniform for feasible/infeasible
