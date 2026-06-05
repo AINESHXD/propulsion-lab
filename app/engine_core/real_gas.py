@@ -26,8 +26,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.engine_core.constants import cp_gas
+from app.engine_core.constants import cp_air, cp_gas, gamma_air
 from app.engine_core.gas_service import (
+    air_isentropic_exit_temperature,
+    air_properties,
     equilibrium_products,
     freeze_combustion_products,
     frozen_gas_properties,
@@ -166,6 +168,96 @@ def constant_cp_exit_temperature(
     """Constant-cp baseline exit Tt (the original educational model)."""
 
     return inlet_temperature_K - specific_work_J_per_kg / cp_gas
+
+
+# ---------------------------------------------------------------------------
+# Cold-section walk: variable-cp compressor (real-gas whole-cycle, cold side)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True, frozen=True)
+class CompressorRealGasResult:
+    """Variable-cp compressor exit state for a required pressure ratio."""
+
+    exit_temperature_K: float
+    cp_mean_J_per_kg_K: float
+    specific_work_J_per_kg: float
+    source: str                      # "cantera" or "constant-cp"
+
+
+def _air_T_for_enthalpy(h_target: float, pressure_Pa: float, guess_T: float,
+                        max_it: int = 60, tol: float = 1.0) -> float:
+    """Solve air h(T) = h_target for T (Newton with cp as the derivative)."""
+
+    T = guess_T
+    for _ in range(max_it):
+        st = air_properties(T, pressure_Pa)
+        residual = st.h_J_per_kg - h_target
+        if abs(residual) < tol:
+            break
+        T -= residual / st.cp_J_per_kg_K
+    if T <= 0.0:
+        raise ValueError("Air enthalpy inversion produced non-positive T.")
+    return T
+
+
+def compressor_exit_temperature_real_gas(
+    inlet_temperature_K: float,
+    inlet_pressure_Pa: float,
+    pressure_ratio: float,
+    compressor_efficiency: float,
+) -> CompressorRealGasResult:
+    """Compressor exit stagnation T with temperature-dependent air properties.
+
+    The cold-side counterpart of :func:`hot_section_temperatures`. For the given
+    total-pressure ratio and isentropic efficiency, the ideal (isentropic)
+    enthalpy rise is found from a real-gas entropy hold, divided by the
+    efficiency for the actual enthalpy rise, and the exit temperature is the
+    air temperature carrying that enthalpy. cp of air climbs from ~1004 J/kg·K
+    cold toward ~1080+ J/kg·K at compressor-exit temperatures, so the variable-cp
+    exit is a little cooler than the constant-cp deck for the same pressure ratio.
+    Falls back to the constant-cp model when Cantera is unavailable.
+    """
+
+    if pressure_ratio <= 1.0:
+        raise ValueError("Compressor pressure ratio must exceed 1.")
+    if not 0.0 < compressor_efficiency <= 1.0:
+        raise ValueError("Compressor efficiency must be in (0, 1].")
+    if inlet_temperature_K <= 0.0 or inlet_pressure_Pa <= 0.0:
+        raise ValueError("Inlet temperature and pressure must be positive.")
+
+    if not is_cantera_available():
+        ratio = pressure_ratio ** ((gamma_air - 1.0) / gamma_air)
+        exit_T = inlet_temperature_K + (
+            inlet_temperature_K * ratio - inlet_temperature_K
+        ) / compressor_efficiency
+        work = cp_air * (exit_T - inlet_temperature_K)
+        return CompressorRealGasResult(
+            exit_temperature_K=exit_T,
+            cp_mean_J_per_kg_K=cp_air,
+            specific_work_J_per_kg=work,
+            source="constant-cp",
+        )
+
+    exit_pressure_Pa = inlet_pressure_Pa * pressure_ratio
+    inlet = air_properties(inlet_temperature_K, inlet_pressure_Pa)
+    isentropic_T = air_isentropic_exit_temperature(
+        inlet_temperature_K, inlet_pressure_Pa, exit_pressure_Pa
+    )
+    h_isentropic = air_properties(isentropic_T, exit_pressure_Pa).h_J_per_kg
+    ideal_rise = h_isentropic - inlet.h_J_per_kg
+    actual_rise = ideal_rise / compressor_efficiency
+    h_exit = inlet.h_J_per_kg + actual_rise
+    exit_T = _air_T_for_enthalpy(
+        h_exit, exit_pressure_Pa, guess_T=inlet_temperature_K + actual_rise / inlet.cp_J_per_kg_K
+    )
+    cp_mean = actual_rise / (exit_T - inlet_temperature_K)
+    return CompressorRealGasResult(
+        exit_temperature_K=exit_T,
+        cp_mean_J_per_kg_K=cp_mean,
+        specific_work_J_per_kg=actual_rise,
+        source="cantera",
+    )
 
 
 # ---------------------------------------------------------------------------
