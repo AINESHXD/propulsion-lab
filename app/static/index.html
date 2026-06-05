@@ -644,7 +644,9 @@
               <li>Steady, one-dimensional gas turbine cycle.</li>
               <li>Perfect gas with constant cp / γ in each gas region; separate properties for air and combustion gas.</li>
               <li>Educational, preliminary-performance analysis. Not certified design software.</li>
-              <li>No compressor maps, blade-row CFD, equilibrium chemistry, or transient spool dynamics yet.</li>
+              <li>Compressor/turbine maps are synthetic illustrative characteristics sized to the design point, not measured manufacturer data.</li>
+              <li>Transient spool dynamics is the bare rotor-inertia response (turbojet single-spool, turbofan two-spool); no fuel-control acceleration schedule.</li>
+              <li>Equilibrium chemistry is an optional Cantera hot-section correction; the rest of the cycle stays constant-cp. No blade-row CFD.</li>
               <li>Inlet capture-area mass flow is a first-order ρ·V·A estimate; no distortion or boundary-layer model.</li>
             </ul>
           </section>
@@ -781,7 +783,8 @@
                 exit (when used) · 9 nozzle exit.</p>
               <p><strong>Key assumptions.</strong> Steady 1-D flow; constant cp/γ in air
                 and combustion-gas regions; energy-balance fuel-air ratio (or Cantera
-                equilibrium when enabled). No compressor or turbine maps, no
+                equilibrium when enabled). Compressor/turbine maps are offered as a
+                separate higher-fidelity tool but are synthetic, not measured data; no
                 blade-row CFD.</p>
             </details>
 
