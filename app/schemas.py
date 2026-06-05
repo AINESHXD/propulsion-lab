@@ -894,6 +894,21 @@ class TurbojetSensitivityOutput(BaseModel):
     rows: list[SensitivityRow]
 
 
+class TurbofanTransientInput(BaseModel):
+    """A throttle step on a turbofan deck with two rotor inertias (HP + LP)."""
+
+    design: TurbofanInput = Field(default_factory=TurbofanInput)
+    hp_inertia_kg_m2: float = Field(4.0, gt=0.0, le=500.0)
+    hp_speed_rpm: float = Field(16000.0, gt=0.0, le=60000.0)
+    lp_inertia_kg_m2: float = Field(45.0, gt=0.0, le=2000.0)
+    lp_speed_rpm: float = Field(4500.0, gt=0.0, le=30000.0)
+    idle_throttle_fraction: float = Field(0.7, ge=0.3, lt=1.0)
+    command_throttle_fraction: float = Field(1.0, ge=0.3, le=1.0)
+    slam_time_s: float = Field(1.0, ge=0.0, le=30.0)
+    total_time_s: float = Field(8.0, gt=0.0, le=60.0)
+    dt_s: float = Field(0.04, gt=0.0, le=0.5)
+
+
 class TurbofanSensitivityInput(BaseModel):
     """Turbofan deck + which output metric to rank the design inputs against."""
 

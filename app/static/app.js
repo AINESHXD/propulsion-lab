@@ -2945,15 +2945,48 @@ async function runTransient() {
   const status = document.getElementById("trStatus");
   const button = document.getElementById("trRun");
   const num = (id, d) => { const v = Number(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  const isFan = selectedEngine === "turbofan";
+  if (selectedEngine !== "turbojet" && !isFan) {
+    if (status) status.textContent =
+      "Transient runs on the turbojet or turbofan. Select one on the Cycle tab.";
+    return;
+  }
   if (button) { button.disabled = true; button.textContent = "Running…"; }
   if (status) status.textContent = "Calibrating the operating line and integrating the spool…";
   try {
     const idle = Math.min(Math.max(num("trIdle", 70) / 100, 0.4), 0.95);
     const command = Math.min(Math.max(num("trCommand", 100) / 100, 0.4), 1.0);
     const total = Math.min(Math.max(num("trTime", 8), 2), 30);
-    const out = await postJson("/simulate/turbojet/transient", {
+    const inertia = Math.min(Math.max(num("trInertia", 20), 1), 200);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    let out;
+    if (isFan) {
+      // The inertia control sets the heavy fan (LP) spool; the light core (HP)
+      // spool is taken as a tenth of it, a typical core/fan inertia ratio.
+      out = await postJson("/simulate/turbofan/transient", {
+        design: readAdvancedInput(),
+        lp_inertia_kg_m2: inertia,
+        hp_inertia_kg_m2: Math.max(1, inertia / 10),
+        idle_throttle_fraction: idle, command_throttle_fraction: command,
+        slam_time_s: Math.min(1.0, total * 0.1), total_time_s: total,
+        dt_s: total > 16 ? 0.06 : 0.04,
+      });
+      out._twoSpool = true;
+      lastTransient = out;
+      drawTransient(out);
+      const s = out.samples;
+      const st = (v, d) => (v == null ? "—" : numberFormat(v, d));
+      set("trTau", `HP ${numberFormat(out.tau0_hp_s, 2)} / LP ${numberFormat(out.tau0_lp_s, 2)} s`);
+      set("trSettle", `HP ${st(out.settling_time_hp_s, 1)} / LP ${st(out.settling_time_lp_s, 1)} s`);
+      set("trIdleThrust", uval("thrust", s[0].thrust_kN, 2));
+      set("trFinalThrust", uval("thrust", s[s.length - 1].thrust_kN, 2));
+      if (status) status.textContent =
+        `Slam ${Math.round(idle * 100)}% → ${Math.round(command * 100)}% Tt₄. Core τ₀ ${numberFormat(out.tau0_hp_s, 2)} s, fan τ₀ ${numberFormat(out.tau0_lp_s, 2)} s.`;
+      return;
+    }
+    out = await postJson("/simulate/turbojet/transient", {
       design: readFormInput(),
-      polar_moment_of_inertia_kg_m2: Math.min(Math.max(num("trInertia", 20), 1), 200),
+      polar_moment_of_inertia_kg_m2: inertia,
       idle_throttle_fraction: idle,
       command_throttle_fraction: command,
       slam_time_s: Math.min(1.0, total * 0.1),
@@ -2962,7 +2995,6 @@ async function runTransient() {
     });
     lastTransient = out;
     drawTransient(out);
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     const s = out.samples;
     set("trTau", `${numberFormat(out.tau0_s, 2)} s`);
     set("trSettle", out.settling_time_s == null ? "—" : `${numberFormat(out.settling_time_s, 2)} s`);
@@ -2988,8 +3020,11 @@ function drawTransient(out) {
   const padL = 48, padR = 52, padT = 16, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const tMax = s[s.length - 1].t_s || 1;
+  const twoSpool = !!out._twoSpool;
   // spool axis in %
-  const spoolVals = s.flatMap((p) => [p.spool_fraction, p.spool_target]);
+  const spoolVals = twoSpool
+    ? s.flatMap((p) => [p.spool_hp, p.spool_lp, p.spool_lp_target])
+    : s.flatMap((p) => [p.spool_fraction, p.spool_target]);
   let nMin = Math.min(...spoolVals), nMax = Math.max(...spoolVals);
   nMin = Math.max(0, nMin - (nMax - nMin) * 0.12 - 0.02);
   nMax = nMax + (nMax - nMin) * 0.05 + 0.01;
@@ -3015,10 +3050,18 @@ function drawTransient(out) {
     ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
     ctx.setLineDash([]);
   };
-  // commanded spool (dashed grey), actual spool (blue), thrust (amber)
-  line((p) => Yn(p.spool_target), "rgba(180,186,196,0.5)", [5, 4]);
-  line((p) => Yn(p.spool_fraction), "#7ba7eb");
-  line((p) => Yt(unitConvert("thrust", p.thrust_kN)), "#f0883e");
+  if (twoSpool) {
+    // command (dashed grey), core/HP (green, leads), fan/LP (blue, lags), thrust (amber)
+    line((p) => Yn(p.spool_lp_target), "rgba(180,186,196,0.5)", [5, 4]);
+    line((p) => Yn(p.spool_hp), "#37d39a");
+    line((p) => Yn(p.spool_lp), "#7ba7eb");
+    line((p) => Yt(unitConvert("thrust", p.thrust_kN)), "#f0883e");
+  } else {
+    // commanded spool (dashed grey), actual spool (blue), thrust (amber)
+    line((p) => Yn(p.spool_target), "rgba(180,186,196,0.5)", [5, 4]);
+    line((p) => Yn(p.spool_fraction), "#7ba7eb");
+    line((p) => Yt(unitConvert("thrust", p.thrust_kN)), "#f0883e");
+  }
 
   // axes labels + ticks
   ctx.fillStyle = "#8b9099"; ctx.font = "10px ui-monospace, monospace";
@@ -3037,8 +3080,13 @@ function drawTransient(out) {
     const t = (tMax * i) / 5;
     ctx.fillText(`${numberFormat(t, 1)}`, X(t), padT + plotH + 6);
   }
-  ctx.font = "11px -apple-system, system-ui, sans-serif";
-  ctx.fillStyle = "#7ba7eb"; ctx.fillText("spool % N", padL + 30, 4);
+  ctx.font = "11px -apple-system, system-ui, sans-serif"; ctx.textAlign = "left";
+  if (twoSpool) {
+    ctx.fillStyle = "#37d39a"; ctx.fillText("core % N", padL + 30, 4);
+    ctx.fillStyle = "#7ba7eb"; ctx.fillText("fan % N", padL + 95, 4);
+  } else {
+    ctx.fillStyle = "#7ba7eb"; ctx.fillText("spool % N", padL + 30, 4);
+  }
   ctx.fillStyle = "rgba(240,136,62,0.9)"; ctx.textAlign = "right";
   ctx.fillText(`thrust ${unitLabel("thrust")}`, W - padR, 4);
   ctx.fillStyle = "#8b9099"; ctx.textAlign = "center";

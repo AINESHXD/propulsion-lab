@@ -63,6 +63,11 @@ from app.engine_core.transient import (
     simulate_spool_transient,
     step_throttle_schedule,
 )
+from app.engine_core.turbofan_transient import (
+    calibrate_two_spool_reference,
+    simulate_two_spool_transient,
+)
+from app.engine_core.turbofan_transient import step_throttle_schedule as step_two_spool_schedule
 from app.cfd import CFDCase, cfd_enabled, service as cfd_service
 from app.engine_core.compressor_maps import synthetic_compressor_map
 from app.engine_core.map_matching import (
@@ -113,6 +118,7 @@ from app.schemas import (
     TurbojetSensitivityOutput,
     TurbofanSensitivityInput,
     TurbofanOptimizeInput,
+    TurbofanTransientInput,
     TurbojetTransientInput,
     TurbojetTransientOutput,
     TurbofanMapMatchInput,
@@ -251,6 +257,7 @@ def root() -> dict[str, Any]:
             "POST /analyze/turbojet/sensitivity",
             "POST /analyze/turbofan/sensitivity",
             "POST /simulate/turbojet/transient",
+            "POST /simulate/turbofan/transient",
             "POST /export/python",
             "GET /maps/compressor",
             "POST /simulate/turboprop",
@@ -753,6 +760,48 @@ def simulate_turbojet_transient(inputs: TurbojetTransientInput) -> TurbojetTrans
     if accel:
         notes.append("Throttle slam (idle → command): watch thrust lag the fuel.")
     return TurbojetTransientOutput(notes=notes, **result)
+
+
+@app.post("/simulate/turbofan/transient")
+def simulate_turbofan_transient(inputs: TurbofanTransientInput) -> dict[str, Any]:
+    """Two-spool transient: integrate the HP (core) and LP (fan) spools.
+
+    The light core spool comes up first; the heavy fan spool lags, and thrust
+    follows the fan. Bare rotor-inertia response (no fuel-control schedule).
+    """
+
+    if inputs.slam_time_s >= inputs.total_time_s:
+        raise HTTPException(status_code=400, detail="slam_time_s must be before total_time_s.")
+    try:
+        design = TurbofanCycleInputs(**inputs.design.model_dump())
+        ref = calibrate_two_spool_reference(
+            design,
+            hp_inertia_kg_m2=inputs.hp_inertia_kg_m2,
+            hp_speed_rpm=inputs.hp_speed_rpm,
+            lp_inertia_kg_m2=inputs.lp_inertia_kg_m2,
+            lp_speed_rpm=inputs.lp_speed_rpm,
+            idle_throttle_fraction=inputs.idle_throttle_fraction,
+        )
+        schedule = step_two_spool_schedule(
+            ref,
+            idle_fraction=inputs.idle_throttle_fraction,
+            command_fraction=inputs.command_throttle_fraction,
+            slam_time_s=inputs.slam_time_s,
+        )
+        result = simulate_two_spool_transient(
+            ref, schedule, total_time_s=inputs.total_time_s, dt_s=inputs.dt_s,
+        )
+    except CycleCalculationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    result["notes"] = [
+        "Two independent spools (HP core + LP fan), each on its own rotor inertia. "
+        "The light core spool leads; the heavy fan spool lags, and thrust follows "
+        "the fan. Bare inertial response, no fuel-control acceleration schedule.",
+        f"Spool time constants: HP tau0 = {result['tau0_hp_s']:.2f} s, "
+        f"LP tau0 = {result['tau0_lp_s']:.2f} s.",
+    ]
+    return result
 
 
 # ---------------------------------------------------------------------------
