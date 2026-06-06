@@ -49,11 +49,14 @@
         to the design point, not measured manufacturer data.</p>
 
       <h2>Per-engine notes</h2>
-      <p><strong>Turbojet</strong> is the most developed model: dry and afterburning, choked/unchoked
-        convergent nozzle, full station table, off-design matching, and the analysis tools (optimisation,
-        sensitivity, transient spool dynamics, variable-area nozzle scheduling) are built on it.</p>
+      <p><strong>Turbojet</strong> is the most fully featured model: dry and afterburning,
+        choked/unchoked convergent nozzle, full station table, off-design matching, single-spool
+        transient spool dynamics, variable-area nozzle scheduling, and an afterburner flame-stability
+        loop. The optimisation, sensitivity and transient analysis tools all run on it.</p>
       <p><strong>Turbofan</strong> is separate-flow, two-spool, with a bypass stream and an optional
-        third stream; off-design and map matching hold the bypass ratio at its design value.</p>
+        third stream; off-design and map matching hold the bypass ratio at its design value. The
+        optimisation, sensitivity and transient analysis tools also run on it; turbofan transient
+        is two-spool (light HP core leads, heavy LP fan lags, thrust follows the fan).</p>
       <p><strong>Turboprop</strong> adds a free power turbine and a propeller model; reported power is
         shaft/equivalent-shaft power, and propeller efficiency is a simple model, not a blade-element one.</p>
       <p><strong>Ramjet and scramjet</strong> are high-speed, compressor-less cycles: the ramjet uses
@@ -64,8 +67,19 @@
       <h2>Things the analysis tools assume</h2>
       <p><strong>Transient spool dynamics</strong> is the bare rotor-inertia response; a real engine adds
         a fuel-control acceleration schedule that slows spool-up further. <strong>Variable geometry</strong>
-        and the <strong>afterburner stability loop</strong> are reduced-order estimates, not combustor
-        chemistry. <strong>Optimisation, sensitivity and transient</strong> run on the turbojet deck only.</p>
+        and the <strong>afterburner stability loop</strong> are turbojet-only and are reduced-order
+        estimates, not combustor chemistry. <strong>Optimisation, sensitivity and transient</strong>
+        run on the turbojet <em>and</em> turbofan decks (the turbofan transient is two-spool).</p>
+      <p><strong>Off-design matching</strong> reports its iteration count and a work-balance residual on
+        every solve, so the convergence quality is visible rather than hidden.</p>
+      <p><strong>Bleed and HPT cooling</strong> are modelled as bulk mass-flow fractions taken at the
+        HPC exit and re-introduced at the turbine inlet — not as channel-resolved cooling-network
+        geometry. The fractions reduce effective Tt4 by mixing; they do not resolve film cooling.</p>
+      <p><strong>Combustion</strong> is by default a constant-pressure energy balance. Two opt-in
+        higher-fidelity paths are available: an equilibrium combustor (Cantera, all major species),
+        and a separate reduced reactor-network emissions module that returns NOx and CO emission
+        indices and an ICAO LTO aggregate. Both degrade to the constant-cp model when Cantera is
+        not installed.</p>
 
       <h2>What is <em>not</em> claimed</h2>
       <p><strong>No manufacturer-level validation.</strong> The model has not been matched to flight-test
@@ -75,8 +89,10 @@
         every number as trend-correct, not a design figure: useful for understanding <em>why</em> thrust
         rises with turbine temperature or <em>how</em> bypass trades against specific thrust, not for
         sizing hardware.</p>
-      <p><strong>No CFD, no real geometry.</strong> There are no blade rows, cooling-flow networks,
-        combustor reactions beyond the optional equilibrium hot section, or 3-D effects.</p>
+      <p><strong>No CFD, no real geometry, no 3-D effects.</strong> There are no blade rows, no
+        channel-resolved cooling networks (only the bulk fractions noted above), and no spatial flow
+        field. The maps and the afterburner stability loop are synthetic, sized to the design point,
+        not measured component data.</p>
 
       <div class="cs-related">
         <h2>See it in action</h2>
