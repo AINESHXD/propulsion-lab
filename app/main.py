@@ -227,6 +227,33 @@ def portal() -> FileResponse:
     return FileResponse(STATIC_PATH / "portal.html")
 
 
+@app.get("/config", include_in_schema=False)
+def public_config() -> dict[str, Any]:
+    """Public runtime configuration read by the frontend on boot.
+
+    Returns only values that are safe to expose in a browser:
+      * ``environment``        — "production" | "development" (drives gating)
+      * ``sentry_dsn``         — Sentry browser DSN (DSNs are public by Sentry's
+                                 own design; gated to prod by env vars)
+      * ``plausible_domain``   — Plausible site domain (also public)
+      * ``app_version``        — for tagging events
+
+    Anything sensitive (API keys, write tokens) MUST NOT be returned here. The
+    backend keeps its own SENTRY_DSN env var separately (initialised at import).
+    """
+
+    env = os.environ.get("APP_ENVIRONMENT", "development")
+    return {
+        "environment": env,
+        "app_version": APP_VERSION,
+        "sentry_dsn": os.environ.get("SENTRY_DSN_BROWSER", "") if env == "production" else "",
+        "sentry_traces_sample_rate": float(
+            os.environ.get("SENTRY_BROWSER_TRACES_SAMPLE_RATE", "0.1")
+        ),
+        "plausible_domain": os.environ.get("PLAUSIBLE_DOMAIN", "") if env == "production" else "",
+    }
+
+
 @app.get("/api")
 def root() -> dict[str, Any]:
     """Return API metadata and discoverable endpoints."""

@@ -362,6 +362,11 @@ function rerenderUnits() {
     updateNozzlePanel(lastResult);
     updateStationTable(lastResult.station_table);
     updateRealGasPanel(lastResult);
+    // Repaint canvas charts whose axes carry the unit label/value.
+    drawStationChart(lastResult);
+    if (typeof lastSweepPayload !== "undefined" && lastSweepPayload) {
+      drawSweepChart(lastSweepPayload);
+    }
   } else {
     updateAdvancedMetrics(lastResult);
     if (typeof advancedStationTableBody !== "undefined" && advancedStationTableBody) {
@@ -1398,8 +1403,15 @@ function drawStationChart(result, targetCanvas = stationCanvas, progress = 1) {
   const plotH = height - pad * 2;
   drawChartFrame(ctx, pad, pad, plotW, plotH);
 
-  const maxTemp = Math.max(...stations.map((s) => s.stagnation_temperature_K));
-  const maxPress = Math.max(...stations.map((s) => s.stagnation_pressure_Pa / 1000));
+  // Convert into the active unit system before plotting; the chart frame, axis
+  // labels and range hints all carry the converted unit.
+  const tempConv = (K) => unitConvert("temp", K);
+  const pressConv = (Pa) => unitConvert("press", Pa / 1000);   // press unit is kPa-based
+  const tempUnit = unitLabel("temp");
+  const pressUnit = unitLabel("press");
+
+  const maxTemp = Math.max(...stations.map((s) => tempConv(s.stagnation_temperature_K)));
+  const maxPress = Math.max(...stations.map((s) => pressConv(s.stagnation_pressure_Pa)));
 
   function point(i, value, max) {
     return [
@@ -1408,8 +1420,8 @@ function drawStationChart(result, targetCanvas = stationCanvas, progress = 1) {
     ];
   }
 
-  const tempPoints = stations.map((s, i) => point(i, s.stagnation_temperature_K, maxTemp));
-  const pressPoints = stations.map((s, i) => point(i, s.stagnation_pressure_Pa / 1000, maxPress));
+  const tempPoints = stations.map((s, i) => point(i, tempConv(s.stagnation_temperature_K), maxTemp));
+  const pressPoints = stations.map((s, i) => point(i, pressConv(s.stagnation_pressure_Pa), maxPress));
 
   // Progressive left-to-right reveal: clip the series to a rectangle whose
   // width grows with `progress`. The frame, axis numbers, and labels are drawn
@@ -1429,8 +1441,8 @@ function drawStationChart(result, targetCanvas = stationCanvas, progress = 1) {
   drawSeriesDots(ctx, pressPoints, palette.pressure);
   ctx.restore();
 
-  drawSeriesLabel(ctx, "Tt  [K]", pad + 4, pad - 14, palette.temperature);
-  drawSeriesLabel(ctx, "Pt  [kPa]", pad + 80, pad - 14, palette.pressure);
+  drawSeriesLabel(ctx, `Tt  [${tempUnit}]`, pad + 4, pad - 14, palette.temperature);
+  drawSeriesLabel(ctx, `Pt  [${pressUnit}]`, pad + 80, pad - 14, palette.pressure);
 
   // x-axis: station numbers
   ctx.fillStyle = palette.textDim;
@@ -1445,9 +1457,9 @@ function drawStationChart(result, targetCanvas = stationCanvas, progress = 1) {
   // range hints
   ctx.fillStyle = palette.textDim;
   ctx.font = "500 10px 'JetBrains Mono', ui-monospace, monospace";
-  ctx.fillText(`max Tt ${numberFormat(maxTemp, 0)} K`, pad + 4, height - 2);
+  ctx.fillText(`max Tt ${numberFormat(maxTemp, 0)} ${tempUnit}`, pad + 4, height - 2);
   ctx.textAlign = "right";
-  ctx.fillText(`max Pt ${numberFormat(maxPress, 0)} kPa`, width - pad - 4, height - 2);
+  ctx.fillText(`max Pt ${numberFormat(maxPress, 0)} ${pressUnit}`, width - pad - 4, height - 2);
   ctx.textAlign = "left";
 }
 
@@ -1472,8 +1484,14 @@ function drawSweepChart(payload) {
     return;
   }
 
-  const maxThrust = Math.max(...successes.map((e) => e.output.thrust_kN));
-  const maxTsfc = Math.max(...successes.map((e) => e.output.TSFC_kg_per_kN_hr));
+  // Convert both series to active units so the axes match the rest of the deck.
+  const thrustUnit = unitLabel("thrust");
+  const tsfcUnit = unitLabel("tsfc");
+  const thrustConv = (v) => unitConvert("thrust", v);
+  const tsfcConv = (v) => unitConvert("tsfc", v);
+
+  const maxThrust = Math.max(...successes.map((e) => thrustConv(e.output.thrust_kN)));
+  const maxTsfc = Math.max(...successes.map((e) => tsfcConv(e.output.TSFC_kg_per_kN_hr)));
 
   function pts(getter, max) {
     return successes.map((entry, i) => [
@@ -1482,8 +1500,8 @@ function drawSweepChart(payload) {
     ]);
   }
 
-  const thrustPts = pts((o) => o.thrust_kN, maxThrust);
-  const tsfcPts = pts((o) => o.TSFC_kg_per_kN_hr, maxTsfc);
+  const thrustPts = pts((o) => thrustConv(o.thrust_kN), maxThrust);
+  const tsfcPts = pts((o) => tsfcConv(o.TSFC_kg_per_kN_hr), maxTsfc);
 
   drawSeriesAreaFill(ctx, thrustPts, pad + plotH, palette.thrust);
   drawSeriesLine(ctx, thrustPts, palette.thrust);
@@ -1491,8 +1509,8 @@ function drawSweepChart(payload) {
   drawSeriesDots(ctx, thrustPts, palette.thrust);
   drawSeriesDots(ctx, tsfcPts, palette.tsfc);
 
-  drawSeriesLabel(ctx, "Thrust  [kN]", pad + 4, pad - 14, palette.thrust);
-  drawSeriesLabel(ctx, "TSFC  [kg/kN/hr]", pad + 110, pad - 14, palette.tsfc);
+  drawSeriesLabel(ctx, `Thrust  [${thrustUnit}]`, pad + 4, pad - 14, palette.thrust);
+  drawSeriesLabel(ctx, `TSFC  [${tsfcUnit}]`, pad + 110, pad - 14, palette.tsfc);
 
   ctx.fillStyle = palette.textDim;
   ctx.font = "500 10.5px 'JetBrains Mono', ui-monospace, monospace";
