@@ -279,9 +279,12 @@ const palette = {
   surface:    "#0d0e11",
   surface2:   "#131418",
 
-  // chart series, muted, premium
-  thrust:      "#f4f4f5",
-  tsfc:        "#d4d4d8",
+  // chart series. Thrust and TSFC need to be clearly distinguishable wherever
+  // they share a chart — amber (warm, "wanted up") for thrust and blue (cool,
+  // "wanted down") for TSFC. The transient chart already uses #f0883e for
+  // thrust, so this keeps the vocabulary consistent across the whole console.
+  thrust:      "#f0883e",
+  tsfc:        "#7ba7eb",
   temperature: "#d97757",
   pressure:    "#7ba7eb",
   efficiency:  "#94a3b8",
@@ -1274,14 +1277,16 @@ function drawChartFrame(ctx, x, y, w, h) {
  *  18. CHART HELPERS                                             *
  * ------------------------------------------------------------ */
 
-function drawSeriesLine(ctx, points, color, lineWidth = 1.5) {
+function drawSeriesLine(ctx, points, color, lineWidth = 1.5, dash = null) {
   ctx.beginPath();
   points.forEach(([px, py], i) => i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py));
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  if (dash) ctx.setLineDash(dash);
   ctx.stroke();
+  if (dash) ctx.setLineDash([]);   // restore solid for the next caller
 }
 
 function drawSeriesAreaFill(ctx, points, baseY, color) {
@@ -1296,10 +1301,20 @@ function drawSeriesAreaFill(ctx, points, baseY, color) {
   ctx.fill();
 }
 
-function drawSeriesDots(ctx, points, color) {
+function drawSeriesDots(ctx, points, color, shape = "circle") {
   for (const [px, py] of points) {
     ctx.beginPath();
-    ctx.arc(px, py, 2.4, 0, Math.PI * 2);
+    if (shape === "diamond") {
+      // small upright diamond, same outer footprint as the circle marker
+      const r = 3;
+      ctx.moveTo(px, py - r);
+      ctx.lineTo(px + r, py);
+      ctx.lineTo(px, py + r);
+      ctx.lineTo(px - r, py);
+      ctx.closePath();
+    } else {
+      ctx.arc(px, py, 2.4, 0, Math.PI * 2);
+    }
     ctx.fillStyle = palette.surface;
     ctx.fill();
     ctx.strokeStyle = color;
@@ -1503,14 +1518,19 @@ function drawSweepChart(payload) {
   const thrustPts = pts((o) => thrustConv(o.thrust_kN), maxThrust);
   const tsfcPts = pts((o) => tsfcConv(o.TSFC_kg_per_kN_hr), maxTsfc);
 
+  // Thrust: amber, solid line, round markers, light area fill.
+  // TSFC:   blue,  dashed line, diamond markers, no fill — so the curves are
+  // distinguishable on color, line style and marker shape together.
   drawSeriesAreaFill(ctx, thrustPts, pad + plotH, palette.thrust);
   drawSeriesLine(ctx, thrustPts, palette.thrust);
-  drawSeriesLine(ctx, tsfcPts, palette.tsfc);
+  drawSeriesLine(ctx, tsfcPts, palette.tsfc, 1.5, [6, 4]);
   drawSeriesDots(ctx, thrustPts, palette.thrust);
-  drawSeriesDots(ctx, tsfcPts, palette.tsfc);
+  drawSeriesDots(ctx, tsfcPts, palette.tsfc, "diamond");
 
-  drawSeriesLabel(ctx, `Thrust  [${thrustUnit}]`, pad + 4, pad - 14, palette.thrust);
-  drawSeriesLabel(ctx, `TSFC  [${tsfcUnit}]`, pad + 110, pad - 14, palette.tsfc);
+  // Legend with shape-bearing glyphs (─ thrust, ⋯ TSFC) so the line-style cue
+  // is visible in the labels too, not only on the traces.
+  drawSeriesLabel(ctx, `── ● Thrust  [${thrustUnit}]`, pad + 4, pad - 14, palette.thrust);
+  drawSeriesLabel(ctx, `─ ─ ◆ TSFC  [${tsfcUnit}]`, pad + 160, pad - 14, palette.tsfc);
 
   ctx.fillStyle = palette.textDim;
   ctx.font = "500 10.5px 'JetBrains Mono', ui-monospace, monospace";

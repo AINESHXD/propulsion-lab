@@ -614,9 +614,18 @@
           <!-- Sweep (turbojet) -->
           <section class="panel sweep-panel" style="margin-top:24px">
             <div class="panel-heading">
-              <h2>Parameter sweep</h2>
+              <h2>Parameter sweep<span class="info-pop" tabindex="0"
+                    data-tip="Pick a parameter from the dropdown, type a comma-separated list of values (e.g. 6, 10, 14, 18 for a PR sweep, or 0.6, 0.8, 1.0 for a Mach sweep), and Run sweep. The chart plots thrust and TSFC against the swept value, so the shape of the curve tells you whether thrust gains are linear, saturating, or already turning over.">i</span></h2>
               <button id="runSweepButton" type="button" class="secondary-button">Run sweep</button>
             </div>
+            <p class="report-copy">
+              A sweep re-runs the cycle at the <em>same design point</em> but for a list of values
+              of <strong>one</strong> input — everything else stays fixed. That isolates the effect
+              of that single knob. Use it to answer questions like “does another two points of
+              compressor PR still buy me thrust at this Tt₄?”, or “where does TSFC stop falling
+              as I raise turbine inlet temperature?”. Sensitivity (in the Analyze tab) does this
+              for many inputs at once and ranks them; a sweep gives you the shape of one curve.
+            </p>
             <div class="sweep-grid">
               <label>
                 <span>Parameter</span>
@@ -1566,7 +1575,7 @@
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260606-compare"></script>
+    <script src="/lab/app.js?v=20260606-sweepcolors"></script>
     <script src="/lab/tour.js?v=20260603-dedash"></script>
     <script src="/lab/help.js?v=20260603-trans"></script>
     <script src="/lab/casestudies.js?v=20260603-dedash"></script>

@@ -26,6 +26,12 @@ node_modules/
 # scratch
 .git_commit_msg.tmp
 
+# Coursework / scratch PDFs that accidentally end up in the static-assets
+# folder. The deployed PDFs are GENERATED at request time by app/reporting.py,
+# so we never need to commit a PDF here. If a PDF needs to ship, drop it under
+# app/static/case-studies/ instead.
+app/static/assets/*.pdf
+
 # internal planning doc (kept local, not shipped)
 PLAN_AND_CV.md
 
