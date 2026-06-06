@@ -766,6 +766,127 @@
               <canvas id="compareCanvas" width="1040" height="280"
                       aria-label="Engine comparison chart"></canvas>
             </div>
+
+            <!-- ============== READING THE COMPARISON ============== -->
+            <section class="manual-panel compare-conclusion" aria-labelledby="compareConclusionHeading">
+              <h3 id="compareConclusionHeading" class="insight-heading" style="margin-top:32px">
+                READING THE COMPARISON · THRUST &harr; TSFC
+              </h3>
+              <p class="report-copy">
+                Every airbreathing engine trades the <strong>thrust</strong> it produces against
+                the <strong>fuel it burns to produce it</strong>. TSFC (thrust-specific fuel
+                consumption, kg/kN·hr) is just fuel flow divided by thrust, so a lower TSFC means
+                more thrust per kg of fuel. The two numbers move in opposite directions for a deep
+                physical reason: <strong>jet propulsion is most efficient when the engine takes
+                a large mass of air and accelerates it a little</strong>. The same impulse
+                produced by accelerating a small mass a lot wastes energy in the high-velocity
+                jet that the aircraft leaves behind it. This is why the engine family ladder —
+                turbojet&nbsp;→ low-bypass turbofan&nbsp;→ high-bypass turbofan&nbsp;→ turboprop —
+                trades top speed for fuel burn, and why ramjets and scramjets sit off that
+                ladder entirely.
+              </p>
+
+              <details class="manual-block" open>
+                <summary>Turbojet — high thrust, high TSFC</summary>
+                <p>
+                  All of the air goes through the core and leaves as a fast, hot jet. Specific
+                  thrust (N per kg/s of air) is very high, so the engine is compact and the
+                  thrust-to-weight ratio is excellent — exactly what you want at Mach 2. But the
+                  exhaust velocity is much higher than the flight velocity, so propulsive
+                  efficiency η<sub>p</sub> = 2/(1 + V<sub>jet</sub>/V<sub>0</sub>) is poor, and
+                  TSFC is the worst of the gas-turbine family.
+                </p>
+                <p>
+                  <strong>Real example.</strong> The J58 on the SR-71 cruised at Mach 3 with
+                  TSFC near 1.9&nbsp;kg/kN·hr — perfectly acceptable because the airframe needed
+                  thrust at that speed at all, and modern fans cannot run there. A pure turbojet
+                  earns its keep on military fighters, interceptors and supersonic transports.
+                </p>
+              </details>
+
+              <details class="manual-block">
+                <summary>Turbofan — the sweet spot for subsonic flight</summary>
+                <p>
+                  A fan in front of the core accelerates a large bypass stream to a moderate
+                  velocity. Total air mass flow goes up, average jet velocity comes down, and η<sub>p</sub>
+                  rises sharply — so TSFC drops, even though specific thrust (per kg/s of air)
+                  is lower than a turbojet's. The bypass ratio (BPR) is the dial: higher BPR
+                  trades specific thrust for lower TSFC.
+                </p>
+                <p>
+                  <strong>Real examples.</strong> The CFM56 (BPR ≈ 5–6) on a 737 / A320 sits near
+                  TSFC ≈ 0.55&nbsp;kg/kN·hr. The Pratt &amp; Whitney GTF (BPR ≈ 12) and the
+                  Trent XWB (BPR ≈ 9) push that down to ≈&nbsp;0.49. Every BPR step costs nacelle
+                  drag and core size; the airframe sets the ceiling. <em>Try it in PropulsionLab:</em>
+                  open the turbofan tab and sweep bypass ratio 1 → 12 — watch thrust per kg/s of
+                  air fall and TSFC fall with it.
+                </p>
+              </details>
+
+              <details class="manual-block">
+                <summary>Turboprop — extreme bypass, extreme efficiency</summary>
+                <p>
+                  Take the bypass logic to its limit: drive a large-diameter propeller, which
+                  moves an enormous mass of air at a modest velocity through the propeller disk.
+                  TSFC (when expressed against equivalent shaft power) is the best of any
+                  airbreathing engine, but the propeller's tip Mach number caps useful airspeed
+                  near M ≈ 0.6–0.7 — beyond that, shock losses on the blade tips erase the
+                  efficiency gain.
+                </p>
+                <p>
+                  <strong>Real examples.</strong> The PW127 on an ATR 72 or the AE2100 on a C-130
+                  burn dramatically less fuel per nautical mile than a same-size jet at their
+                  operating Mach. <em>Try it:</em> at the same altitude/airspeed, compare the
+                  turboprop and turbofan baselines — thrust will be comparable, but the
+                  turboprop's fuel flow is lower.
+                </p>
+              </details>
+
+              <details class="manual-block">
+                <summary>Ramjet — no compressor, no thrust until you are fast</summary>
+                <p>
+                  Above roughly Mach 2.5–3, the inlet's own ram compression is enough to support
+                  combustion without a mechanical compressor. The engine is mechanically simple
+                  and survives high stagnation temperatures, but it produces <em>no static
+                  thrust</em>: at Mach 0 the inlet does no work, so net thrust is zero or
+                  negative. TSFC sits between turbojet and rocket — better than a rocket because
+                  oxidiser is free, worse than a turbojet because the inlet pressure recovery
+                  drops rapidly with Mach.
+                </p>
+                <p>
+                  <strong>Real example.</strong> The D-21 drone and the SR-71's J58 in its
+                  "ramjet mode" run on this cycle above Mach 3. <em>Try it:</em> in the ramjet
+                  tab, sweep Mach 1 → 4 — thrust starts negative and rises sharply, but TSFC is
+                  high until ram compression is meaningful.
+                </p>
+              </details>
+
+              <details class="manual-block">
+                <summary>Scramjet — supersonic combustion, hypersonic only</summary>
+                <p>
+                  Above ~Mach 5 the inlet cannot decelerate flow to subsonic without enormous
+                  total-pressure loss, so combustion has to happen in a supersonic stream. The
+                  flame-residence time is milliseconds, and dissociation chemistry above ~2500&nbsp;K
+                  steals a chunk of the released heat — both of which cap practical performance.
+                  Thrust per unit air is low, TSFC is poor relative to a turbofan, but the engine
+                  is the only airbreathing option at Mach 6+.
+                </p>
+                <p>
+                  <strong>Real example.</strong> The X-43A demonstrated scramjet flight at
+                  Mach 9.6 in 2004 for ≈ 10&nbsp;s. <em>Try it:</em> at Mach 8, see the model
+                  warn you about dissociation as turbine-inlet temperatures approach the
+                  chemistry limit.
+                </p>
+              </details>
+
+              <p class="report-copy" style="margin-top:18px">
+                <strong>One mental model.</strong> If you fix the thrust requirement, the engine
+                that <em>burns the least fuel</em> is the one whose jet velocity sits closest to
+                the flight velocity. Subsonic airliner? High-bypass turbofan or turboprop.
+                Cruise at Mach 1.6? Low-bypass turbofan. Mach 3? Turbojet. Mach 5+? You are out
+                of options that contain a compressor at all.
+              </p>
+            </section>
           </section>
         </div>
 
@@ -1445,7 +1566,7 @@
       </div>
     </footer>
 
-    <script src="/lab/app.js?v=20260606-launch"></script>
+    <script src="/lab/app.js?v=20260606-compare"></script>
     <script src="/lab/tour.js?v=20260603-dedash"></script>
     <script src="/lab/help.js?v=20260603-trans"></script>
     <script src="/lab/casestudies.js?v=20260603-dedash"></script>
