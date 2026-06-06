@@ -31,50 +31,91 @@ JS + Canvas/SVG with no build step, served by FastAPI from `app/static/`.
 - **Off-design matching** — a calibrate-once-then-match operating line for the turbojet
   (Newton–Raphson) and the two-spool turbofan (fixed-point on fuel-air ratio), holding
   the choked-turbine ratios and turbine corrected flow constant. Reproduces the design
-  point exactly and scrubs thrust/TSFC down the throttle.
+  point exactly and scrubs thrust/TSFC down the throttle. **Reports iteration count and
+  work-balance residual on every solve** so convergence quality is visible.
+- **Compressor / turbine maps and map matching** — synthetic illustrative characteristics
+  sized to the design point (not measured manufacturer data), plus a matching solver that
+  projects the operating point onto the maps with surge-margin reporting, for both the
+  turbojet and the turbofan.
 - **Mission integration** — fly a sequence of legs (altitude, Mach, throttle, duration);
   the engine is matched off-design at each leg and fuel is integrated over time.
-- **Optional real-gas hot section** — a frozen-composition, variable-cp correction to
-  turbine-exit and nozzle-exit temperatures using Cantera when it is installed. It is
-  additive and off by default; the constant-cp station table is never altered.
+- **Transient spool dynamics** — bare rotor-inertia response integrated through a throttle
+  slam. **Turbojet is single-spool** (rotor equation of motion I·Ω·dΩ/dt = turbine power −
+  compressor power); **turbofan is two-spool**, with an independent HP core and LP fan
+  inertia so the light core leads, the heavy fan lags, and thrust follows the fan.
+- **Variable-area nozzle scheduling + afterburner flame-stability loop** — a turbojet-only
+  add-on that schedules the variable-area nozzle (dry vs reheat throat area, % open,
+  thrust augmentation) and checks the AB flame for lean / rich / pressure / velocity
+  blowout against an altitude envelope.
+- **Bleed and HPT cooling-air fractions** — HPC-exit bleed leaves the engine; HPT cooling
+  air is routed around the combustor and re-introduced at the turbine inlet, lowering
+  effective Tt4 by mixing. Bulk mass-flow fractions, not channel-resolved geometry.
+- **Optional real-gas whole-cycle correction** — a frozen-composition, variable-cp recompute
+  of the **compressor, turbine and nozzle** temperatures using Cantera when it is installed,
+  reported station-by-station against the constant-cp deck. Additive and off by default; the
+  core constant-cp station table, thrust and TSFC are never altered.
 - **Combustor emissions** — a two-zone Cantera reactor network (equilibrate the primary
   zone, then grow Zeldovich NO kinetically; an axially-discretised dilution PFR for CO
   burnout) reports NOx / CO / HC emission indices in g/kg fuel, plus an engine-coupled
   ICAO landing–takeoff NOx estimate (`Dp/Foo`). NOx is calibrated to modern-combustor
   take-off levels; it degrades to a P3–T3 correlation without Cantera.
-- **Multi-objective design optimisation** — a from-scratch NSGA-II (non-dominated
-  sorting, crowding distance, simulated-binary crossover, polynomial mutation,
-  constraint domination) traces the Pareto front of competing turbojet objectives
+- **Sensitivity analysis (turbojet + turbofan)** — tornado charts ranking each design
+  input by its Δ-impact on thrust / TSFC / specific thrust / overall efficiency, computed
+  by central differencing around the current design point.
+- **Multi-objective design optimisation (turbojet + turbofan)** — a from-scratch NSGA-II
+  (non-dominated sorting, crowding distance, simulated-binary crossover, polynomial
+  mutation, constraint domination) traces the Pareto front of competing objectives
   (minimise TSFC vs maximise specific thrust) over compressor pressure ratio and
-  turbine-inlet temperature, subject to a material-temperature cap and a fuel-air band.
-  Deterministic under a fixed seed; no third-party optimiser dependency.
+  turbine-inlet temperature (turbojet) or bypass ratio and fan pressure ratio (turbofan),
+  subject to material-temperature and fuel-air constraints. Deterministic under a fixed
+  seed; no third-party optimiser dependency.
 - **DASLAB ML Suite** — a small neural-net surrogate of the turbojet cycle, trained
   from scratch (hand-written MLP, backpropagation and Adam in NumPy) on a Latin-Hypercube
   sample of the design space. It predicts specific thrust, TSFC, overall efficiency and
   Tt3 to R² > 0.999 on a held-out set, exports to plain JSON, and runs the identical
   forward pass in pure browser JavaScript (microsecond inference, no server round-trip),
   verified live against the exact solver.
-- **Tooling** — single-parameter sweeps, engine comparison, T-s / P-v and performance
-  charts, a branded PDF report, a stdlib-only Python API-client export, and shareable
-  URLs that encode the full input deck.
-- **Case studies** — original long-form write-ups of real engine families, each loadable
-  straight into the turbofan simulator as a starting design point.
+- **Classroom** — design-challenge problem sets for all five engine families, each with a
+  live target checker that re-runs the relevant `/simulate/...` endpoint and grades the
+  result against the brief.
+- **Methodology page** — an explicit page at `/lab/methodology.html` documenting the
+  reduced-order model, every per-engine assumption, what the analysis tools assume, and
+  what is *not* claimed (no manufacturer validation, no CFD, no real geometry).
+- **Tooling** — single-parameter sweeps with distinguishable thrust/TSFC curves, engine
+  comparison with an explanatory thrust↔TSFC essay, T-s / P-v and performance charts, a
+  branded PDF report (embedded DAS LABS + PropulsionLab logos), a stdlib-only Python
+  API-client export, shareable URLs that encode the full input deck, and a global SI ↔ US
+  unit toggle that converts every metric, table and chart axis on the dashboard.
+- **Case studies** — original long-form write-ups of real engine families (CFM56, LEAP,
+  V2500, GE90, GEnx, Trent XWB, GTF, JT8D, CF6, PW4000), each loadable straight into the
+  turbofan simulator as a starting design point.
+- **Production launch infrastructure** — a `/config` endpoint serves browser-safe
+  runtime config (environment, app version, Sentry browser DSN, Plausible domain) read
+  from env vars at deploy time, and a `launch.js` bootloader fetches it to prod-gate
+  Plausible (cookieless analytics) and Sentry browser error monitoring. Backend Sentry
+  is wired separately from `SENTRY_DSN`. Nothing loads, and no third party is contacted,
+  in development.
 
 These solvers are useful for comparing architecture behaviour and trends. They are
 **not** map-matched against a named engine — see "Validation and integrity" below.
 
 ## Assumptions
 
-- Educational-level steady 1D cycle model
-- Perfect gas model
-- Constant cp/gamma in v1
-- Different properties for air and combustion gas
-- No compressor/turbine maps yet
-- No detailed chemical equilibrium yet
-- No blade-row aerodynamics yet
-- No afterburner flame stability, cooling, or variable-area nozzle scheduling yet
-- No heat transfer except through energy balances
-- Not certified design software
+- Educational-level steady 1D cycle model.
+- Perfect gas with constant cp / gamma in each region; separate properties for air and
+  combustion gas. An **optional** Cantera real-gas correction recomputes the whole cycle
+  with variable cp, reported side-by-side with the constant-cp deck.
+- Compressor / turbine maps are **synthetic illustrative characteristics** sized to the
+  design point, not measured manufacturer data.
+- Transient spool dynamics is the bare rotor-inertia response (turbojet single-spool,
+  turbofan two-spool); no fuel-control acceleration schedule.
+- Variable-area nozzle scheduling and the afterburner flame-stability loop are
+  reduced-order estimates (turbojet only).
+- Bleed and HPT cooling are bulk mass-flow fractions, not channel-resolved geometry.
+- No blade-row aerodynamics or CFD.
+- Heat transfer enters only through energy balances and the cooling-air mixing fraction.
+- **Not certified design software** — every number is trend-correct, not a sizing figure.
+- See [`/lab/methodology.html`](app/static/methodology.html) for the full disclosure.
 
 ## Validation and integrity
 
@@ -293,17 +334,29 @@ Full, always-current list at `GET /` and `GET /docs`. Highlights:
 - `POST /compare/engines`
 
 **Off-design, maps and mission**
-- `POST /simulate/turbojet/off-design` · `POST /simulate/turbofan/off-design`
-- `POST /simulate/turbojet/map-match` — running line converged on the compressor map
+- `POST /simulate/turbojet/off-design` · `POST /simulate/turbofan/off-design` — returns
+  iteration count and work-balance residual as solver diagnostics
+- `POST /simulate/turbojet/map-match` · `POST /simulate/turbofan/map-match` — match the
+  operating point onto the (synthetic) compressor / fan / HPC maps with surge margins
 - `GET /maps/compressor` — synthetic compressor characteristic for the map viewer
 - `POST /mission/turbojet` · `POST /mission/turbofan`
+
+**Transient and variable geometry (turbojet + turbofan)**
+- `POST /simulate/turbojet/transient` — single-spool rotor-inertia response to a throttle
+  slam
+- `POST /simulate/turbofan/transient` — two-spool (HP core + LP fan) response; core leads,
+  fan lags, thrust follows the fan
+- `POST /simulate/turbojet/variable-geometry` — VAN scheduling + AB flame-stability loop
 
 **Emissions**
 - `POST /emissions/combustor` — reactor-network NOx / CO / HC emission indices
 - `POST /emissions/turbojet/lto` — engine-coupled ICAO landing–takeoff NOx (`Dp/Foo`)
 
-**Optimisation**
-- `POST /optimize/turbojet` — NSGA-II Pareto front of competing design objectives
+**Analysis (turbojet + turbofan)**
+- `POST /optimize/turbojet` · `POST /optimize/turbofan` — NSGA-II Pareto front of
+  competing design objectives
+- `POST /analyze/turbojet/sensitivity` · `POST /analyze/turbofan/sensitivity` — tornado
+  rank of each design input's impact on a chosen metric
 
 **Profiles, presets, exports**
 - `POST /simulate/turbojet/from-profile`
@@ -311,6 +364,10 @@ Full, always-current list at `GET /` and `GET /docs`. Highlights:
 - `POST /reports/{engine_type}/pdf` — branded PDF report
 - `POST /export/python` — stdlib-only Python API-client script
 - `GET /presets`
+
+**Launch / runtime config**
+- `GET /config` — browser-safe runtime config (environment, app version, browser Sentry
+  DSN, Plausible domain). Empty in development so no third party is contacted.
 
 ## Graphs and reports
 
@@ -332,8 +389,11 @@ table, warnings, assumptions, and educational disclaimer.
 The dashboard station table includes total/static temperature and pressure, Mach,
 velocity, notes, row hover highlighting, and CSV export.
 
-The compare tab currently compares turbojet dry and reheat parameter sets only. It does
-not claim completed turbofan, ramjet, or scramjet validation.
+The compare tab runs all five engine families side-by-side at their own design points
+and includes a thrust↔TSFC essay explaining the trade for each engine type with named
+real engines (J58, CFM56, GTF, Trent XWB, PW127, AE2100, D-21, X-43A) and concrete
+"try this in PropulsionLab" nudges. It does not claim manufacturer-level validation
+of any preset.
 
 ## Inlet area mass flow
 
@@ -414,13 +474,36 @@ Production artifacts (Docker, Fly.io, Gunicorn/Uvicorn) and a step-by-step guide
 [`DEPLOY.md`](DEPLOY.md). The production image deliberately excludes Cantera to stay light;
 the real-gas path degrades gracefully without it.
 
+**Launch-time env vars** (set as Fly secrets before the first prod deploy):
+
+```bash
+fly secrets set \
+  APP_ENVIRONMENT=production \
+  SENTRY_DSN=<server DSN>          \   # backend error monitoring
+  SENTRY_DSN_BROWSER=<browser DSN> \   # frontend error monitoring
+  PLAUSIBLE_DOMAIN=<your domain>   \   # cookieless pageview analytics
+  SENTRY_ENVIRONMENT=production
+```
+
+The server-side `SENTRY_DSN` is read at module import; the browser-side `SENTRY_DSN_BROWSER`
+is served via `/config` and read by the prod-gated `launch.js`. Both are no-ops in
+development and never load a third-party script unless their env var is set.
+
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md) for what is done, in progress, and planned. In short: the
-five engine families, off-design matching, mission integration, the optional real-gas
-hot section, reactor-network combustor emissions (NOx / CO + ICAO LTO), NSGA-II
-multi-objective design optimisation, and the reporting/export tooling are in place;
-full real-gas chemistry through the whole cycle is the main planned step.
+See [`ROADMAP.md`](ROADMAP.md) for the full list. In short, the following are now in
+place: the five engine families, off-design matching with solver diagnostics, synthetic
+compressor / turbine maps with map matching (turbojet + turbofan), mission integration,
+two-spool turbofan transient (in addition to the single-spool turbojet transient),
+variable-area nozzle scheduling + afterburner flame-stability loop, bleed + HPT cooling
+fractions, the optional **whole-cycle** real-gas variable-cp correction, reactor-network
+combustor emissions (NOx / CO + ICAO LTO), NSGA-II multi-objective design optimisation
+(turbojet + turbofan), tornado sensitivity (turbojet + turbofan), the Classroom problem
+sets, a methodology / limitations page, the reporting/export tooling, and the
+production launch infrastructure (Plausible + Sentry, env-var gated).
+
+The sibling **PistonLab** (reciprocating-engine cycles) is scaffolded and marked
+"coming soon"; it ships dark from the portal at launch.
 
 A **cloud-CFD control plane** (job state machine, mesh spec, pluggable solver runner
 with a local quasi-1D mock; `app/cfd.py`) is scaffolded but **gated off** — its
