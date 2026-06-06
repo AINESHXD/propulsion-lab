@@ -35,5 +35,6 @@ app/static/assets/*.pdf
 # internal planning doc (kept local, not shipped)
 PLAN_AND_CV.md
 
-# AI-workflow notes (kept local)
+# Local-only project config & notes (kept off the repo).
 CLAUDE.md
+.claude/
