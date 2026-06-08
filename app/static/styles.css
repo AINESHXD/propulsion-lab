@@ -1396,6 +1396,68 @@ th {
 }
 
 /* =========================================================
+   MOBILE: mission-bar + hero polish
+   -----------------------------------------------------------
+   The mission bar carries 8 right-side items (status pill,
+   unit toggle, Tutorial, Classroom, 3D viewer, ML suite,
+   Creator, API). They were overlapping the brand area at
+   <=420px (PROPULSIONLAB collided with the 'Online' pill).
+   Below, the right side drops to its own row, scrolls
+   horizontally, and the hero h1 actually shrinks instead of
+   clipping its trailing word.
+   ========================================================= */
+@media (max-width: 760px) {
+  .mission-bar {
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    gap: 8px 12px;
+  }
+  .mission-bar-left {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 14px;
+  }
+  .mission-bar-right {
+    flex: 1 1 100%;          /* drops to its own row under the brand */
+    flex-wrap: nowrap;
+    gap: 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .mission-bar-right::-webkit-scrollbar { display: none; }
+  .mission-link,
+  .status-pill,
+  button.unit-toggle {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  /* The PropulsionLab wordmark image: trim a touch so it sits at parity
+     with the DAS LABS letters on a small bar. */
+  .brand .brand-product-img { height: 13px; }
+
+  /* App shell: tighter horizontal padding so content uses every pixel. */
+  .app-shell { padding: 32px 16px 64px; gap: 36px; }
+
+  /* Hero band: the wrap-balance + explicit <br /> in the h1 was clipping
+     "analysis," to "ana" on small screens. Make the h1 smaller and let it
+     wrap naturally (kill the manual break, allow word-level wrapping). */
+  .hero-band { padding: 22px 0 14px; gap: 28px; }
+  .hero-title {
+    font-size: clamp(1.7rem, 7vw, 2.3rem);
+    line-height: 1.1;
+    margin-bottom: 18px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    text-wrap: pretty;
+  }
+  .hero-title br { display: none; }   /* let "analysis," wrap naturally */
+  .hero-sub { font-size: 14px; margin-bottom: 24px; }
+  .hero-stats { gap: 8px; }
+}
+
+/* =========================================================
    ADVANCED-ENGINE DETAIL GRID + USER MANUAL + COMPARE CONTROLS
    ========================================================= */
 
