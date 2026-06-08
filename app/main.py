@@ -227,6 +227,14 @@ def portal() -> FileResponse:
     return FileResponse(STATIC_PATH / "portal.html")
 
 
+@app.get("/privacy", include_in_schema=False)
+@app.get("/privacy/", include_in_schema=False)
+def privacy() -> FileResponse:
+    """Privacy policy — what is and is not collected, who processes the data."""
+
+    return FileResponse(STATIC_PATH / "privacy.html")
+
+
 @app.get("/config", include_in_schema=False)
 def public_config() -> dict[str, Any]:
     """Public runtime configuration read by the frontend on boot.
