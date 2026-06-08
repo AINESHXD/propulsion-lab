@@ -235,6 +235,16 @@ def privacy() -> FileResponse:
     return FileResponse(STATIC_PATH / "privacy.html")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico() -> FileResponse:
+    """Browser-default favicon path. The HTML pages already link the
+    favicon explicitly under /lab/favicon.ico; this root route covers
+    browsers that fall back to /favicon.ico anyway (e.g. when no link
+    tag is present on a sub-path or an API response)."""
+
+    return FileResponse(STATIC_PATH / "favicon.ico", media_type="image/x-icon")
+
+
 @app.get("/config", include_in_schema=False)
 def public_config() -> dict[str, Any]:
     """Public runtime configuration read by the frontend on boot.
