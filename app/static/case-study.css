@@ -178,3 +178,63 @@
   transition: color 0.15s, border-color 0.15s;
 }
 .cs-related-links a:hover { color: var(--text); border-color: var(--line-emphasis); }
+
+/* =========================================================
+   MOBILE  ( <= 760 px )
+   -----------------------------------------------------------
+   Used by methodology.html, privacy.html, the case-studies index
+   and the Pro stub. On phones the page-bar nav needs to scroll,
+   the article body needs smaller headings + natural wrapping,
+   and the "Related" link row stacks for tap-friendliness.
+   ========================================================= */
+@media (max-width: 760px) {
+  .cs-page-bar {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+  .cs-page-nav {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    gap: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .cs-page-nav::-webkit-scrollbar { display: none; }
+  .cs-page-nav a {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .cs-article {
+    padding: 26px 16px 56px;
+  }
+  .cs-article h1 {
+    font-size: clamp(1.7rem, 7vw, 2.3rem);
+    line-height: 1.15;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .cs-article h2 {
+    font-size: 18px;
+    margin-top: 28px;
+  }
+  .cs-article p,
+  .cs-article .cs-sub {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .cs-related-links {
+    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cs-related-links a {
+    text-align: center;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

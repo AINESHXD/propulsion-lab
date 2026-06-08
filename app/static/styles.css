@@ -1335,90 +1335,42 @@ th {
 }
 
 /* =========================================================
-   MOBILE: tab strip + panel polish
+   MOBILE PASS  ( <= 760 px )
    -----------------------------------------------------------
-   The console has 12 tabs (Cycle / Graphs / Compare / Off-design
-   / Mission / Compressor map / Optimize / Sensitivity / Transient
-   / Var-geometry / Case studies / User manual). At small widths
-   the flex row was squashing every label to ~4 chars (read:
-   "Anal", "Comp", "Sens"). Below, the strip becomes horizontally
-   scrollable, each label keeps its full text, and the analysis
-   panels get sensible padding/grids so nothing overlaps.
+   One consolidated mobile/phone section. Covers:
+     * Global guards: iOS text-size lock, no horizontal overflow.
+     * Mission bar: brand on row 1, scrollable nav on row 2.
+     * Hero: hide the 3D iframe (too heavy for mobile data + too
+       small to read), shrink the title, full-width CTAs.
+     * Console tabs: 12 tabs in a horizontal-scroll strip with
+       44 px touch targets.
+     * Panels: tighter padding, headings wrap.
+     * Forms: every input >=16 px font-size (stops iOS zoom on
+       focus), >=40 px height for thumb-friendly tapping.
+     * Buttons: >=44 px tall (Apple HIG touch-target minimum).
+     * Tables / canvases: don't push the page wider than the
+       viewport; the offender scrolls inside its own container.
    ========================================================= */
 @media (max-width: 760px) {
-  .console-tabs {
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    /* Bleed past the panel padding so the scroll runs edge-to-edge. */
-    margin-left: -12px;
-    margin-right: -12px;
-    padding: 0 12px;
-  }
-  .console-tabs::-webkit-scrollbar { display: none; }
-  .tab-button {
-    flex: 0 0 auto;            /* never shrink — keep full label */
-    white-space: nowrap;
-    padding: 12px 13px 14px;
-    font-size: 13px;
-  }
-  /* Panels: trim padding, let headings wrap when buttons + tags exist. */
-  .panel { padding: 20px 16px; }
-  .panel-heading {
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    align-items: flex-start;
-  }
-  .panel-heading h2 { font-size: 18px; }
-  /* Analysis-suite control rows (off-design, sweep, transient, var-geo,
-     sensitivity) stack two-column on phone instead of squashing many. */
-  .od-controls, .sweep-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-  /* Compare-tab controls and tornado/transient canvases shouldn't push past
-     the viewport — they shrink to fit. */
-  .compare-controls { gap: 8px 14px; padding: 10px 12px; }
-  canvas { max-width: 100%; height: auto; }
-  /* Long table panels (station, sweep, compare cards) scroll horizontally
-     instead of forcing the whole page wider than the screen. */
-  .table-wrap { overflow-x: auto; }
-}
+  /* GLOBAL */
+  html, body { -webkit-text-size-adjust: 100%; }
+  body { overflow-x: hidden; }                   /* belt-and-braces */
 
-/* Very small phones (<= ~390px): trim further so two columns become one. */
-@media (max-width: 420px) {
-  .od-controls, .sweep-grid {
-    grid-template-columns: 1fr;
-  }
-  .tab-button { padding: 10px 11px 12px; font-size: 12.5px; }
-}
+  .app-shell { padding: 28px 14px 56px; gap: 32px; }
 
-/* =========================================================
-   MOBILE: mission-bar + hero polish
-   -----------------------------------------------------------
-   The mission bar carries 8 right-side items (status pill,
-   unit toggle, Tutorial, Classroom, 3D viewer, ML suite,
-   Creator, API). They were overlapping the brand area at
-   <=420px (PROPULSIONLAB collided with the 'Online' pill).
-   Below, the right side drops to its own row, scrolls
-   horizontally, and the hero h1 actually shrinks instead of
-   clipping its trailing word.
-   ========================================================= */
-@media (max-width: 760px) {
+  /* MISSION BAR — brand on row 1, scrollable nav on row 2 */
   .mission-bar {
     flex-wrap: wrap;
-    padding: 12px 16px;
+    padding: 11px 14px;
     gap: 8px 12px;
   }
   .mission-bar-left {
     flex: 1 1 auto;
     min-width: 0;
-    gap: 14px;
+    gap: 12px;
   }
   .mission-bar-right {
-    flex: 1 1 100%;          /* drops to its own row under the brand */
+    flex: 1 1 100%;
     flex-wrap: nowrap;
     gap: 14px;
     overflow-x: auto;
@@ -1433,28 +1385,117 @@ th {
     flex-shrink: 0;
     white-space: nowrap;
   }
-  /* The PropulsionLab wordmark image: trim a touch so it sits at parity
-     with the DAS LABS letters on a small bar. */
   .brand .brand-product-img { height: 13px; }
 
-  /* App shell: tighter horizontal padding so content uses every pixel. */
-  .app-shell { padding: 32px 16px 64px; gap: 36px; }
-
-  /* Hero band: the wrap-balance + explicit <br /> in the h1 was clipping
-     "analysis," to "ana" on small screens. Make the h1 smaller and let it
-     wrap naturally (kill the manual break, allow word-level wrapping). */
-  .hero-band { padding: 22px 0 14px; gap: 28px; }
+  /* HERO BAND — single column, no 3D iframe on phone */
+  .hero-band {
+    grid-template-columns: 1fr;
+    padding: 20px 0 12px;
+    gap: 24px;
+  }
   .hero-title {
-    font-size: clamp(1.7rem, 7vw, 2.3rem);
+    font-size: clamp(1.65rem, 7vw, 2.2rem);
     line-height: 1.1;
     margin-bottom: 18px;
     overflow-wrap: break-word;
     word-break: break-word;
     text-wrap: pretty;
   }
-  .hero-title br { display: none; }   /* let "analysis," wrap naturally */
-  .hero-sub { font-size: 14px; margin-bottom: 24px; }
-  .hero-stats { gap: 8px; }
+  .hero-title br { display: none; }              /* let it wrap naturally */
+  .hero-sub {
+    font-size: 14.5px;
+    line-height: 1.5;
+    margin-bottom: 22px;
+    max-width: none;
+  }
+  .hero-cta-row { gap: 10px; flex-wrap: wrap; }
+  .hero-cta-row .primary-button,
+  .hero-cta-row .ghost-button {
+    flex: 1 1 calc(50% - 6px);
+    min-height: 44px;
+    padding: 11px 18px;
+  }
+  .hero-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  /* The 3D embed is too heavy and too cramped on a phone — drop it. */
+  .hero-reserved { display: none; }
+
+  /* CONSOLE TABS — horizontal scroll, big tap targets */
+  .console-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-left: -14px;
+    margin-right: -14px;
+    padding: 0 14px;
+  }
+  .console-tabs::-webkit-scrollbar { display: none; }
+  .tab-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 13px 14px 15px;
+    font-size: 13.5px;
+    min-height: 44px;
+  }
+
+  /* PANELS — tighter padding, headings wrap when they have a button */
+  .panel { padding: 18px 14px; }
+  .panel-heading {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: flex-start;
+  }
+  .panel-heading h2 { font-size: 18px; }
+
+  /* FORMS — 16 px+ font on every input stops iOS Safari from auto-zooming
+     when the user taps a field. >=40 px height makes them tap-friendly. */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 40px;
+    padding: 8px 10px;
+  }
+  input[type="checkbox"] { min-height: auto; }
+
+  /* BUTTONS — 44 px minimum (Apple HIG / WCAG 2.5.5 touch-target). */
+  .primary-button,
+  .secondary-button,
+  .ghost-button {
+    min-height: 44px;
+    padding: 11px 18px;
+  }
+
+  /* ANALYSIS SUITE control rows — 2-col instead of squashed-many. */
+  .od-controls,
+  .sweep-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .compare-controls { gap: 8px 14px; padding: 10px 12px; }
+
+  /* CANVASES + TABLES — never wider than the viewport. */
+  canvas { max-width: 100%; height: auto; }
+  .table-wrap { overflow-x: auto; }
+
+  /* FOOTER — single block, tighter padding (the 980 px breakpoint
+     already drops the footer grid to 1-col; this just trims spacing). */
+  .mission-footer { padding: 32px 18px; }
+  .footer-block { font-size: 13px; }
+}
+
+/* Very small phones (<= ~420 px) — collapse remaining 2-cols to 1. */
+@media (max-width: 420px) {
+  .od-controls,
+  .sweep-grid { grid-template-columns: 1fr; }
+  .tab-button { padding: 11px 12px 13px; font-size: 12.5px; }
+  .hero-cta-row .primary-button,
+  .hero-cta-row .ghost-button { flex: 1 1 100%; }
+  .hero-stats { grid-template-columns: 1fr 1fr; }
 }
 
 /* =========================================================
