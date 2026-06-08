@@ -1354,9 +1354,25 @@ th {
 @media (max-width: 760px) {
   /* GLOBAL */
   html, body { -webkit-text-size-adjust: 100%; }
-  body { overflow-x: hidden; }                   /* belt-and-braces */
+  /* NOTE: deliberately NOT using overflow-x: hidden here. It hides the
+     symptom (a clipped right edge) but masks the root cause; each
+     potentially-overflowing element below is constrained at its source. */
 
   .app-shell { padding: 28px 14px 56px; gap: 32px; }
+
+  /* The concept-strip is a 2-col grid (long body + "Read manual" CTA).
+     On a narrow viewport the auto-sized CTA column squeezes the body
+     until "extract shaft" clips at the right edge. Stack to 1 column. */
+  .concept-strip {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .concept-strip .concept-cta {
+    justify-self: start;
+    white-space: normal;
+  }
+  .concept-strip .concept-body { font-size: 14px; }
 
   /* MISSION BAR — brand on row 1, scrollable nav on row 2 */
   .mission-bar {
