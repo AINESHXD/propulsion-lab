@@ -1335,6 +1335,67 @@ th {
 }
 
 /* =========================================================
+   MOBILE: tab strip + panel polish
+   -----------------------------------------------------------
+   The console has 12 tabs (Cycle / Graphs / Compare / Off-design
+   / Mission / Compressor map / Optimize / Sensitivity / Transient
+   / Var-geometry / Case studies / User manual). At small widths
+   the flex row was squashing every label to ~4 chars (read:
+   "Anal", "Comp", "Sens"). Below, the strip becomes horizontally
+   scrollable, each label keeps its full text, and the analysis
+   panels get sensible padding/grids so nothing overlaps.
+   ========================================================= */
+@media (max-width: 760px) {
+  .console-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Bleed past the panel padding so the scroll runs edge-to-edge. */
+    margin-left: -12px;
+    margin-right: -12px;
+    padding: 0 12px;
+  }
+  .console-tabs::-webkit-scrollbar { display: none; }
+  .tab-button {
+    flex: 0 0 auto;            /* never shrink — keep full label */
+    white-space: nowrap;
+    padding: 12px 13px 14px;
+    font-size: 13px;
+  }
+  /* Panels: trim padding, let headings wrap when buttons + tags exist. */
+  .panel { padding: 20px 16px; }
+  .panel-heading {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: flex-start;
+  }
+  .panel-heading h2 { font-size: 18px; }
+  /* Analysis-suite control rows (off-design, sweep, transient, var-geo,
+     sensitivity) stack two-column on phone instead of squashing many. */
+  .od-controls, .sweep-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  /* Compare-tab controls and tornado/transient canvases shouldn't push past
+     the viewport — they shrink to fit. */
+  .compare-controls { gap: 8px 14px; padding: 10px 12px; }
+  canvas { max-width: 100%; height: auto; }
+  /* Long table panels (station, sweep, compare cards) scroll horizontally
+     instead of forcing the whole page wider than the screen. */
+  .table-wrap { overflow-x: auto; }
+}
+
+/* Very small phones (<= ~390px): trim further so two columns become one. */
+@media (max-width: 420px) {
+  .od-controls, .sweep-grid {
+    grid-template-columns: 1fr;
+  }
+  .tab-button { padding: 10px 11px 12px; font-size: 12.5px; }
+}
+
+/* =========================================================
    ADVANCED-ENGINE DETAIL GRID + USER MANUAL + COMPARE CONTROLS
    ========================================================= */
 
