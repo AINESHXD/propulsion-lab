@@ -9,7 +9,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20260608-phone2" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20260608-hamburger" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
       <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -50,7 +50,14 @@
                onerror="this.outerHTML='&lt;span class=&quot;brand-product&quot;&gt;PropulsionLab&lt;/span&gt;'" />
         </a>
       </div>
-      <div class="mission-bar-right">
+      <!-- Hamburger toggle, visible only on mobile (<=760px) via CSS. -->
+      <button class="nav-toggle" type="button" id="navToggle"
+              aria-label="Open menu" aria-expanded="false" aria-controls="missionNav">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <div class="mission-bar-right" id="missionNav">
         <span id="apiStatus" class="status-pill">Linking</span>
         <button class="mission-link unit-toggle" type="button" id="unitToggle"
                 title="Switch between SI and US customary units">Units: SI</button>
@@ -1584,5 +1591,50 @@
     <script src="/lab/tour.js?v=20260603-dedash"></script>
     <script src="/lab/help.js?v=20260603-trans"></script>
     <script src="/lab/casestudies.js?v=20260603-dedash"></script>
+
+    <!-- Mobile nav (hamburger) toggle. Self-contained + defensive so the menu
+         works even if app.js errors. No-op on desktop where the nav is inline. -->
+    <script>
+      (function () {
+        var toggle = document.getElementById("navToggle");
+        var nav = document.getElementById("missionNav");
+        if (!toggle || !nav) return;
+
+        function setOpen(open) {
+          nav.classList.toggle("open", open);
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+        }
+
+        toggle.addEventListener("click", function (e) {
+          e.stopPropagation();
+          setOpen(toggle.getAttribute("aria-expanded") !== "true");
+        });
+
+        // Tapping any link inside the menu closes it.
+        nav.addEventListener("click", function (e) {
+          if (e.target.closest("a")) setOpen(false);
+        });
+
+        // Tapping outside the menu closes it.
+        document.addEventListener("click", function (e) {
+          if (nav.classList.contains("open") &&
+              !nav.contains(e.target) && !toggle.contains(e.target)) {
+            setOpen(false);
+          }
+        });
+
+        // Escape closes it.
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") setOpen(false);
+        });
+
+        // If the viewport grows back to desktop, force the menu closed so the
+        // inline nav isn't stuck in the dropdown state.
+        window.addEventListener("resize", function () {
+          if (window.innerWidth > 760) setOpen(false);
+        });
+      })();
+    </script>
   </body>
 </html>

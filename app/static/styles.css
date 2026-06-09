@@ -212,6 +212,42 @@ p { margin: 0; }
   gap: 22px;
   min-width: 0;
 }
+
+/* Hamburger toggle — hidden on desktop, shown only on mobile (<=760px).
+   Three bars that morph into an X when the menu is open. */
+.nav-toggle {
+  display: none;               /* desktop: hidden, the inline nav shows instead */
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-toggle-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  margin: 0 auto;
+  border-radius: 2px;
+  background: var(--text);
+  transition: transform 240ms var(--ease-soft), opacity 180ms var(--ease-out);
+}
+/* Open state: top bar rotates down, middle fades, bottom rotates up → X. */
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(2) {
+  opacity: 0;
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -1374,34 +1410,78 @@ th {
   }
   .concept-strip .concept-body { font-size: 14px; }
 
-  /* MISSION BAR — brand on row 1, scrollable nav on row 2 */
+  /* MISSION BAR — brand on the left, hamburger on the right. The nav
+     collapses into a dropdown panel that drops down when the hamburger
+     is tapped. */
   .mission-bar {
-    flex-wrap: wrap;
     padding: 11px 14px;
-    gap: 8px 12px;
+    gap: 12px;
+    /* keep the bar a single row: brand | hamburger */
+    flex-wrap: nowrap;
   }
   .mission-bar-left {
     flex: 1 1 auto;
     min-width: 0;
     gap: 12px;
   }
+  .brand .brand-product-img { height: 13px; }
+
+  /* Show the hamburger button. */
+  .nav-toggle { display: flex; }
+
+  /* The nav becomes a full-width dropdown anchored under the bar. Hidden by
+     default; revealed when JS adds .open to it (and aria-expanded on the
+     toggle). Uses a max-height transition so it slides open smoothly. */
   .mission-bar-right {
-    flex: 1 1 100%;
-    flex-wrap: nowrap;
-    gap: 14px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 14px;
+    background: rgba(8, 9, 11, 0.97);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: saturate(140%) blur(20px);
+    -webkit-backdrop-filter: saturate(140%) blur(20px);
+    /* collapsed */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 300ms var(--ease-soft), opacity 200ms var(--ease-out);
   }
-  .mission-bar-right::-webkit-scrollbar { display: none; }
-  .mission-link,
-  .status-pill,
-  button.unit-toggle {
-    flex-shrink: 0;
+  .mission-bar-right.open {
+    max-height: 80vh;
+    overflow-y: auto;
+    opacity: 1;
+    pointer-events: auto;
+    padding-top: 6px;
+    padding-bottom: 10px;
+  }
+  /* Each row is a full-width, tap-friendly line item with a divider. */
+  .mission-bar-right .mission-link,
+  .mission-bar-right .status-pill,
+  .mission-bar-right button.unit-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 4px;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    font-size: 15px;
     white-space: nowrap;
   }
-  .brand .brand-product-img { height: 13px; }
+  /* The status pill and unit toggle keep their pill chrome off in the menu. */
+  .mission-bar-right .status-pill { border: 0; border-bottom: 1px solid var(--line); }
+  .mission-bar-right button.unit-toggle {
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    justify-content: flex-start;
+  }
+  .mission-bar-right > *:last-child { border-bottom: 0; }
 
   /* HERO BAND — single column, no 3D iframe on phone */
   .hero-band {
