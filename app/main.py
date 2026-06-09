@@ -163,6 +163,34 @@ app = FastAPI(
 app.mount("/lab", StaticFiles(directory=STATIC_PATH, html=True), name="lab")
 
 
+@app.middleware("http")
+async def cache_control(request, call_next):
+    """Stop browsers serving stale HTML.
+
+    HTML documents are served with ``no-cache`` so the browser always
+    revalidates them (cheap — the ETag means a 304 when unchanged). That
+    guarantees a returning visitor always gets the *current* HTML, and thus
+    the *current* ``styles.css?v=...`` / ``app.js?v=...`` token, instead of a
+    cached page that points at a stale, broken stylesheet.
+
+    Versioned static assets (.css/.js/.png with a ``?v=`` query) are safe to
+    cache for a long time because their URL changes whenever the file does, so
+    they get a 1-year immutable cache. Everything else is left untouched.
+    """
+
+    response = await call_next(request)
+    path = request.url.path
+    if path.endswith(".html") or path in ("/", "/lab", "/lab/", "/classroom",
+                                          "/classroom/", "/pro", "/pro/", "/piston",
+                                          "/piston/", "/privacy", "/privacy/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif request.url.query.startswith("v=") and path.rsplit(".", 1)[-1] in (
+        "css", "js", "png", "jpg", "jpeg", "svg", "webp", "woff", "woff2", "ico"
+    ):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
+
+
 @app.get("/pro", include_in_schema=False)
 @app.get("/pro/", include_in_schema=False)
 def pro_stub() -> FileResponse:
