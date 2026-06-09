@@ -1412,8 +1412,11 @@ th {
 
   /* MISSION BAR — brand on the left, hamburger on the right. The nav
      collapses into a dropdown panel that drops down when the hamburger
-     is tapped. */
+     is tapped. On mobile the bar is NOT sticky — it scrolls away with the
+     page instead of floating over the cards (position: relative keeps it
+     as the positioning context for the absolute dropdown). */
   .mission-bar {
+    position: relative;
     padding: 11px 14px;
     gap: 12px;
     /* keep the bar a single row: brand | hamburger */
