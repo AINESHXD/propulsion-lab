@@ -15,8 +15,139 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/lab/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
+
+    <!-- Mobile gate. The interactive console is desktop-first; a phone-friendly
+         build is in progress. Below 760px we hide the app and show a clean
+         branded notice instead. Scoped to this page only (inline) so it can
+         never affect the portal or the content pages. -->
+    <style>
+      #mobileGate { display: none; }
+      @media (max-width: 760px) {
+        /* Hide the console UI entirely on phones. */
+        body > .mission-bar,
+        body > .app-shell,
+        body > .mission-footer,
+        body > #bootScreen { display: none !important; }
+        html, body { height: 100%; overflow: hidden; }
+
+        #mobileGate {
+          display: flex;
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 32px 26px;
+          background:
+            radial-gradient(120% 80% at 50% 0%, #16181d 0%, #0c0e12 60%, #08090b 100%);
+          color: #f3f4f6;
+          font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+          -webkit-font-smoothing: antialiased;
+        }
+        #mobileGate .mg-mark {
+          width: 60px; height: 60px;
+          border-radius: 14px;
+          margin-bottom: 22px;
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+        #mobileGate .mg-brand {
+          font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+          font-size: 12px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #8b9099;
+          margin: 0 0 14px;
+        }
+        #mobileGate h1 {
+          font-size: 26px;
+          line-height: 1.18;
+          font-weight: 600;
+          letter-spacing: -0.01em;
+          margin: 0 0 14px;
+          max-width: 17ch;
+        }
+        #mobileGate p.mg-body {
+          font-size: 15px;
+          line-height: 1.55;
+          color: #c8ccd2;
+          margin: 0 0 26px;
+          max-width: 34ch;
+        }
+        #mobileGate .mg-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-family: ui-monospace, SFMono-Regular, monospace;
+          font-size: 12.5px;
+          letter-spacing: 0.04em;
+          color: #f0883e;
+          border: 1px solid rgba(240,136,62,0.35);
+          border-radius: 999px;
+          padding: 7px 14px;
+          margin-bottom: 30px;
+        }
+        #mobileGate .mg-pill::before {
+          content: "";
+          width: 7px; height: 7px; border-radius: 50%;
+          background: #f0883e;
+        }
+        #mobileGate .mg-links {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+          max-width: 300px;
+        }
+        #mobileGate .mg-links a {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 46px;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 10px;
+          color: #f3f4f6;
+          text-decoration: none;
+          font-size: 14.5px;
+        }
+        #mobileGate .mg-links a.primary {
+          background: #f3f4f6;
+          color: #0c0e12;
+          border-color: #f3f4f6;
+          font-weight: 600;
+        }
+        #mobileGate .mg-foot {
+          margin-top: 30px;
+          font-size: 12px;
+          color: #6b7079;
+        }
+      }
+    </style>
   </head>
   <body>
+
+    <!-- ============================================
+         MOBILE GATE  (shown < 760px; app hidden behind it)
+         ============================================ -->
+    <div id="mobileGate" role="dialog" aria-label="Mobile version in development">
+      <img class="mg-mark" src="/lab/apple-touch-icon.png" alt="DAS LABS" />
+      <p class="mg-brand">DAS&nbsp;LABS · PropulsionLab</p>
+      <h1>The mobile version is in development</h1>
+      <p class="mg-body">
+        The interactive console is built for a larger screen. A phone-friendly
+        build is on the way — for now, please open PropulsionLab on a desktop
+        or tablet.
+      </p>
+      <span class="mg-pill">Mobile build in progress</span>
+      <div class="mg-links">
+        <a class="primary" href="/lab/methodology.html">Read the methodology</a>
+        <a href="/lab/case-studies/">Browse engine case studies</a>
+        <a href="/">Back to DAS LABS</a>
+      </div>
+      <p class="mg-foot">daslabs.uk · best on desktop</p>
+    </div>
+
 
     <!-- ============================================
          BOOT SCREEN  (≈1s DAS LABS intro, then fades)
