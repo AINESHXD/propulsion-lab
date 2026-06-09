@@ -2705,3 +2705,72 @@ a:focus-visible,
   .cs-rail-item { min-width: 180px; flex: 0 0 auto; }
   .cs-specs { grid-template-columns: 1fr 1fr; }
 }
+
+/* =========================================================
+   MOBILE OVERFLOW HARDENING  ( <= 760 px )  — authoritative
+   -----------------------------------------------------------
+   Root-cause fixes for "some panels break / page scrolls
+   sideways" on phones. Two real bugs were behind it:
+
+   1. The global `table { min-width: 920px }` rule forced EVERY
+      table to 920px. A table inside a grid/flex cell then blew
+      the cell (and the whole page) out to 920px wide.
+   2. Grid and flex items default to `min-width: auto`, so they
+      refuse to shrink below their content's intrinsic width —
+      any wide child (table, canvas, long mono string) overflows.
+
+   Fixes below: tables become content-width and SCROLL inside
+   their .table-wrap (which is the scroll boundary, capped at
+   100% of the viewport); every grid/flex cell is allowed to
+   shrink (min-width: 0); media elements are capped at 100%.
+   ========================================================= */
+@media (max-width: 760px) {
+  /* (1) Tables: drop the 920px desktop floor. The table is as wide as its
+     content needs and scrolls horizontally inside its wrap; the wrap never
+     exceeds the viewport, so the PAGE never scrolls sideways. */
+  table {
+    min-width: 0;
+    width: max-content;
+    max-width: none;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* (2) Let every grid/flex cell shrink below its content size. Without this
+     a single wide child forces its whole column/row wider than the screen. */
+  .workspace > *,
+  .graphs-grid > *,
+  .compare-grid > *,
+  .od-body > *,
+  .mn-results > *,
+  .detail-grid > *,
+  .panel,
+  .panel > * {
+    min-width: 0;
+  }
+
+  /* (3) No media element may exceed the viewport width. max-width:100% +
+     height:auto scales each down keeping aspect ratio (correct for the fixed
+     width/height canvases too — they shrink proportionally). */
+  img, svg, video, canvas, iframe, pre {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* (4) Long unbreakable monospace strings (URLs, station data dumps) wrap
+     instead of pushing the line wide. Scoped to prose, not tables/inputs. */
+  .report-copy,
+  .insight-sub,
+  .od-status,
+  .summary-line {
+    overflow-wrap: anywhere;
+  }
+
+  /* (5) Collapse the remaining 2-col content layouts that weren't already
+     handled, so nothing relies on a wide second column. */
+  .glossary-grid { grid-template-columns: 1fr; }
+}
