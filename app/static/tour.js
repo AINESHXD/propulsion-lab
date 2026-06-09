@@ -23,7 +23,7 @@
       body: "Solves the whole cycle in a few milliseconds, and re-runs on its own as you edit the inputs." },
     { sel: ".results-panel .metric-grid", title: "The headline numbers",
       body: "Thrust, fuel burn (TSFC) and efficiency, what actually matters for the design." },
-    { sel: ".results-panel .table-wrap:not([hidden])", title: "Every station",
+    { sel: "#stationTableWrap", title: "Every station",
       body: "Temperature, pressure, Mach and velocity from the inlet all the way to the nozzle." },
     { sel: "#cycleInsights", title: "In plain English",
       body: "The same numbers, explained, what the compressor's doing, whether the nozzle's choked, and why." },
