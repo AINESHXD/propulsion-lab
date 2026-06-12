@@ -16,7 +16,7 @@ only you should hold.
 
 - [Fly.io](https://fly.io) account + `flyctl` installed (`fly auth login`)
 - Docker (only if you want to test the image locally first)
-- *(optional)* a domain you control, Cloudflare account, Sentry project, Plausible site, GitHub Sponsors profile
+- *(optional)* a domain you control, Cloudflare account, Sentry project, Plausible site
 
 ## 1. Test the image locally (optional)
 
@@ -68,9 +68,8 @@ and renews the TLS certificate automatically.
 
 ## 6. Launch surfaces (already in the app)
 
-- **Sponsor button** — footer "Support" card. Set the URL in
-  `app/static/index.html` (`footer-sponsor` link) to your real
-  `https://github.com/sponsors/<you>` page.
+- **Star-on-GitHub link** — footer "Open source" card in
+  `app/static/index.html`, pointing at the public repo.
 - **`/pro/` stub** — live at `/pro/` (teaser only; no payments/accounts).
 
 ## 7. Updating

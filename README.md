@@ -514,8 +514,3 @@ on AWS Batch) is future work.
 ## License
 
 Released under the [MIT License](LICENSE).
-
-## Sponsor
-
-If PropulsionLab is useful to you, you can support its development:
-[💛 Sponsor @AINESHXD on GitHub](https://github.com/sponsors/AINESHXD)
