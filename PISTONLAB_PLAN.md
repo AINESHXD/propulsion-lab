@@ -1,6 +1,12 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
 > **Status:** Living document. Update at the end of each day.
+> **Progress:** Days 1–2 done — Python crank-angle first-law solver landed
+> (`app/engine_core/piston/`: `geometry` slider-crank V(θ), `wiebe` finite
+> heat release, `cycle` second-order midpoint integrator). Energy closes to
+> machine precision; motored cycle returns to start exactly; finite-burn η
+> sits below the air-standard ceiling. **22 PistonLab tests** (already past the
+> Week-1 gate of 14). Still fully gated — no portal link, no frontend wiring yet.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without

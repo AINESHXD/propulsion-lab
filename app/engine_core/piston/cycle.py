@@ -1,0 +1,256 @@
+"""Crank-angle first-law cycle integrator.
+
+This is the engine that makes PistonLab credible. Instead of the closed-form
+air-standard formula, it marches the first law of thermodynamics for the
+in-cylinder gas, crank-angle step by crank-angle step, over the closed part of
+the cycle (intake-valve-close -> exhaust-valve-open, i.e. compression +
+combustion + expansion)::
+
+    dU = dQ_combustion - p dV          (single zone, valves closed)
+
+with the cylinder volume ``V(theta)`` from the true slider-crank kinematics and
+the heat release ``dQ`` from the Wiebe burn law. Internal energy and pressure
+close from the ideal-gas relations ``U = m c_v T`` and ``p V = m R T``.
+
+What this module reports are *indicated* quantities (work done on the piston by
+the gas). Friction, pumping and the resulting *brake* numbers arrive in later
+modules; nothing here is a brake or dyno figure.
+
+Constant specific heats are used for now (variable c_p / dissociation are a
+later upgrade, mirroring PropulsionLab's real-gas path).
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+from typing import Any
+
+from app.engine_core.piston.geometry import CylinderGeometry, cylinder_volume
+from app.engine_core.piston.wiebe import wiebe_burn_fraction
+
+_R_AIR = 287.0          # J/kg.K, dry air
+_DEG = math.pi / 180.0
+
+
+@dataclass(slots=True, frozen=True)
+class PistonCycleInputs:
+    """One operating point for the crank-angle cycle solver."""
+
+    # Geometry
+    bore_m: float = 0.086
+    stroke_m: float = 0.086
+    compression_ratio: float = 10.5
+    rod_ratio: float = 3.5
+    cylinders: int = 4
+    strokes_per_cycle: int = 4               # 4-stroke (2 rev/cycle) or 2-stroke
+
+    # Operating point
+    rpm: float = 3000.0
+
+    # Gas + initial (trapped) state at BDC / intake-valve-close
+    gamma: float = 1.35                      # burned-charge-ish constant gamma
+    gas_constant_J_per_kg_K: float = _R_AIR
+    intake_temperature_K: float = 330.0
+    intake_pressure_Pa: float = 1.0e5
+
+    # Heat release (per unit mass of trapped charge). Fuel thermochemistry
+    # drives this in a later module; for now it is a direct input.
+    heat_release_J_per_kg: float = 2.5e6
+
+    # Wiebe combustion
+    combustion_start_deg: float = -15.0      # crank angle of spark/SOC (BTDC)
+    burn_duration_deg: float = 50.0
+    wiebe_a: float = 5.0
+    wiebe_m: float = 2.0
+
+    # Integration window (closed cycle: BDC -> BDC across TDC=0)
+    theta_start_deg: float = -180.0
+    theta_end_deg: float = 180.0
+    d_theta_deg: float = 0.5
+
+    def __post_init__(self) -> None:
+        if self.bore_m <= 0 or self.stroke_m <= 0:
+            raise ValueError("Bore and stroke must be positive.")
+        if self.compression_ratio <= 1.0:
+            raise ValueError("Compression ratio must exceed 1.")
+        if self.rod_ratio <= 1.0:
+            raise ValueError("Rod ratio (L/a) must exceed 1.")
+        if self.strokes_per_cycle not in (2, 4):
+            raise ValueError("strokes_per_cycle must be 2 or 4.")
+        if self.cylinders < 1:
+            raise ValueError("cylinders must be >= 1.")
+        if self.rpm <= 0:
+            raise ValueError("rpm must be positive.")
+        if self.gamma <= 1.0:
+            raise ValueError("gamma must exceed 1.")
+        if self.heat_release_J_per_kg < 0.0:
+            raise ValueError("heat_release_J_per_kg must be >= 0.")
+        if self.d_theta_deg <= 0.0 or self.d_theta_deg > 5.0:
+            raise ValueError("d_theta_deg must be in (0, 5].")
+        if self.theta_end_deg <= self.theta_start_deg:
+            raise ValueError("theta_end must be after theta_start.")
+
+
+@dataclass(slots=True, frozen=True)
+class PistonCycleResult:
+    """Indicated performance + the P-V/T trace for one operating point."""
+
+    indicated_work_J: float
+    imep_Pa: float
+    indicated_power_W: float
+    indicated_torque_Nm: float
+    thermal_efficiency: float
+    air_standard_efficiency: float
+    peak_pressure_Pa: float
+    peak_temperature_K: float
+    trapped_mass_kg: float
+    heat_released_J: float
+    energy_residual_J: float                 # first-law closure check (~0)
+    trace: list[dict[str, float]] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "indicated_work_J": self.indicated_work_J,
+            "imep_Pa": self.imep_Pa,
+            "indicated_power_W": self.indicated_power_W,
+            "indicated_torque_Nm": self.indicated_torque_Nm,
+            "thermal_efficiency": self.thermal_efficiency,
+            "air_standard_efficiency": self.air_standard_efficiency,
+            "peak_pressure_Pa": self.peak_pressure_Pa,
+            "peak_temperature_K": self.peak_temperature_K,
+            "trapped_mass_kg": self.trapped_mass_kg,
+            "heat_released_J": self.heat_released_J,
+            "energy_residual_J": self.energy_residual_J,
+            "trace": self.trace,
+        }
+
+
+def simulate_piston_cycle(inputs: PistonCycleInputs,
+                          trace_points: int = 240) -> PistonCycleResult:
+    """March the closed-cycle first law and return indicated performance.
+
+    Second-order midpoint integration in crank angle: a half-step predictor
+    gives the mid-step pressure, which is then used for the full step. Using the
+    *same* mid-step pressure for the work term in ``dU`` and for the accumulated
+    indicated work makes the energy balance close to machine precision
+    (``energy_residual_J`` ~ 0) while the midpoint rule keeps a reversible
+    (motored) cycle returning to its start state to well under 0.1 %.
+    """
+
+    geom = CylinderGeometry(
+        bore_m=inputs.bore_m,
+        stroke_m=inputs.stroke_m,
+        compression_ratio=inputs.compression_ratio,
+        rod_ratio=inputs.rod_ratio,
+    )
+
+    gamma = inputs.gamma
+    R = inputs.gas_constant_J_per_kg_K
+    cv = R / (gamma - 1.0)
+
+    # Trapped mass fixed from the BDC / IVC state.
+    v_start = cylinder_volume(inputs.theta_start_deg * _DEG, geom)
+    mass = inputs.intake_pressure_Pa * v_start / (R * inputs.intake_temperature_K)
+    q_total = mass * inputs.heat_release_J_per_kg          # J of fuel energy
+
+    burn = lambda th: wiebe_burn_fraction(                 # noqa: E731
+        th, inputs.combustion_start_deg, inputs.burn_duration_deg,
+        inputs.wiebe_a, inputs.wiebe_m,
+    )
+
+    # March.
+    theta = inputs.theta_start_deg
+    end = inputs.theta_end_deg
+    dth = inputs.d_theta_deg
+
+    T = inputs.intake_temperature_K
+    V = v_start
+    p = mass * R * T / V
+    U0 = mass * cv * T
+
+    work = 0.0
+    peak_p = p
+    peak_T = T
+    x_prev = burn(theta)
+
+    n_steps = max(1, int(round((end - theta) / dth)))
+    every = max(1, n_steps // trace_points)
+    trace: list[dict[str, float]] = [{
+        "theta_deg": theta, "volume_m3": V, "pressure_Pa": p, "temperature_K": T,
+    }]
+
+    for k in range(1, n_steps + 1):
+        theta_next = theta + dth
+        theta_mid = theta + 0.5 * dth
+        V_next = cylinder_volume(theta_next * _DEG, geom)
+        V_mid = cylinder_volume(theta_mid * _DEG, geom)
+        dV = V_next - V
+
+        x_mid = burn(theta_mid)
+        x_next = burn(theta_next)
+        dQ_half = q_total * (x_mid - x_prev)   # heat released to mid-step
+        dQ_full = q_total * (x_next - x_prev)  # heat released over full step
+
+        # Predictor: advance to the mid-step with the start-of-step pressure,
+        # then read the mid-step pressure.
+        T_mid = T + (dQ_half - p * (V_mid - V)) / (mass * cv)
+        if T_mid <= 0.0:
+            raise ValueError("Integration produced non-positive temperature; "
+                             "check heat release and step size.")
+        p_mid = mass * R * T_mid / V_mid
+
+        # Corrector: full step with the mid-step pressure (used for both dU and
+        # the work tally, so energy closes exactly).
+        dU = dQ_full - p_mid * dV
+        T += dU / (mass * cv)
+        if T <= 0.0:
+            raise ValueError("Integration produced non-positive temperature; "
+                             "check heat release and step size.")
+        work += p_mid * dV
+
+        V = V_next
+        p = mass * R * T / V
+        theta = theta_next
+        x_prev = x_next
+
+        if p > peak_p:
+            peak_p = p
+        if T > peak_T:
+            peak_T = T
+        if k % every == 0 or k == n_steps:
+            trace.append({
+                "theta_deg": theta, "volume_m3": V,
+                "pressure_Pa": p, "temperature_K": T,
+            })
+
+    heat_released = q_total * (x_prev - burn(inputs.theta_start_deg))
+    U_end = mass * cv * T
+    # First-law closure: work == heat_in - delta_U  (should be ~0 residual).
+    energy_residual = work - (heat_released - (U_end - U0))
+
+    displacement = geom.displacement_m3
+    imep = work / displacement
+    cycles_per_rev = 2.0 / inputs.strokes_per_cycle        # 4-stroke -> 0.5
+    cycles_per_s = (inputs.rpm / 60.0) * cycles_per_rev
+    power = work * inputs.cylinders * cycles_per_s
+    omega = 2.0 * math.pi * inputs.rpm / 60.0
+    torque = power / omega if omega > 0 else 0.0
+
+    thermal_eff = (work / heat_released) if heat_released > 0 else 0.0
+    air_standard_eff = 1.0 - 1.0 / inputs.compression_ratio ** (gamma - 1.0)
+
+    return PistonCycleResult(
+        indicated_work_J=work,
+        imep_Pa=imep,
+        indicated_power_W=power,
+        indicated_torque_Nm=torque,
+        thermal_efficiency=thermal_eff,
+        air_standard_efficiency=air_standard_eff,
+        peak_pressure_Pa=peak_p,
+        peak_temperature_K=peak_T,
+        trapped_mass_kg=mass,
+        heat_released_J=heat_released,
+        energy_residual_J=energy_residual,
+        trace=trace,
+    )
