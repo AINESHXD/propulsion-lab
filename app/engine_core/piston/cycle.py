@@ -27,6 +27,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.engine_core.piston.geometry import CylinderGeometry, cylinder_volume
+from app.engine_core.piston.heat_transfer import (
+    wall_surface_area_m2,
+    woschni_coefficient,
+    woschni_velocity,
+)
 from app.engine_core.piston.wiebe import wiebe_burn_fraction
 
 _R_AIR = 287.0          # J/kg.K, dry air
@@ -64,6 +69,11 @@ class PistonCycleInputs:
     wiebe_a: float = 5.0
     wiebe_m: float = 2.0
 
+    # Wall heat transfer (Woschni). Multiplier 0 = adiabatic (recovers the
+    # closed air-standard limit); 1 = nominal Woschni loss.
+    wall_temperature_K: float = 450.0
+    wall_heat_transfer_multiplier: float = 1.0
+
     # Integration window (closed cycle: BDC -> BDC across TDC=0)
     theta_start_deg: float = -180.0
     theta_end_deg: float = 180.0
@@ -90,6 +100,10 @@ class PistonCycleInputs:
             raise ValueError("d_theta_deg must be in (0, 5].")
         if self.theta_end_deg <= self.theta_start_deg:
             raise ValueError("theta_end must be after theta_start.")
+        if self.wall_heat_transfer_multiplier < 0.0:
+            raise ValueError("wall_heat_transfer_multiplier must be >= 0.")
+        if self.wall_temperature_K <= 0.0:
+            raise ValueError("wall_temperature_K must be positive.")
 
 
 @dataclass(slots=True, frozen=True)
@@ -106,6 +120,7 @@ class PistonCycleResult:
     peak_temperature_K: float
     trapped_mass_kg: float
     heat_released_J: float
+    wall_heat_loss_J: float                  # heat lost to the cylinder walls
     energy_residual_J: float                 # first-law closure check (~0)
     trace: list[dict[str, float]] = field(default_factory=list)
 
@@ -121,6 +136,7 @@ class PistonCycleResult:
             "peak_temperature_K": self.peak_temperature_K,
             "trapped_mass_kg": self.trapped_mass_kg,
             "heat_released_J": self.heat_released_J,
+            "wall_heat_loss_J": self.wall_heat_loss_J,
             "energy_residual_J": self.energy_residual_J,
             "trace": self.trace,
         }
@@ -169,7 +185,20 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
     p = mass * R * T / V
     U0 = mass * cv * T
 
+    # Wall heat-transfer setup (Woschni). dt per crank-angle step from the
+    # rotational speed; the IVC state is the Woschni reference state.
+    omega = 2.0 * math.pi * inputs.rpm / 60.0
+    dt_step = (dth * _DEG) / omega
+    mean_piston_speed = 2.0 * inputs.stroke_m * (inputs.rpm / 60.0)
+    displacement = geom.displacement_m3
+    p_ref, v_ref, t_ref = inputs.intake_pressure_Pa, v_start, inputs.intake_temperature_K
+    t_wall = inputs.wall_temperature_K
+    ht_mult = inputs.wall_heat_transfer_multiplier
+    bore = inputs.bore_m
+    soc = inputs.combustion_start_deg
+
     work = 0.0
+    wall_loss = 0.0
     peak_p = p
     peak_T = T
     x_prev = burn(theta)
@@ -192,9 +221,24 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         dQ_half = q_total * (x_mid - x_prev)   # heat released to mid-step
         dQ_full = q_total * (x_next - x_prev)  # heat released over full step
 
+        # Wall heat loss over this step (Woschni, start-of-step state). Can be
+        # negative early in compression when the cool charge is heated by the
+        # walls. The same dQ_wall is used in dU and in the wall-loss tally, so
+        # the energy balance still closes exactly.
+        if ht_mult > 0.0:
+            p_motored = p_ref * (v_ref / V) ** gamma
+            w_gas = woschni_velocity(
+                mean_piston_speed, p, p_motored, displacement,
+                t_ref, p_ref, v_ref, burning=theta >= soc,
+            )
+            h = woschni_coefficient(bore, p, T, w_gas)
+            dQ_wall = ht_mult * h * wall_surface_area_m2(V, bore) * (T - t_wall) * dt_step
+        else:
+            dQ_wall = 0.0
+
         # Predictor: advance to the mid-step with the start-of-step pressure,
         # then read the mid-step pressure.
-        T_mid = T + (dQ_half - p * (V_mid - V)) / (mass * cv)
+        T_mid = T + (dQ_half - 0.5 * dQ_wall - p * (V_mid - V)) / (mass * cv)
         if T_mid <= 0.0:
             raise ValueError("Integration produced non-positive temperature; "
                              "check heat release and step size.")
@@ -202,12 +246,13 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
 
         # Corrector: full step with the mid-step pressure (used for both dU and
         # the work tally, so energy closes exactly).
-        dU = dQ_full - p_mid * dV
+        dU = dQ_full - dQ_wall - p_mid * dV
         T += dU / (mass * cv)
         if T <= 0.0:
             raise ValueError("Integration produced non-positive temperature; "
                              "check heat release and step size.")
         work += p_mid * dV
+        wall_loss += dQ_wall
 
         V = V_next
         p = mass * R * T / V
@@ -226,10 +271,9 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
 
     heat_released = q_total * (x_prev - burn(inputs.theta_start_deg))
     U_end = mass * cv * T
-    # First-law closure: work == heat_in - delta_U  (should be ~0 residual).
-    energy_residual = work - (heat_released - (U_end - U0))
+    # First-law closure: heat_in == work + wall_loss + delta_U (residual ~0).
+    energy_residual = work - (heat_released - wall_loss - (U_end - U0))
 
-    displacement = geom.displacement_m3
     imep = work / displacement
     cycles_per_rev = 2.0 / inputs.strokes_per_cycle        # 4-stroke -> 0.5
     cycles_per_s = (inputs.rpm / 60.0) * cycles_per_rev
@@ -251,6 +295,7 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         peak_temperature_K=peak_T,
         trapped_mass_kg=mass,
         heat_released_J=heat_released,
+        wall_heat_loss_J=wall_loss,
         energy_residual_J=energy_residual,
         trace=trace,
     )

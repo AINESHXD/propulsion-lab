@@ -116,9 +116,10 @@ def test_energy_closes_to_machine_precision() -> None:
 
 
 def test_motored_cycle_returns_to_start() -> None:
-    # No combustion: reversible adiabatic compression then expansion must
-    # return to the start state and do (essentially) zero net work.
-    r = simulate_piston_cycle(PistonCycleInputs(heat_release_J_per_kg=0.0))
+    # No combustion and no wall loss: reversible adiabatic compression then
+    # expansion must return to the start state and do ~zero net work.
+    r = simulate_piston_cycle(PistonCycleInputs(
+        heat_release_J_per_kg=0.0, wall_heat_transfer_multiplier=0.0))
     t0, t1 = r.trace[0], r.trace[-1]
     assert t1["temperature_K"] == pytest.approx(t0["temperature_K"], rel=1e-3)
     assert t1["pressure_Pa"] == pytest.approx(t0["pressure_Pa"], rel=1e-3)
