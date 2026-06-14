@@ -1,14 +1,16 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
 > **Status:** Living document. Update at the end of each day.
-> **Progress:** Days 1–3 done. Python crank-angle first-law solver
+> **Progress:** Days 1–4 done. Python crank-angle first-law solver
 > (`app/engine_core/piston/`: `geometry` slider-crank V(θ), `wiebe` finite
-> heat release, `cycle` second-order midpoint integrator) **+ `heat_transfer`
-> Woschni wall loss (Day 3)**. Energy closes to machine precision (now
-> fuel = work + wall loss + ΔU); motored cycle returns to start exactly;
-> finite-burn η below the air-standard ceiling and falls monotonically with
-> the wall-heat multiplier (53.5% adiabatic → 46.8% nominal, peak T 3174→2983 K).
-> **32 PistonLab tests.** Still fully gated — no portal link, no frontend wiring yet.
+> heat release, `cycle` second-order midpoint integrator, `heat_transfer`
+> Woschni wall loss) **+ `friction` Chen-Flynn FMEP and the indicated→brake
+> split (Day 4)**. Energy closes to machine precision; finite-burn η below the
+> air-standard ceiling. Brake numbers now reported (BMEP, brake torque/power,
+> mechanical efficiency, BSFC): brake always below indicated, FMEP rises with
+> speed and peak pressure, mechanical efficiency falls with rpm
+> (93%→87% over 1500→7000 rpm). Nominal ~62 kW / 199 N·m, BSFC ~190 g/kWh.
+> **44 PistonLab tests** (past the Week-2 gate of 22). Still fully gated.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without

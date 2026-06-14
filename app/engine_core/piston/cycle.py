@@ -26,6 +26,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.engine_core.piston.friction import chen_flynn_fmep_Pa
 from app.engine_core.piston.geometry import CylinderGeometry, cylinder_volume
 from app.engine_core.piston.heat_transfer import (
     wall_surface_area_m2,
@@ -74,6 +75,12 @@ class PistonCycleInputs:
     wall_temperature_K: float = 450.0
     wall_heat_transfer_multiplier: float = 1.0
 
+    # Friction (Chen-Flynn FMEP) and fuel. The friction multiplier scales the
+    # whole FMEP (0 = frictionless, brake == indicated); the LHV converts heat
+    # release back to a fuel mass for BSFC.
+    friction_multiplier: float = 1.0
+    fuel_lhv_J_per_kg: float = 43.5e6        # gasoline lower heating value
+
     # Integration window (closed cycle: BDC -> BDC across TDC=0)
     theta_start_deg: float = -180.0
     theta_end_deg: float = 180.0
@@ -104,12 +111,17 @@ class PistonCycleInputs:
             raise ValueError("wall_heat_transfer_multiplier must be >= 0.")
         if self.wall_temperature_K <= 0.0:
             raise ValueError("wall_temperature_K must be positive.")
+        if self.friction_multiplier < 0.0:
+            raise ValueError("friction_multiplier must be >= 0.")
+        if self.fuel_lhv_J_per_kg <= 0.0:
+            raise ValueError("fuel_lhv_J_per_kg must be positive.")
 
 
 @dataclass(slots=True, frozen=True)
 class PistonCycleResult:
     """Indicated performance + the P-V/T trace for one operating point."""
 
+    # Indicated (gas-on-piston) performance.
     indicated_work_J: float
     imep_Pa: float
     indicated_power_W: float
@@ -122,6 +134,18 @@ class PistonCycleResult:
     heat_released_J: float
     wall_heat_loss_J: float                  # heat lost to the cylinder walls
     energy_residual_J: float                 # first-law closure check (~0)
+
+    # Brake (crankshaft) performance after friction. Always below indicated.
+    fmep_Pa: float
+    bmep_Pa: float
+    brake_work_J: float
+    brake_power_W: float
+    brake_torque_Nm: float
+    mechanical_efficiency: float             # brake / indicated
+    brake_thermal_efficiency: float
+    bsfc_g_per_kWh: float                    # brake specific fuel consumption
+    fuel_mass_per_cycle_kg: float
+
     trace: list[dict[str, float]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -138,6 +162,15 @@ class PistonCycleResult:
             "heat_released_J": self.heat_released_J,
             "wall_heat_loss_J": self.wall_heat_loss_J,
             "energy_residual_J": self.energy_residual_J,
+            "fmep_Pa": self.fmep_Pa,
+            "bmep_Pa": self.bmep_Pa,
+            "brake_work_J": self.brake_work_J,
+            "brake_power_W": self.brake_power_W,
+            "brake_torque_Nm": self.brake_torque_Nm,
+            "mechanical_efficiency": self.mechanical_efficiency,
+            "brake_thermal_efficiency": self.brake_thermal_efficiency,
+            "bsfc_g_per_kWh": self.bsfc_g_per_kWh,
+            "fuel_mass_per_cycle_kg": self.fuel_mass_per_cycle_kg,
             "trace": self.trace,
         }
 
@@ -284,6 +317,23 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
     thermal_eff = (work / heat_released) if heat_released > 0 else 0.0
     air_standard_eff = 1.0 - 1.0 / inputs.compression_ratio ** (gamma - 1.0)
 
+    # --- Brake performance: subtract the friction mean effective pressure. ---
+    fmep = chen_flynn_fmep_Pa(peak_p, mean_piston_speed, inputs.friction_multiplier)
+    bmep = imep - fmep                                  # may go negative (motoring)
+    brake_work = bmep * displacement
+    brake_power = brake_work * inputs.cylinders * cycles_per_s
+    brake_torque = brake_power / omega if omega > 0 else 0.0
+    mech_eff = (brake_work / work) if work > 0 else 0.0
+    brake_thermal_eff = (brake_work / heat_released) if heat_released > 0 else 0.0
+
+    # Fuel mass and BSFC. heat_released is the heat actually released; the fuel
+    # burned to release it is heat / LHV (combustion efficiency folds in later).
+    fuel_per_cycle = heat_released / inputs.fuel_lhv_J_per_kg
+    fuel_flow_kg_s = fuel_per_cycle * inputs.cylinders * cycles_per_s
+    bsfc_g_per_kWh = (
+        fuel_flow_kg_s / brake_power * 3.6e9 if brake_power > 0 else float("inf")
+    )
+
     return PistonCycleResult(
         indicated_work_J=work,
         imep_Pa=imep,
@@ -297,5 +347,14 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         heat_released_J=heat_released,
         wall_heat_loss_J=wall_loss,
         energy_residual_J=energy_residual,
+        fmep_Pa=fmep,
+        bmep_Pa=bmep,
+        brake_work_J=brake_work,
+        brake_power_W=brake_power,
+        brake_torque_Nm=brake_torque,
+        mechanical_efficiency=mech_eff,
+        brake_thermal_efficiency=brake_thermal_eff,
+        bsfc_g_per_kWh=bsfc_g_per_kWh,
+        fuel_mass_per_cycle_kg=fuel_per_cycle,
         trace=trace,
     )

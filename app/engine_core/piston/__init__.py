@@ -20,6 +20,7 @@ from app.engine_core.piston.geometry import (
     displacement_volume,
 )
 from app.engine_core.piston.wiebe import wiebe_burn_fraction, wiebe_burn_rate
+from app.engine_core.piston.friction import chen_flynn_fmep_Pa
 from app.engine_core.piston.cycle import (
     PistonCycleInputs,
     PistonCycleResult,
@@ -33,6 +34,7 @@ __all__ = [
     "displacement_volume",
     "wiebe_burn_fraction",
     "wiebe_burn_rate",
+    "chen_flynn_fmep_Pa",
     "PistonCycleInputs",
     "PistonCycleResult",
     "simulate_piston_cycle",
