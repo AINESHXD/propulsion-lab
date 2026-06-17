@@ -58,7 +58,8 @@ class PistonCycleInputs:
     gamma: float = 1.35                      # burned-charge-ish constant gamma
     gas_constant_J_per_kg_K: float = _R_AIR
     intake_temperature_K: float = 330.0
-    intake_pressure_Pa: float = 1.0e5
+    intake_pressure_Pa: float = 1.0e5        # manifold pressure (throttle: < atm)
+    exhaust_pressure_Pa: float = 1.0e5       # exhaust back-pressure (>= intake when throttled)
 
     # Heat release (per unit mass of trapped charge). Fuel thermochemistry
     # drives this in a later module; for now it is a direct input.
@@ -115,6 +116,8 @@ class PistonCycleInputs:
             raise ValueError("friction_multiplier must be >= 0.")
         if self.fuel_lhv_J_per_kg <= 0.0:
             raise ValueError("fuel_lhv_J_per_kg must be positive.")
+        if self.intake_pressure_Pa <= 0.0 or self.exhaust_pressure_Pa <= 0.0:
+            raise ValueError("Intake and exhaust pressures must be positive.")
 
 
 @dataclass(slots=True, frozen=True)
@@ -135,7 +138,13 @@ class PistonCycleResult:
     wall_heat_loss_J: float                  # heat lost to the cylinder walls
     energy_residual_J: float                 # first-law closure check (~0)
 
-    # Brake (crankshaft) performance after friction. Always below indicated.
+    # Gas-exchange (pumping) loop and net indicated work.
+    pmep_Pa: float                           # pumping MEP = p_exhaust - p_intake
+    pumping_work_J: float                    # pumping loss per cylinder per cycle
+    net_imep_Pa: float                       # gross IMEP - PMEP
+    net_indicated_work_J: float
+
+    # Brake (crankshaft) performance after pumping + friction. Below indicated.
     fmep_Pa: float
     bmep_Pa: float
     brake_work_J: float
@@ -162,6 +171,10 @@ class PistonCycleResult:
             "heat_released_J": self.heat_released_J,
             "wall_heat_loss_J": self.wall_heat_loss_J,
             "energy_residual_J": self.energy_residual_J,
+            "pmep_Pa": self.pmep_Pa,
+            "pumping_work_J": self.pumping_work_J,
+            "net_imep_Pa": self.net_imep_Pa,
+            "net_indicated_work_J": self.net_indicated_work_J,
             "fmep_Pa": self.fmep_Pa,
             "bmep_Pa": self.bmep_Pa,
             "brake_work_J": self.brake_work_J,
@@ -317,12 +330,21 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
     thermal_eff = (work / heat_released) if heat_released > 0 else 0.0
     air_standard_eff = 1.0 - 1.0 / inputs.compression_ratio ** (gamma - 1.0)
 
-    # --- Brake performance: subtract the friction mean effective pressure. ---
+    # --- Pumping (gas-exchange) loop. Simple delta-p model: the piston works
+    # against (p_exhaust - p_intake) over the displaced volume each cycle. When
+    # throttled (p_intake < p_exhaust) this is a loss; at WOT it is ~zero. ---
+    pmep = inputs.exhaust_pressure_Pa - inputs.intake_pressure_Pa
+    pumping_work = pmep * displacement                  # loss (positive when throttled)
+    net_work = work - pumping_work
+    net_imep = net_work / displacement
+
+    # --- Brake performance: net indicated minus the friction mean eff pressure. ---
     fmep = chen_flynn_fmep_Pa(peak_p, mean_piston_speed, inputs.friction_multiplier)
-    bmep = imep - fmep                                  # may go negative (motoring)
+    bmep = net_imep - fmep                              # may go negative (motoring)
     brake_work = bmep * displacement
     brake_power = brake_work * inputs.cylinders * cycles_per_s
     brake_torque = brake_power / omega if omega > 0 else 0.0
+    # Mechanical efficiency: brake / gross indicated (captures pumping + friction).
     mech_eff = (brake_work / work) if work > 0 else 0.0
     brake_thermal_eff = (brake_work / heat_released) if heat_released > 0 else 0.0
 
@@ -347,6 +369,10 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         heat_released_J=heat_released,
         wall_heat_loss_J=wall_loss,
         energy_residual_J=energy_residual,
+        pmep_Pa=pmep,
+        pumping_work_J=pumping_work,
+        net_imep_Pa=net_imep,
+        net_indicated_work_J=net_work,
         fmep_Pa=fmep,
         bmep_Pa=bmep,
         brake_work_J=brake_work,

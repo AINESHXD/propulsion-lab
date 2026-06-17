@@ -1,16 +1,17 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
 > **Status:** Living document. Update at the end of each day.
-> **Progress:** Days 1–4 done. Python crank-angle first-law solver
-> (`app/engine_core/piston/`: `geometry` slider-crank V(θ), `wiebe` finite
+> **Progress: WEEK 1 COMPLETE (Days 1–5).** Python crank-angle first-law solver
+> in `app/engine_core/piston/`: `geometry` slider-crank V(θ), `wiebe` finite
 > heat release, `cycle` second-order midpoint integrator, `heat_transfer`
-> Woschni wall loss) **+ `friction` Chen-Flynn FMEP and the indicated→brake
-> split (Day 4)**. Energy closes to machine precision; finite-burn η below the
-> air-standard ceiling. Brake numbers now reported (BMEP, brake torque/power,
-> mechanical efficiency, BSFC): brake always below indicated, FMEP rises with
-> speed and peak pressure, mechanical efficiency falls with rpm
-> (93%→87% over 1500→7000 rpm). Nominal ~62 kW / 199 N·m, BSFC ~190 g/kWh.
-> **44 PistonLab tests** (past the Week-2 gate of 22). Still fully gated.
+> Woschni wall loss, `friction` Chen-Flynn FMEP, and the **part-load pumping
+> loop (Day 5)**. The full real-engine loss stack now in place: finite burn +
+> wall heat + friction + pumping. Energy closes to machine precision; brake
+> always below indicated; **throttling lowers brake efficiency** (WOT 42.9% →
+> heavy part-load 29.7%, BSFC 193→279 g/kWh) — the classic SI part-load
+> penalty. Net IMEP = gross − PMEP; boosted intake gives a pumping gain
+> (previews Day 6). **52 PistonLab tests** (past the Week-2 gate of 22).
+> Still fully gated — no portal link, no frontend wiring yet.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without
