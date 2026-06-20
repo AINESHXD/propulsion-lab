@@ -1,16 +1,24 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
 > **Status:** Living document. Update at the end of each day.
-> **Progress: Week 1 complete + Day 6.** Python crank-angle first-law solver
+> **Progress: Week 1 complete + Days 6-7.** Python crank-angle first-law solver
 > in `app/engine_core/piston/`: `geometry`, `wiebe`, `cycle` (midpoint
 > integrator), `heat_transfer` (Woschni), `friction` (Chen-Flynn), pumping
-> loop, and **`aspiration` NA / turbo / supercharged (Day 6)**. Loss stack:
-> finite burn + wall heat + friction + pumping; boost packs a denser charge so
-> IMEP/power rise (NA 62 kW → boosted 120 kW at 1.8 bar). The turbo/super split
-> is modelled honestly: a supercharger's belt compression power is debited from
-> brake (super 110 kW = turbo 120 − 9.8 kW parasitic), a turbo (first cut) is
-> not. Energy closes to machine precision; throttling lowers brake efficiency.
-> **62 PistonLab tests.** Still fully gated — no portal link, no frontend wiring yet.
+> loop, `aspiration` NA / turbo / supercharged (Day 6), and **`fuel`
+> thermochemistry (Day 7)**. Loss stack: finite burn + wall heat + friction +
+> pumping; boost packs a denser charge so IMEP/power rise (NA 62 kW → boosted
+> 120 kW at 1.8 bar). The turbo/super split is modelled honestly: a
+> supercharger's belt compression power is debited from brake (super 110 kW =
+> turbo 120 − 9.8 kW parasitic), a turbo (first cut) is not. **Fuelling is now
+> physical:** pick a fuel (gasoline / diesel / ethanol / methanol) and an
+> equivalence ratio φ, and the heat release follows from the fuel's chemistry
+> (q = (φ/AFR_stoich)·LHV·η_comb) instead of a raw kJ/kg. Stoichiometric AFR is
+> *derived* from the C/H/O mass balance and lands on the textbook numbers
+> (gasoline 14.7, diesel 14.5, ethanol 9.0, methanol 6.4); λ = 1/φ; richer
+> mixtures release more heat and IMEP, lean burn is more efficient. The raw-heat
+> path is retained (fuel=None) and the fuel path provably reduces to it. Energy
+> closes to machine precision; throttling lowers brake efficiency.
+> **77 PistonLab tests.** Still fully gated — no portal link, no frontend wiring yet.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without

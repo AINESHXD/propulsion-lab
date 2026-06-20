@@ -28,6 +28,12 @@ from typing import Any
 
 from app.engine_core.piston.aspiration import ASPIRATION_MODES, supercharger_power_W
 from app.engine_core.piston.friction import chen_flynn_fmep_Pa
+from app.engine_core.piston.fuel import (
+    fuel_air_ratio,
+    get_fuel,
+    lambda_from_phi,
+    specific_heat_release_J_per_kg_charge,
+)
 from app.engine_core.piston.geometry import CylinderGeometry, cylinder_volume
 from app.engine_core.piston.heat_transfer import (
     wall_surface_area_m2,
@@ -68,9 +74,18 @@ class PistonCycleInputs:
     ambient_pressure_Pa: float = 1.0e5       # reference ambient for boost + SC work
     supercharger_efficiency: float = 0.65
 
-    # Heat release (per unit mass of trapped charge). Fuel thermochemistry
-    # drives this in a later module; for now it is a direct input.
+    # Heat release (per unit mass of trapped charge). Used directly only when no
+    # fuel is selected (the legacy/raw path); when ``fuel`` is set, the heat
+    # release is computed from fuel thermochemistry below and this is ignored.
     heat_release_J_per_kg: float = 2.5e6
+
+    # Fuel thermochemistry (Day 7). Select a fuel and the heat release follows
+    # from its chemistry and the mixture strength, instead of a raw kJ/kg:
+    #   q_per_kg_charge = (phi / AFR_stoich) * LHV * combustion_efficiency.
+    # fuel=None keeps the legacy raw-heat path (backward compatible).
+    fuel: str | None = None                  # "gasoline" | "diesel" | "ethanol" | "methanol"
+    equivalence_ratio: float = 1.0           # phi: 1 stoich, <1 lean, >1 rich
+    combustion_efficiency: float = 0.98      # fraction of fuel energy released
 
     # Wiebe combustion
     combustion_start_deg: float = -15.0      # crank angle of spark/SOC (BTDC)
@@ -131,6 +146,12 @@ class PistonCycleInputs:
             raise ValueError("ambient_pressure_Pa must be positive.")
         if not 0.0 < self.supercharger_efficiency <= 1.0:
             raise ValueError("supercharger_efficiency must be in (0, 1].")
+        if self.equivalence_ratio <= 0.0:
+            raise ValueError("equivalence_ratio (phi) must be positive.")
+        if not 0.0 < self.combustion_efficiency <= 1.0:
+            raise ValueError("combustion_efficiency must be in (0, 1].")
+        if self.fuel is not None:
+            get_fuel(self.fuel)              # validates the name (raises ValueError)
 
 
 @dataclass(slots=True, frozen=True)
@@ -173,6 +194,14 @@ class PistonCycleResult:
     boost_pressure_Pa: float                 # manifold - ambient (gauge; <0 when throttled)
     supercharger_power_W: float              # parasitic crank power (0 for NA/turbo)
 
+    # Fuelling (Day 7). "manual" fuel means the raw heat-per-kg path was used;
+    # equivalence_ratio/lambda are then passthrough inputs, not chemistry.
+    fuel: str                                # fuel key, or "manual"
+    equivalence_ratio: float                 # phi
+    lambda_air: float                        # 1 / phi
+    fuel_air_ratio: float                    # actual fuel/air mass ratio
+    air_fuel_ratio: float                    # actual air/fuel mass ratio
+
     trace: list[dict[str, float]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -205,6 +234,11 @@ class PistonCycleResult:
             "aspiration": self.aspiration,
             "boost_pressure_Pa": self.boost_pressure_Pa,
             "supercharger_power_W": self.supercharger_power_W,
+            "fuel": self.fuel,
+            "equivalence_ratio": self.equivalence_ratio,
+            "lambda_air": self.lambda_air,
+            "fuel_air_ratio": self.fuel_air_ratio,
+            "air_fuel_ratio": self.air_fuel_ratio,
             "trace": self.trace,
         }
 
@@ -235,7 +269,30 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
     # Trapped mass fixed from the BDC / IVC state.
     v_start = cylinder_volume(inputs.theta_start_deg * _DEG, geom)
     mass = inputs.intake_pressure_Pa * v_start / (R * inputs.intake_temperature_K)
-    q_total = mass * inputs.heat_release_J_per_kg          # J of fuel energy
+
+    # Heat release: from fuel thermochemistry when a fuel is selected, else the
+    # legacy raw heat-per-kg input. The trapped charge is treated as air for the
+    # fuelling book-keeping (standard reduced-order assumption), so the injected
+    # fuel mass is m_air * f and the chemical heat is fuel_mass * LHV * eta_comb.
+    if inputs.fuel is not None:
+        f_ratio = fuel_air_ratio(inputs.fuel, inputs.equivalence_ratio)
+        q_per_kg = specific_heat_release_J_per_kg_charge(
+            inputs.fuel, inputs.equivalence_ratio, inputs.combustion_efficiency,
+        )
+        fuel_mass_input = mass * f_ratio                  # injected fuel per cycle
+        fuel_label = inputs.fuel.strip().casefold()
+        lhv = get_fuel(inputs.fuel).lower_heating_value_J_per_kg
+        phi = inputs.equivalence_ratio
+        lam = lambda_from_phi(phi)
+    else:
+        q_per_kg = inputs.heat_release_J_per_kg
+        fuel_mass_input = None                            # derived from heat below
+        fuel_label = "manual"
+        lhv = inputs.fuel_lhv_J_per_kg
+        f_ratio = None
+        phi = inputs.equivalence_ratio
+        lam = lambda_from_phi(phi)
+    q_total = mass * q_per_kg                             # J of fuel energy
 
     burn = lambda th: wiebe_burn_fraction(                 # noqa: E731
         th, inputs.combustion_start_deg, inputs.burn_duration_deg,
@@ -386,10 +443,17 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
     fuel_power = heat_released * cyl_rate
     brake_thermal_eff = (brake_power / fuel_power) if fuel_power > 0 else 0.0
 
-    # Fuel mass and BSFC. heat_released is the heat actually released; the fuel
-    # burned to release it is heat / LHV (combustion efficiency folds in later).
-    fuel_per_cycle = heat_released / inputs.fuel_lhv_J_per_kg
+    # Fuel mass and BSFC. In fuel mode the injected fuel mass is known directly
+    # from the air-fuel ratio (heat = fuel * LHV * eta_comb, so dividing heat by
+    # LHV would under-count by eta_comb); in legacy mode it is heat / LHV.
+    if fuel_mass_input is not None:
+        fuel_per_cycle = fuel_mass_input
+    else:
+        fuel_per_cycle = heat_released / lhv
     fuel_flow_kg_s = fuel_per_cycle * cyl_rate
+    # Fuelling descriptors reported alongside the performance.
+    actual_far = (fuel_per_cycle / mass) if mass > 0 else 0.0
+    actual_afr = (mass / fuel_per_cycle) if fuel_per_cycle > 0 else float("inf")
     bsfc_g_per_kWh = (
         fuel_flow_kg_s / brake_power * 3.6e9 if brake_power > 0 else float("inf")
     )
@@ -423,5 +487,10 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         aspiration=inputs.aspiration,
         boost_pressure_Pa=inputs.intake_pressure_Pa - inputs.ambient_pressure_Pa,
         supercharger_power_W=sc_power,
+        fuel=fuel_label,
+        equivalence_ratio=phi,
+        lambda_air=lam,
+        fuel_air_ratio=actual_far,
+        air_fuel_ratio=actual_afr,
         trace=trace,
     )
