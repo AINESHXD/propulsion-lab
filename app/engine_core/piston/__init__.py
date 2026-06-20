@@ -32,6 +32,13 @@ from app.engine_core.piston.fuel import (
     specific_heat_release_J_per_kg_charge,
     stoichiometric_afr,
 )
+from app.engine_core.piston.limits import (
+    OperatingWarning,
+    autoignition_temperature_K,
+    end_gas_temperature_K,
+    evaluate_operating_limits,
+    knock_margin_K,
+)
 from app.engine_core.piston.cycle import (
     PistonCycleInputs,
     PistonCycleResult,
@@ -56,6 +63,11 @@ __all__ = [
     "fuel_air_ratio",
     "lambda_from_phi",
     "specific_heat_release_J_per_kg_charge",
+    "OperatingWarning",
+    "evaluate_operating_limits",
+    "knock_margin_K",
+    "end_gas_temperature_K",
+    "autoignition_temperature_K",
     "PistonCycleInputs",
     "PistonCycleResult",
     "simulate_piston_cycle",

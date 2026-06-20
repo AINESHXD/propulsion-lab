@@ -1,11 +1,12 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
 > **Status:** Living document. Update at the end of each day.
-> **Progress: Week 1 complete + Days 6-7.** Python crank-angle first-law solver
+> **Progress: Week 1 complete + Days 6-8.** Python crank-angle first-law solver
 > in `app/engine_core/piston/`: `geometry`, `wiebe`, `cycle` (midpoint
 > integrator), `heat_transfer` (Woschni), `friction` (Chen-Flynn), pumping
-> loop, `aspiration` NA / turbo / supercharged (Day 6), and **`fuel`
-> thermochemistry (Day 7)**. Loss stack: finite burn + wall heat + friction +
+> loop, `aspiration` NA / turbo / supercharged (Day 6), `fuel`
+> thermochemistry (Day 7), and **`limits` knock / smoke / lean (Day 8)**.
+> Loss stack: finite burn + wall heat + friction +
 > pumping; boost packs a denser charge so IMEP/power rise (NA 62 kW → boosted
 > 120 kW at 1.8 bar). The turbo/super split is modelled honestly: a
 > supercharger's belt compression power is debited from brake (super 110 kW =
@@ -16,9 +17,15 @@
 > *derived* from the C/H/O mass balance and lands on the textbook numbers
 > (gasoline 14.7, diesel 14.5, ethanol 9.0, methanol 6.4); λ = 1/φ; richer
 > mixtures release more heat and IMEP, lean burn is more efficient. The raw-heat
-> path is retained (fuel=None) and the fuel path provably reduces to it. Energy
+> path is retained (fuel=None) and the fuel path provably reduces to it.
+> **Operating limits are flagged, not fatal:** an SI knock proxy (end-gas
+> autoignition vs an octane- and pressure-dependent threshold) fires at high
+> CR/boost on low octane — gasoline is clear NA at CR 10.5 but knocks at CR 13
+> or under 1.8 bar boost, while ethanol's octane downgrades the same point to a
+> caution; a CI smoke proxy fires when a diesel is over-fuelled past φ≈0.7; lean
+> SI mixtures flag misfire. A knocking point still returns a full result. Energy
 > closes to machine precision; throttling lowers brake efficiency.
-> **77 PistonLab tests.** Still fully gated — no portal link, no frontend wiring yet.
+> **91 PistonLab tests.** Still fully gated — no portal link, no frontend wiring yet.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without

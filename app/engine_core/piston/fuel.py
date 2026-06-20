@@ -55,6 +55,11 @@ class Fuel:
     oxygen: float                      # O atoms (alcohols carry their own O)
     lower_heating_value_J_per_kg: float
     density_kg_per_m3: float
+    # Knock / ignition character (used by the operating-limits module). RON is
+    # None for a compression-ignition fuel (diesel), where the limit is smoke,
+    # not spark knock. ``ignition`` is the conventional engine pairing.
+    research_octane_number: float | None = None
+    ignition: str = "spark"            # "spark" (SI) | "compression" (CI)
 
     @property
     def molar_mass_g_per_mol(self) -> float:
@@ -77,14 +82,14 @@ class Fuel:
 # Educational fuel set. Surrogate formulae chosen so the derived stoichiometric
 # AFR lands on the well-known value; LHV and density are public reference data.
 FUELS: dict[str, Fuel] = {
-    # C8H16 -> AFR ~= 14.7
-    "gasoline": Fuel("Gasoline", 8.0, 16.0, 0.0, 43.5e6, 745.0),
-    # C13H24 -> AFR ~= 14.5
-    "diesel": Fuel("Diesel", 13.0, 24.0, 0.0, 42.8e6, 832.0),
-    # C2H6O  -> AFR ~= 9.0 (the oxygen in the molecule lowers the air demand)
-    "ethanol": Fuel("Ethanol", 2.0, 6.0, 1.0, 26.8e6, 789.0),
-    # CH4O   -> AFR ~= 6.4
-    "methanol": Fuel("Methanol", 1.0, 4.0, 1.0, 19.9e6, 792.0),
+    # C8H16 -> AFR ~= 14.7; pump-grade RON ~95, spark ignition.
+    "gasoline": Fuel("Gasoline", 8.0, 16.0, 0.0, 43.5e6, 745.0, 95.0, "spark"),
+    # C13H24 -> AFR ~= 14.5; compression ignition, no RON (smoke-limited).
+    "diesel": Fuel("Diesel", 13.0, 24.0, 0.0, 42.8e6, 832.0, None, "compression"),
+    # C2H6O  -> AFR ~= 9.0; very knock-resistant (RON ~108).
+    "ethanol": Fuel("Ethanol", 2.0, 6.0, 1.0, 26.8e6, 789.0, 108.0, "spark"),
+    # CH4O   -> AFR ~= 6.4; RON ~109.
+    "methanol": Fuel("Methanol", 1.0, 4.0, 1.0, 19.9e6, 792.0, 109.0, "spark"),
 }
 
 FUEL_NAMES = tuple(FUELS.keys())

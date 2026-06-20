@@ -35,6 +35,7 @@ from app.engine_core.piston.fuel import (
     specific_heat_release_J_per_kg_charge,
 )
 from app.engine_core.piston.geometry import CylinderGeometry, cylinder_volume
+from app.engine_core.piston.limits import evaluate_operating_limits
 from app.engine_core.piston.heat_transfer import (
     wall_surface_area_m2,
     woschni_coefficient,
@@ -202,6 +203,10 @@ class PistonCycleResult:
     fuel_air_ratio: float                    # actual fuel/air mass ratio
     air_fuel_ratio: float                    # actual air/fuel mass ratio
 
+    # Operating-limit flags (knock / smoke / lean misfire). Empty when within
+    # limits or when no fuel is selected. Each is {kind, severity, message}.
+    operating_warnings: list[dict[str, str]] = field(default_factory=list)
+
     trace: list[dict[str, float]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -239,6 +244,7 @@ class PistonCycleResult:
             "lambda_air": self.lambda_air,
             "fuel_air_ratio": self.fuel_air_ratio,
             "air_fuel_ratio": self.air_fuel_ratio,
+            "operating_warnings": self.operating_warnings,
             "trace": self.trace,
         }
 
@@ -458,6 +464,19 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         fuel_flow_kg_s / brake_power * 3.6e9 if brake_power > 0 else float("inf")
     )
 
+    # Operating limits (knock / smoke / lean misfire) for the converged point.
+    # Only meaningful with a real fuel; the raw-heat path returns no flags.
+    op_warnings = [
+        w.to_dict() for w in evaluate_operating_limits(
+            fuel_name=inputs.fuel,
+            equivalence_ratio=phi,
+            intake_temperature_K=inputs.intake_temperature_K,
+            peak_pressure_Pa=peak_p,
+            intake_pressure_Pa=inputs.intake_pressure_Pa,
+            gamma=gamma,
+        )
+    ]
+
     return PistonCycleResult(
         indicated_work_J=work,
         imep_Pa=imep,
@@ -492,5 +511,6 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         lambda_air=lam,
         fuel_air_ratio=actual_far,
         air_fuel_ratio=actual_afr,
+        operating_warnings=op_warnings,
         trace=trace,
     )
