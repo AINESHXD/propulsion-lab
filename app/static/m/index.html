@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>PropulsionLab · DAS LABS</title>
+
+    <link rel="icon" href="/lab/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="/lab/m/mobile.css?v=20260620-m1" />
+    <script src="/lab/m/mobile.js?v=20260620-m1" defer></script>
+  </head>
+
+  <body>
+    <!-- ============================================================
+         TOP BAR  (sticky)
+         ============================================================ -->
+    <header class="m-bar" role="banner">
+      <a class="m-brand" href="/" aria-label="DAS LABS home">
+        <svg class="m-mark" viewBox="0 0 96 48" fill="none" aria-hidden="true">
+          <line x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M30 29 L86 8 L52 29 Z" fill="currentColor" />
+          <path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity="0.55" />
+        </svg>
+        <span class="m-brand-text">
+          <span class="m-brand-labs">DAS&nbsp;LABS</span>
+          <span class="m-brand-product">PropulsionLab</span>
+        </span>
+      </a>
+
+      <div class="m-bar-actions">
+        <button
+          class="m-units"
+          type="button"
+          id="unitToggle"
+          title="Switch between SI and US customary units"
+        >
+          SI
+        </button>
+        <button
+          class="m-menu-btn"
+          type="button"
+          id="menuToggle"
+          aria-label="Open menu"
+          aria-expanded="false"
+          aria-controls="menuSheet"
+        >
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- status strip -->
+    <div class="m-status" id="statusStrip" data-state="idle">
+      <span class="m-status-dot"></span>
+      <span class="m-status-text" id="statusText">Linking to solver…</span>
+    </div>
+
+    <!-- ============================================================
+         ENGINE PICKER  (horizontal scroll)
+         ============================================================ -->
+    <nav class="m-engines" id="enginePicker" aria-label="Engine architecture"></nav>
+
+    <!-- ============================================================
+         TAB SWITCH
+         ============================================================ -->
+    <div class="m-tabs" role="tablist" aria-label="Console sections">
+      <button class="m-tab is-active" role="tab" data-tab="design" aria-selected="true">Design</button>
+      <button class="m-tab" role="tab" data-tab="results" aria-selected="false">Results</button>
+      <button class="m-tab" role="tab" data-tab="sweep" aria-selected="false">Sweep</button>
+    </div>
+
+    <main class="m-main">
+      <!-- ========================= DESIGN ========================= -->
+      <section class="m-panel is-active" data-panel="design" role="tabpanel">
+        <div class="m-concept" id="conceptStrip"></div>
+
+        <div class="m-card">
+          <div class="m-card-head">
+            <h2>Presets</h2>
+            <span class="m-card-hint">Public-estimate real engines</span>
+          </div>
+          <div class="m-presets" id="presetChips"></div>
+        </div>
+
+        <form class="m-card" id="designForm" autocomplete="off">
+          <div class="m-card-head">
+            <h2 id="designTitle">Design point</h2>
+            <span class="m-card-hint">Inputs are SI</span>
+          </div>
+          <div class="m-fields" id="essentialFields"></div>
+
+          <details class="m-advanced" id="advancedWrap">
+            <summary>
+              <span>Advanced parameters</span>
+              <svg viewBox="0 0 16 16" class="m-chev" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="m-fields" id="advancedFields"></div>
+          </details>
+        </form>
+
+        <div class="m-actions">
+          <button class="m-run" type="button" id="runButton">Run cycle</button>
+        </div>
+
+        <p class="m-foot-note">
+          Reduced-order, educational physics. Every assumption is shown in the
+          <a href="/lab/methodology.html">methodology</a>.
+        </p>
+      </section>
+
+      <!-- ========================= RESULTS ========================= -->
+      <section class="m-panel" data-panel="results" role="tabpanel" hidden>
+        <div class="m-empty" id="resultsEmpty">
+          <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M6 30 L18 30 L24 14 L30 38 L36 24 L42 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>Run a cycle to see thrust, efficiency and every station.</p>
+        </div>
+
+        <div id="resultsBody" hidden>
+          <div class="m-metrics" id="metricCards"></div>
+
+          <div class="m-card">
+            <div class="m-card-head">
+              <h2>Performance</h2>
+            </div>
+            <div class="m-rows" id="secondaryRows"></div>
+          </div>
+
+          <div class="m-card">
+            <div class="m-card-head">
+              <h2>Stations</h2>
+              <span class="m-card-hint">Swipe →</span>
+            </div>
+            <div class="m-table-wrap">
+              <table class="m-table" id="stationTable">
+                <thead id="stationHead"></thead>
+                <tbody id="stationBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="m-card">
+            <div class="m-card-head">
+              <h2>Temperature &amp; pressure</h2>
+              <span class="m-card-hint">By station</span>
+            </div>
+            <canvas class="m-canvas" id="stationCanvas" height="240"></canvas>
+          </div>
+
+          <div class="m-warnings" id="resultWarnings"></div>
+        </div>
+      </section>
+
+      <!-- ========================= SWEEP ========================= -->
+      <section class="m-panel" data-panel="sweep" role="tabpanel" hidden>
+        <div class="m-card">
+          <div class="m-card-head">
+            <h2>Parameter sweep</h2>
+            <span class="m-card-hint">Vary one knob</span>
+          </div>
+          <p class="m-sweep-blurb" id="sweepBlurb">
+            Hold the design point fixed and step one parameter across a range to
+            see how thrust and fuel burn trade off.
+          </p>
+          <div class="m-fields">
+            <label class="m-field">
+              <span class="m-field-label">Parameter</span>
+              <div class="m-select-wrap">
+                <select id="sweepParameter"></select>
+              </div>
+            </label>
+            <label class="m-field">
+              <span class="m-field-label">Values <span class="m-unit">comma-separated</span></span>
+              <input id="sweepValues" type="text" inputmode="decimal" />
+            </label>
+          </div>
+          <div class="m-actions">
+            <button class="m-run" type="button" id="runSweepButton">Run sweep</button>
+          </div>
+        </div>
+
+        <div id="sweepResult" hidden>
+          <div class="m-card">
+            <div class="m-card-head">
+              <h2 id="sweepChartTitle">Thrust &amp; TSFC</h2>
+            </div>
+            <canvas class="m-canvas" id="sweepCanvas" height="240"></canvas>
+            <p class="m-sweep-summary" id="sweepSummary"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============================================================
+         MENU SHEET
+         ============================================================ -->
+    <div class="m-sheet-backdrop" id="sheetBackdrop" hidden></div>
+    <aside class="m-sheet" id="menuSheet" aria-hidden="true">
+      <div class="m-sheet-head">
+        <span class="m-sheet-title">DAS&nbsp;LABS · PropulsionLab</span>
+        <button class="m-sheet-close" id="sheetClose" type="button" aria-label="Close menu">✕</button>
+      </div>
+      <nav class="m-sheet-links">
+        <a href="/lab/methodology.html"><b>Methodology</b><span>How the solver works &amp; every assumption</span></a>
+        <a href="/lab/case-studies/"><b>Engine case studies</b><span>Real engines, station by station</span></a>
+        <a href="/lab/viewer3d.html"><b>3D viewer</b><span>Auto-rotating engine cutaways</span></a>
+        <a href="/lab/mlsuite.html"><b>ML suite</b><span>Surrogate models &amp; optimisation</span></a>
+        <a href="/classroom/"><b>Classroom</b><span>Guided design challenges</span></a>
+        <a href="/docs" target="_blank" rel="noopener"><b>API</b><span>The same physics over HTTP</span></a>
+        <a class="m-sheet-desktop" href="/lab?nomobile=1"><b>Open the full console →</b><span>The complete desktop experience</span></a>
+      </nav>
+      <p class="m-sheet-foot">daslabs.uk · v2.6 · mobile</p>
+    </aside>
+  </body>
+</html>

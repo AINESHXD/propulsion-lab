@@ -182,7 +182,7 @@ async def cache_control(request, call_next):
     path = request.url.path
     if path.endswith(".html") or path in ("/", "/lab", "/lab/", "/classroom",
                                           "/classroom/", "/pro", "/pro/", "/piston",
-                                          "/piston/", "/privacy", "/privacy/"):
+                                          "/piston/", "/m", "/m/", "/privacy", "/privacy/"):
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
     elif request.url.query.startswith("v=") and path.rsplit(".", 1)[-1] in (
         "css", "js", "png", "jpg", "jpeg", "svg", "webp", "woff", "woff2", "ico"
@@ -205,6 +205,21 @@ def classroom() -> FileResponse:
     """Serve the PropulsionLab Classroom (guided design challenges)."""
 
     return FileResponse(STATIC_PATH / "classroom" / "index.html")
+
+
+@app.get("/m", include_in_schema=False)
+@app.get("/m/", include_in_schema=False)
+def mobile_console() -> FileResponse:
+    """Serve the PropulsionLab mobile console at a clean /m URL.
+
+    This is a ground-up phone build (its own HTML/CSS/JS under static/m/),
+    not a responsive squeeze of the desktop console. It is a thin client on the
+    same SI solver: it POSTs to /simulate/<engine> and /simulate/<engine>/sweep
+    and reuses the same unit-display layer. Desktop visitors who land here get a
+    link back to the full console; phones hitting /lab are redirected here.
+    """
+
+    return FileResponse(STATIC_PATH / "m" / "index.html")
 
 
 @app.get("/piston", include_in_schema=False)

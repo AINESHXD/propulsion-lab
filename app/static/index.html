@@ -4,6 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
+    <!-- Phones get the purpose-built mobile console at /m. This fires before
+         any render or asset load. ?nomobile=1 forces the full desktop console
+         on a phone (the mobile menu's "full console" link uses it). -->
+    <script>
+      (function () {
+        try {
+          if (
+            location.search.indexOf("nomobile") === -1 &&
+            window.matchMedia &&
+            window.matchMedia("(max-width: 760px)").matches
+          ) {
+            location.replace("/m");
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>PropulsionLab, DAS LABS</title>
     <!-- Privacy-friendly, cookieless analytics (Plausible). Activate at launch
          by uncommenting and setting data-domain to your production domain. Left
@@ -133,16 +149,15 @@
     <div id="mobileGate" role="dialog" aria-label="Mobile version in development">
       <img class="mg-mark" src="/lab/apple-touch-icon.png" alt="DAS LABS" />
       <p class="mg-brand">DAS&nbsp;LABS · PropulsionLab</p>
-      <h1>The mobile version is in development</h1>
+      <h1>Open the mobile console</h1>
       <p class="mg-body">
-        The interactive console is built for a larger screen. A phone-friendly
-        build is on the way — for now, please open PropulsionLab on a desktop
-        or tablet.
+        PropulsionLab has a phone-built console. Your browser has JavaScript
+        turned off, so the redirect did not run — tap below to open it.
       </p>
-      <span class="mg-pill">Mobile build in progress</span>
+      <span class="mg-pill">Mobile console ready</span>
       <div class="mg-links">
-        <a class="primary" href="/lab/methodology.html">Read the methodology</a>
-        <a href="/lab/case-studies/">Browse engine case studies</a>
+        <a class="primary" href="/m">Open the mobile console</a>
+        <a href="/lab/methodology.html">Read the methodology</a>
         <a href="/">Back to DAS LABS</a>
       </div>
       <p class="mg-foot">daslabs.uk · best on desktop</p>
