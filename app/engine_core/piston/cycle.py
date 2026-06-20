@@ -26,6 +26,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.engine_core.piston.aspiration import ASPIRATION_MODES, supercharger_power_W
 from app.engine_core.piston.friction import chen_flynn_fmep_Pa
 from app.engine_core.piston.geometry import CylinderGeometry, cylinder_volume
 from app.engine_core.piston.heat_transfer import (
@@ -58,8 +59,14 @@ class PistonCycleInputs:
     gamma: float = 1.35                      # burned-charge-ish constant gamma
     gas_constant_J_per_kg_K: float = _R_AIR
     intake_temperature_K: float = 330.0
-    intake_pressure_Pa: float = 1.0e5        # manifold pressure (throttle: < atm)
+    intake_pressure_Pa: float = 1.0e5        # manifold pressure (throttle: < atm; boost: > atm)
     exhaust_pressure_Pa: float = 1.0e5       # exhaust back-pressure (>= intake when throttled)
+
+    # Aspiration. The manifold pressure above is the boost; the mode decides who
+    # pays for it — a supercharger debits crank power, a turbo (first cut) does not.
+    aspiration: str = "naturally_aspirated"  # naturally_aspirated | turbocharged | supercharged
+    ambient_pressure_Pa: float = 1.0e5       # reference ambient for boost + SC work
+    supercharger_efficiency: float = 0.65
 
     # Heat release (per unit mass of trapped charge). Fuel thermochemistry
     # drives this in a later module; for now it is a direct input.
@@ -118,6 +125,12 @@ class PistonCycleInputs:
             raise ValueError("fuel_lhv_J_per_kg must be positive.")
         if self.intake_pressure_Pa <= 0.0 or self.exhaust_pressure_Pa <= 0.0:
             raise ValueError("Intake and exhaust pressures must be positive.")
+        if self.aspiration not in ASPIRATION_MODES:
+            raise ValueError(f"aspiration must be one of {ASPIRATION_MODES}.")
+        if self.ambient_pressure_Pa <= 0.0:
+            raise ValueError("ambient_pressure_Pa must be positive.")
+        if not 0.0 < self.supercharger_efficiency <= 1.0:
+            raise ValueError("supercharger_efficiency must be in (0, 1].")
 
 
 @dataclass(slots=True, frozen=True)
@@ -155,6 +168,11 @@ class PistonCycleResult:
     bsfc_g_per_kWh: float                    # brake specific fuel consumption
     fuel_mass_per_cycle_kg: float
 
+    # Aspiration.
+    aspiration: str
+    boost_pressure_Pa: float                 # manifold - ambient (gauge; <0 when throttled)
+    supercharger_power_W: float              # parasitic crank power (0 for NA/turbo)
+
     trace: list[dict[str, float]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -184,6 +202,9 @@ class PistonCycleResult:
             "brake_thermal_efficiency": self.brake_thermal_efficiency,
             "bsfc_g_per_kWh": self.bsfc_g_per_kWh,
             "fuel_mass_per_cycle_kg": self.fuel_mass_per_cycle_kg,
+            "aspiration": self.aspiration,
+            "boost_pressure_Pa": self.boost_pressure_Pa,
+            "supercharger_power_W": self.supercharger_power_W,
             "trace": self.trace,
         }
 
@@ -338,20 +359,37 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
     net_work = work - pumping_work
     net_imep = net_work / displacement
 
-    # --- Brake performance: net indicated minus the friction mean eff pressure. ---
+    # --- Brake performance: net indicated minus friction, then minus the
+    # supercharger's parasitic crank load (turbo/NA pay nothing here). ---
+    cyl_rate = inputs.cylinders * cycles_per_s          # firing events per second
     fmep = chen_flynn_fmep_Pa(peak_p, mean_piston_speed, inputs.friction_multiplier)
-    bmep = net_imep - fmep                              # may go negative (motoring)
-    brake_work = bmep * displacement
-    brake_power = brake_work * inputs.cylinders * cycles_per_s
+    crank_brake_power = (net_imep - fmep) * displacement * cyl_rate
+
+    sc_power = 0.0
+    if inputs.aspiration == "supercharged":
+        sc_power = supercharger_power_W(
+            air_mass_flow_kg_s=mass * cyl_rate,
+            inlet_temperature_K=inputs.intake_temperature_K,
+            pressure_ratio=inputs.intake_pressure_Pa / inputs.ambient_pressure_Pa,
+            efficiency=inputs.supercharger_efficiency,
+            gas_constant_J_per_kg_K=R,
+        )
+
+    brake_power = crank_brake_power - sc_power
     brake_torque = brake_power / omega if omega > 0 else 0.0
-    # Mechanical efficiency: brake / gross indicated (captures pumping + friction).
-    mech_eff = (brake_work / work) if work > 0 else 0.0
-    brake_thermal_eff = (brake_work / heat_released) if heat_released > 0 else 0.0
+    # Express the final brake output back as a BMEP / per-cycle work.
+    bmep = brake_power / (displacement * cyl_rate) if cyl_rate > 0 else 0.0
+    brake_work = bmep * displacement
+    # Mechanical efficiency: brake / gross indicated (captures pumping, friction
+    # and the supercharger parasitic).
+    mech_eff = (brake_power / power) if power > 0 else 0.0
+    fuel_power = heat_released * cyl_rate
+    brake_thermal_eff = (brake_power / fuel_power) if fuel_power > 0 else 0.0
 
     # Fuel mass and BSFC. heat_released is the heat actually released; the fuel
     # burned to release it is heat / LHV (combustion efficiency folds in later).
     fuel_per_cycle = heat_released / inputs.fuel_lhv_J_per_kg
-    fuel_flow_kg_s = fuel_per_cycle * inputs.cylinders * cycles_per_s
+    fuel_flow_kg_s = fuel_per_cycle * cyl_rate
     bsfc_g_per_kWh = (
         fuel_flow_kg_s / brake_power * 3.6e9 if brake_power > 0 else float("inf")
     )
@@ -382,5 +420,8 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
         brake_thermal_efficiency=brake_thermal_eff,
         bsfc_g_per_kWh=bsfc_g_per_kWh,
         fuel_mass_per_cycle_kg=fuel_per_cycle,
+        aspiration=inputs.aspiration,
+        boost_pressure_Pa=inputs.intake_pressure_Pa - inputs.ambient_pressure_Pa,
+        supercharger_power_W=sc_power,
         trace=trace,
     )

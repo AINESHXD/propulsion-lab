@@ -21,6 +21,7 @@ from app.engine_core.piston.geometry import (
 )
 from app.engine_core.piston.wiebe import wiebe_burn_fraction, wiebe_burn_rate
 from app.engine_core.piston.friction import chen_flynn_fmep_Pa
+from app.engine_core.piston.aspiration import ASPIRATION_MODES, supercharger_power_W
 from app.engine_core.piston.cycle import (
     PistonCycleInputs,
     PistonCycleResult,
@@ -35,6 +36,8 @@ __all__ = [
     "wiebe_burn_fraction",
     "wiebe_burn_rate",
     "chen_flynn_fmep_Pa",
+    "ASPIRATION_MODES",
+    "supercharger_power_W",
     "PistonCycleInputs",
     "PistonCycleResult",
     "simulate_piston_cycle",

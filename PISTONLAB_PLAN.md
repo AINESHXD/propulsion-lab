@@ -1,17 +1,16 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
 > **Status:** Living document. Update at the end of each day.
-> **Progress: WEEK 1 COMPLETE (Days 1–5).** Python crank-angle first-law solver
-> in `app/engine_core/piston/`: `geometry` slider-crank V(θ), `wiebe` finite
-> heat release, `cycle` second-order midpoint integrator, `heat_transfer`
-> Woschni wall loss, `friction` Chen-Flynn FMEP, and the **part-load pumping
-> loop (Day 5)**. The full real-engine loss stack now in place: finite burn +
-> wall heat + friction + pumping. Energy closes to machine precision; brake
-> always below indicated; **throttling lowers brake efficiency** (WOT 42.9% →
-> heavy part-load 29.7%, BSFC 193→279 g/kWh) — the classic SI part-load
-> penalty. Net IMEP = gross − PMEP; boosted intake gives a pumping gain
-> (previews Day 6). **52 PistonLab tests** (past the Week-2 gate of 22).
-> Still fully gated — no portal link, no frontend wiring yet.
+> **Progress: Week 1 complete + Day 6.** Python crank-angle first-law solver
+> in `app/engine_core/piston/`: `geometry`, `wiebe`, `cycle` (midpoint
+> integrator), `heat_transfer` (Woschni), `friction` (Chen-Flynn), pumping
+> loop, and **`aspiration` NA / turbo / supercharged (Day 6)**. Loss stack:
+> finite burn + wall heat + friction + pumping; boost packs a denser charge so
+> IMEP/power rise (NA 62 kW → boosted 120 kW at 1.8 bar). The turbo/super split
+> is modelled honestly: a supercharger's belt compression power is debited from
+> brake (super 110 kW = turbo 120 − 9.8 kW parasitic), a turbo (first cut) is
+> not. Energy closes to machine precision; throttling lowers brake efficiency.
+> **62 PistonLab tests.** Still fully gated — no portal link, no frontend wiring yet.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without
