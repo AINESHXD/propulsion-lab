@@ -84,6 +84,14 @@ from app.engine_core.turbojet import simulate_turbojet_cycle
 from app.engine_core.types import CycleCalculationError
 from app.python_export import generate_python_script
 from app.reporting import build_turbojet_pdf_report
+from app.schemas_piston import (
+    PistonSimulateInput,
+    PistonSimulateOutput,
+    PistonSweepInput,
+    PistonSweepOutput,
+    run_piston_simulation,
+    run_piston_sweep,
+)
 from app.schemas import (
     AdvancedEngineOutput,
     AdvancedEngineSweepOutput,
@@ -234,6 +242,30 @@ def piston_lab() -> FileResponse:
     """
 
     return FileResponse(STATIC_PATH / "piston" / "index.html")
+
+
+@app.post("/piston/simulate", response_model=PistonSimulateOutput, include_in_schema=False)
+def piston_simulate(payload: PistonSimulateInput) -> PistonSimulateOutput:
+    """Run one PistonLab crank-angle cycle. SI in, SI out.
+
+    Gated (not in the public schema) until the PistonLab launch. The physics is
+    the source-of-truth solver in ``app/engine_core/piston``; this just wraps it.
+    """
+
+    try:
+        return run_piston_simulation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/piston/sweep", response_model=PistonSweepOutput, include_in_schema=False)
+def piston_sweep(payload: PistonSweepInput) -> PistonSweepOutput:
+    """Sweep one PistonLab parameter (e.g. rpm for a dyno curve)."""
+
+    try:
+        return run_piston_sweep(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def load_engine_presets() -> dict[str, Any]:
