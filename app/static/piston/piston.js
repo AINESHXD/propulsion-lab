@@ -251,6 +251,11 @@ function drawDiagram() {
     ys = trace.map((t) => uconv("press", t.pressure_Pa));
     xlab = `Volume [${ulabel("vol")}]`; ylab = `Pressure [${ulabel("press")}]`;
     noteText = "The closed power loop: compression, finite-rate burn near TDC, then expansion. Loop area is the indicated work. Pumping is handled separately as PMEP.";
+  } else if (activeDiagram === "ts") {
+    xs = trace.map((t) => t.entropy_J_per_kg_K);
+    ys = trace.map((t) => uconv("temp", t.temperature_K));
+    xlab = "Entropy [J/kg·K]"; ylab = `Temperature [${ulabel("temp")}]`; color = cssVar("--c-temp");
+    noteText = "Temperature–entropy. Compression and expansion run near-vertical (close to isentropic); combustion adds heat, sweeping right. The datum is arbitrary, so read the shape, not the absolute entropy.";
   } else if (activeDiagram === "ptheta") {
     xs = trace.map((t) => t.theta_deg);
     ys = trace.map((t) => uconv("press", t.pressure_Pa));

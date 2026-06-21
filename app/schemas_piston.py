@@ -125,6 +125,7 @@ class PistonTracePointOut(BaseModel):
     volume_m3: float
     pressure_Pa: float
     temperature_K: float
+    entropy_J_per_kg_K: float
 
 
 class PistonSimulateOutput(BaseModel):

@@ -335,8 +335,16 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
 
     n_steps = max(1, int(round((end - theta) / dth)))
     every = max(1, n_steps // trace_points)
+
+    def _entropy(temp: float, vol: float) -> float:
+        # Specific entropy of the ideal-gas charge to an arbitrary datum
+        # (s = c_v ln T + R ln v, v = V/m); only differences matter for the
+        # T–s diagram, so the datum is free.
+        return cv * math.log(temp) + R * math.log(vol / mass)
+
     trace: list[dict[str, float]] = [{
         "theta_deg": theta, "volume_m3": V, "pressure_Pa": p, "temperature_K": T,
+        "entropy_J_per_kg_K": _entropy(T, V),
     }]
 
     for k in range(1, n_steps + 1):
@@ -397,6 +405,7 @@ def simulate_piston_cycle(inputs: PistonCycleInputs,
             trace.append({
                 "theta_deg": theta, "volume_m3": V,
                 "pressure_Pa": p, "temperature_K": T,
+                "entropy_J_per_kg_K": _entropy(T, V),
             })
 
     heat_released = q_total * (x_prev - burn(inputs.theta_start_deg))

@@ -78,6 +78,14 @@ def test_compression_sweep_counts_knock_cases() -> None:
     assert payload.summary.knock_cases >= 1
 
 
+def test_trace_carries_entropy_for_the_ts_diagram() -> None:
+    out = run_piston_simulation(PistonSimulateInput(fuel="gasoline"))
+    entropy = [pt.entropy_J_per_kg_K for pt in out.trace]
+    assert len(entropy) > 100
+    # Combustion adds heat, so peak entropy clears the start by a wide margin.
+    assert max(entropy) > entropy[0] + 100.0
+
+
 def test_endpoints_are_registered() -> None:
     paths = {route.path for route in app.routes}
     assert "/piston/simulate" in paths

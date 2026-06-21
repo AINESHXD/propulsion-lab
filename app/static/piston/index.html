@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl3" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl4" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -155,6 +155,7 @@
               <h2>P–V loop</h2>
               <div class="chart-tabs" id="diagramTabs">
                 <button class="chart-tab is-active" data-diagram="pv">P–V</button>
+                <button class="chart-tab" data-diagram="ts">T–s</button>
                 <button class="chart-tab" data-diagram="ptheta">P–θ</button>
                 <button class="chart-tab" data-diagram="ttheta">T–θ</button>
               </div>
@@ -216,7 +217,7 @@
     </main>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl3";
+      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl4";
       startPiston();
     </script>
   </body>
