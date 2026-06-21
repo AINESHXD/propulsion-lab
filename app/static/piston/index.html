@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl5" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl7" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -143,6 +143,23 @@
 
         <!-- ===================== RESULTS ===================== -->
         <div class="results">
+          <!-- living engine: the centerpiece -->
+          <section class="card engine-card">
+            <div class="card-head">
+              <h2>Live engine</h2>
+              <div class="engine-controls">
+                <span class="stroke-pill" id="strokeLabel">Intake</span>
+                <button class="ghost-btn engine-play" id="enginePlay" type="button" aria-label="Pause">❚❚</button>
+              </div>
+            </div>
+            <div class="plot-wrap"><canvas id="engineCanvas" height="340"></canvas></div>
+            <p class="plot-note">
+              A four-stroke cycle in motion, on your geometry. The charge colour tracks
+              gas temperature and the spark fires on your timing; watch the marker trace
+              the P–V and T–s loops below as the piston moves.
+            </p>
+          </section>
+
           <!-- limit banner -->
           <div class="limit-banner" id="limitBanner"></div>
 
@@ -224,7 +241,7 @@
     </main>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl5";
+      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl7";
       startPiston();
     </script>
   </body>

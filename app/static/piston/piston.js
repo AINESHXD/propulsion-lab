@@ -98,6 +98,7 @@ function setStatus(text, cls) {
 /* ---------- solve + render ---------- */
 let lastResult = null;
 let diagramMode = "loop"; // "loop" (P–V + T–s side by side) | "crank" (P–θ + T–θ)
+let markerIdx = null;     // trace index for the engine-synced loop marker
 
 async function postJson(url, body) {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -303,6 +304,14 @@ function drawChart(canvas, kind) {
 
   if (d.loop) markNodes(ctx, trace, X, Y, d);
 
+  // synced position marker driven by the live engine animation
+  if (d.loop && markerIdx != null && trace[markerIdx]) {
+    const t = trace[markerIdx], mx = X(d.x(t)), my = Y(d.y(t));
+    ctx.beginPath(); ctx.arc(mx, my, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff"; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.stroke();
+  }
+
   ctx.fillStyle = cssVar("--c-axis"); ctx.font = "500 9px 'JetBrains Mono', monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(d.xlab(), px + pw / 2, h - 1);
   ctx.save(); ctx.translate(11, py + ph / 2); ctx.rotate(-Math.PI / 2);
@@ -320,6 +329,205 @@ function drawAllDiagrams() {
   if (note) note.textContent = diagramMode === "loop"
     ? "Two closed loops, live: the P–V area is the indicated work, the T–s area the net heat. Compression and expansion run near-isentropic; combustion sweeps both rightward. Drag any control and watch them respond."
     : "Cylinder pressure and temperature versus crank angle. TDC is 0°; the spike just after TDC is combustion.";
+}
+
+/* ---------- living engine animation (the centerpiece) ----------
+ * A four-stroke crank-angle clock: animTheta runs 0..720 (0 = TDC of intake,
+ * 360 = TDC firing). The piston follows the same slider-crank kinematics as the
+ * solver; valves, spark and charge colour follow the cycle; and during the
+ * closed strokes (compression + power) the marker tracks the real P–V/T–s loop.
+ */
+let animTheta = 0;
+let animPlaying = true;
+let animLast = 0;
+let lastLoopDraw = 0;
+
+const inputVal = (key, fallback) => {
+  const el = document.querySelector(`[data-key="${key}"]`);
+  const v = el ? parseFloat(el.value) : NaN;
+  return Number.isNaN(v) ? fallback : v;
+};
+
+function strokeName(a) {
+  a = ((a % 720) + 720) % 720;
+  return a < 180 ? "Intake" : a < 360 ? "Compression" : a < 540 ? "Power" : "Exhaust";
+}
+
+/** Trace index for the loop marker, or null during the gas-exchange strokes. */
+function engineTraceIndex(a) {
+  a = ((a % 720) + 720) % 720;
+  const trace = lastResult && lastResult.trace;
+  if (!trace || !trace.length || a < 180 || a > 540) return null;
+  const tt = a - 360; // crank angle in the trace frame (-180..180)
+  let best = 0;
+  for (let i = 1; i < trace.length; i++) {
+    if (Math.abs(trace[i].theta_deg - tt) < Math.abs(trace[best].theta_deg - tt)) best = i;
+  }
+  return best;
+}
+
+function gasTemperature(a) {
+  const intakeT = inputVal("intake_temperature_K", 330);
+  const idx = engineTraceIndex(a);
+  if (idx != null) return lastResult.trace[idx].temperature_K;
+  // gas-exchange strokes: cool fresh charge on intake, hot residual on exhaust
+  const aa = ((a % 720) + 720) % 720;
+  const endT = lastResult && lastResult.trace.length ? lastResult.trace[lastResult.trace.length - 1].temperature_K : intakeT * 2;
+  return aa < 180 ? intakeT : endT;
+}
+
+function gasTint(tnorm) {
+  // steel-blue (cool) -> amber -> bright cream (combustion)
+  const stops = [[74, 92, 120], [232, 146, 62], [255, 216, 150]];
+  let a0, a1, f;
+  if (tnorm < 0.6) { a0 = stops[0]; a1 = stops[1]; f = tnorm / 0.6; }
+  else { a0 = stops[1]; a1 = stops[2]; f = (tnorm - 0.6) / 0.4; }
+  const m = (i) => Math.round(a0[i] + (a1[i] - a0[i]) * Math.max(0, Math.min(1, f)));
+  return `rgb(${m(0)},${m(1)},${m(2)})`;
+}
+
+function valveLift(a, kind) {
+  a = ((a % 720) + 720) % 720;
+  const win = kind === "intake" ? [0, 185] : [535, 720];
+  if (a < win[0] || a > win[1]) return 0;
+  return Math.sin(((a - win[0]) / (win[1] - win[0])) * Math.PI) * 0.9;
+}
+
+function drawEngine() {
+  const canvas = document.getElementById("engineCanvas");
+  if (!canvas || canvas.clientWidth === 0) return;
+  const { ctx, w, h } = scaleCanvas(canvas);
+  ctx.clearRect(0, 0, w, h);
+
+  const cr = inputVal("compression_ratio", 10.5);
+  const bore = inputVal("bore_m", 0.086);
+  const stroke = inputVal("stroke_m", 0.086);
+  const rodRatio = inputVal("rod_ratio", 3.5);
+
+  // canvas geometry: size the mechanism so the whole thing (cylinder head at
+  // TDC down to the bottom of the crank circle) fits centred, then anchor it.
+  const pad = 18;
+  const cx = w * 0.5;
+  const visRod = Math.min(rodRatio, 3.2);            // cap rod for composition
+  const headGapFactor = 2 / Math.max(1.4, cr - 1);   // clearance / crank radius
+  const crankR = Math.min(60, (h - 2 * pad) / (2 + visRod + 0.45 + headGapFactor));
+  const strokePx = 2 * crankR;
+  const rodLen = crankR * visRod;
+  const pistonH = crankR * 0.9;
+  const headGap = crankR * headGapFactor;            // clearance shrinks with CR
+  const borePx = Math.max(78, Math.min(w * 0.36, strokePx * (bore / stroke)));
+  const cyCrank = pad + (crankR + rodLen) + pistonH * 0.5 + headGap;
+
+  const th = animTheta * Math.PI / 180;
+  const dist = crankR * Math.cos(th) + Math.sqrt(rodLen * rodLen - crankR * crankR * Math.sin(th) * Math.sin(th));
+  const pinY = cyCrank - dist;                          // piston-pin Y on the axis
+  const crownY = pinY - pistonH * 0.5;                  // piston crown
+  const crownTDC = (cyCrank - (crankR + rodLen)) - pistonH * 0.5;
+  const headY = crownTDC - headGap;                     // combustion-chamber ceiling
+  const xL = cx - borePx / 2, xR = cx + borePx / 2;
+  const crankPinX = cx + crankR * Math.sin(th);
+  const crankPinY = cyCrank - crankR * Math.cos(th);
+
+  // --- cylinder block (gives the bore body) ---
+  ctx.fillStyle = "rgba(255,255,255,0.028)";
+  roundRect(ctx, xL - 13, headY - 16, borePx + 26, cyCrank - (headY - 16) + 6, 11); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1;
+  roundRect(ctx, xL - 13, headY - 16, borePx + 26, cyCrank - (headY - 16) + 6, 11); ctx.stroke();
+
+  // --- gas charge (temperature-tinted) ---
+  const Tmin = inputVal("intake_temperature_K", 330);
+  const Tmax = (lastResult && lastResult.peak_temperature_K) || 2600;
+  const tnorm = Math.max(0, Math.min(1, (gasTemperature(animTheta) - Tmin) / Math.max(1, Tmax - Tmin)));
+  const tint = gasTint(tnorm);
+  const grad = ctx.createLinearGradient(0, headY, 0, crownY);
+  grad.addColorStop(0, tint);
+  grad.addColorStop(1, `rgba(20,16,14,0.25)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(xL, headY, borePx, Math.max(0, crownY - headY));
+
+  // --- cylinder walls ---
+  ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 2; ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(xL, headY - 8); ctx.lineTo(xL, cyCrank);
+  ctx.moveTo(xR, headY - 8); ctx.lineTo(xR, cyCrank);
+  ctx.stroke();
+  // head
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.beginPath(); ctx.moveTo(xL - 10, headY - 8); ctx.lineTo(xR + 10, headY - 8); ctx.stroke();
+
+  // --- valves (intake left, exhaust right), lift downward when open ---
+  for (const [kind, vx, col] of [["intake", cx - borePx * 0.24, "#7ba7eb"], ["exhaust", cx + borePx * 0.24, "#d9776a"]]) {
+    const lift = valveLift(animTheta, kind) * 12;
+    ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(vx, headY - 22); ctx.lineTo(vx, headY + lift); ctx.stroke();
+    ctx.fillStyle = lift > 1 ? col : "rgba(255,255,255,0.30)";
+    ctx.beginPath(); ctx.moveTo(vx - 6, headY + lift); ctx.lineTo(vx + 6, headY + lift); ctx.lineTo(vx, headY + lift + 6); ctx.closePath(); ctx.fill();
+  }
+
+  // --- spark flash on the actual timing ---
+  const fire = 360 + inputVal("combustion_start_deg", -15);
+  const da = (((animTheta - fire) % 720) + 720) % 720;
+  const spark = da < 28 ? 1 - da / 28 : 0;
+  if (spark > 0 && inputVal("compression_ratio", 0) >= 0) {
+    const fuel = (document.querySelector('[data-key="fuel"]') || {}).value;
+    if (fuel !== "diesel" || da < 12) {
+      const r = 6 + spark * 26;
+      const g = ctx.createRadialGradient(cx, headY + 6, 0, cx, headY + 6, r);
+      g.addColorStop(0, `rgba(255,243,214,${0.85 * spark})`);
+      g.addColorStop(1, "rgba(255,243,214,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, headY + 6, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // --- connecting rod ---
+  ctx.strokeStyle = "rgba(210,214,222,0.85)"; ctx.lineWidth = Math.max(4, borePx * 0.07); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(crankPinX, crankPinY); ctx.lineTo(cx, pinY); ctx.stroke();
+  ctx.lineCap = "butt";
+
+  // --- piston ---
+  const pg = ctx.createLinearGradient(xL, 0, xR, 0);
+  pg.addColorStop(0, "#23262d"); pg.addColorStop(0.5, "#3c414b"); pg.addColorStop(1, "#23262d");
+  ctx.fillStyle = pg;
+  roundRect(ctx, xL + 2, crownY, borePx - 4, pistonH, 4); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) { const ry = crownY + 5 + i * 4; ctx.beginPath(); ctx.moveTo(xL + 4, ry); ctx.lineTo(xR - 4, ry); ctx.stroke(); }
+  ctx.fillStyle = "rgba(180,186,196,0.9)"; ctx.beginPath(); ctx.arc(cx, pinY, Math.max(3, borePx * 0.05), 0, Math.PI * 2); ctx.fill();
+
+  // --- crankshaft ---
+  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cyCrank, crankR, 0, Math.PI * 2); ctx.stroke();
+  // counterweight opposite the pin
+  ctx.fillStyle = "rgba(60,65,75,0.9)";
+  ctx.beginPath(); ctx.arc(cx - crankR * Math.sin(th), cyCrank + crankR * Math.cos(th), crankR * 0.7, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(210,214,222,0.85)"; ctx.lineWidth = Math.max(3, borePx * 0.05);
+  ctx.beginPath(); ctx.moveTo(cx, cyCrank); ctx.lineTo(crankPinX, crankPinY); ctx.stroke();
+  ctx.fillStyle = cssVar("--accent"); ctx.beginPath(); ctx.arc(crankPinX, crankPinY, Math.max(3, borePx * 0.045), 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#9aa0aa"; ctx.beginPath(); ctx.arc(cx, cyCrank, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function animFrame(ts) {
+  if (!animLast) animLast = ts;
+  const dt = Math.min(0.05, (ts - animLast) / 1000); animLast = ts;
+  if (animPlaying) {
+    const cyclesPerSec = 1 / 2.6;            // one full 4-stroke every ~2.6 s
+    animTheta = (animTheta + dt * 720 * cyclesPerSec) % 720;
+  }
+  markerIdx = engineTraceIndex(animTheta);
+  drawEngine();
+  const label = document.getElementById("strokeLabel");
+  if (label) label.textContent = strokeName(animTheta);
+  if (ts - lastLoopDraw > 38) { drawAllDiagrams(); lastLoopDraw = ts; } // ~26 fps marker
+  requestAnimationFrame(animFrame);
 }
 
 /* ---------- dyno sweep ---------- */
@@ -433,10 +641,19 @@ export function startPiston() {
   });
   unitBtn.textContent = `Units: ${unit}`;
 
+  // living-engine play / pause
+  const playBtn = document.getElementById("enginePlay");
+  if (playBtn) playBtn.addEventListener("click", () => {
+    animPlaying = !animPlaying;
+    playBtn.textContent = animPlaying ? "❚❚" : "▶";
+    playBtn.setAttribute("aria-label", animPlaying ? "Pause" : "Play");
+  });
+
   // redraw charts on resize
   let rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawAllDiagrams(); drawDyno(); }, 150); });
 
   updateReadouts();
   solve();
+  requestAnimationFrame(animFrame);   // start the live engine
 }

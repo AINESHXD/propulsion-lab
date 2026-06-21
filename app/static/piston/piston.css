@@ -215,6 +215,21 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 canvas { width: 100%; display: block; }
 #canvasA, #canvasB { height: 300px; }
 #dynoCanvas { height: 300px; }
+#engineCanvas { height: 340px; }
+
+/* living engine centerpiece */
+.engine-card {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(232,146,62,0.05) 0%, transparent 55%),
+    var(--surface);
+}
+.engine-controls { display: flex; align-items: center; gap: 10px; }
+.stroke-pill {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid var(--accent-line); background: var(--accent-soft);
+  border-radius: 999px; padding: 4px 11px; min-width: 92px; text-align: center;
+}
+.engine-play { min-width: 38px; font-size: 11px; padding: 6px 10px; }
 
 /* Two loops side by side, the way the old console showed them. */
 .diagram-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
