@@ -85,7 +85,57 @@ function applyPreset(name) {
   }
   document.querySelectorAll(".preset").forEach((b) => b.classList.toggle("is-active", b.dataset.preset === name));
   updateReadouts();
+  syncEngineType();
   solve();
+}
+
+/* ---------- petrol / diesel engine type ---------- */
+const familyOf = (fuel) => (fuel === "diesel" ? "diesel" : "petrol");
+const ignitionOf = (fuel) => (fuel === "diesel" ? "compression" : "spark");
+const TYPE_DEFAULTS = {
+  petrol: { fuel: "gasoline", compression_ratio: 11.0, combustion_start_deg: -15, burn_duration_deg: 50,
+            aspiration: "naturally_aspirated", intake_pressure_Pa: 1.0e5, intake_temperature_K: 330, equivalence_ratio: 1.0 },
+  diesel: { fuel: "diesel", compression_ratio: 18.0, combustion_start_deg: -8, burn_duration_deg: 65,
+            aspiration: "turbocharged", intake_pressure_Pa: 1.9e5, intake_temperature_K: 320, equivalence_ratio: 0.7 },
+};
+
+function applyEngineType(type) {
+  const d = TYPE_DEFAULTS[type];
+  if (!d) return;
+  for (const [key, val] of Object.entries(d)) {
+    const el = document.querySelector(`[data-key="${key}"]`);
+    if (!el) continue;
+    if (STRING_KEYS.has(key)) el.value = val;
+    else el.value = el.dataset.scale ? val / parseFloat(el.dataset.scale) : val;
+  }
+  document.querySelectorAll(".preset").forEach((b) => b.classList.remove("is-active"));
+  updateReadouts();
+  syncEngineType();
+  solve();
+}
+
+/** Reflect the current fuel into the type toggle, ignition badge and engine note. */
+function syncEngineType() {
+  const fuel = (document.querySelector('[data-key="fuel"]') || {}).value || "gasoline";
+  const fam = familyOf(fuel), ign = ignitionOf(fuel);
+  document.querySelectorAll(".etype").forEach((b) => b.classList.toggle("is-active", b.dataset.type === fam));
+  const badge = document.getElementById("ignitionBadge");
+  if (badge) { badge.dataset.ign = ign; badge.textContent = ign === "compression" ? "Compression" : "Spark"; }
+  const note = document.getElementById("engineNote");
+  if (note) note.textContent = ign === "compression"
+    ? "A four-stroke diesel in motion. No spark plug — the injector sprays fuel into air compressed so hard it self-ignites. Charge colour tracks gas temperature; watch the marker trace the loops below."
+    : "A four-stroke petrol engine in motion. The spark plug fires on your timing to light the mixture. Charge colour tracks gas temperature; watch the marker trace the loops below.";
+}
+
+/* ---------- view mode (enthusiast / engineer) ---------- */
+const MODE_KEY = "pl_mode";
+function setMode(m) {
+  const mode = m === "engineer" ? "engineer" : "enthusiast";
+  document.body.classList.remove("mode-enthusiast", "mode-engineer");
+  document.body.classList.add(`mode-${mode}`);
+  localStorage.setItem(MODE_KEY, mode);
+  document.querySelectorAll(".mode-opt").forEach((b) => b.classList.toggle("is-active", b.dataset.mode === mode));
+  requestAnimationFrame(() => { drawAllDiagrams(); drawDyno(); }); // re-measure newly shown charts
 }
 
 /* ---------- status ---------- */
@@ -172,7 +222,35 @@ function renderResult(r) {
   if (Math.abs(r.boost_pressure_Pa) > 1000) extra("Boost", uval("press", r.boost_pressure_Pa, 2));
   document.getElementById("breakdownRows").innerHTML = rows.join("");
 
+  renderSummary(r);
   drawAllDiagrams();
+}
+
+/** Plain-English description of the engine for Enthusiast mode. */
+function renderSummary(r) {
+  const el = document.getElementById("summaryText");
+  if (!el) return;
+  const inp = readInputs();                         // SI values (bore/stroke in m)
+  const cyl = inp.cylinders;
+  const dispL = (Math.PI / 4) * inp.bore_m * inp.bore_m * inp.stroke_m * cyl * 1000;
+  const fuel = inp.fuel;
+  const aspWord = inp.aspiration === "turbocharged" ? "turbo" : inp.aspiration === "supercharged" ? "supercharged" : "naturally aspirated";
+  const typeWord = fuel === "diesel" ? "diesel" : fuel === "ethanol" ? "ethanol" : fuel === "methanol" ? "methanol" : "petrol";
+  const hp = Math.round(r.brake_power_W * 1.34102209e-3);
+  const tq = unit === "US" ? `${Math.round(r.brake_torque_Nm * 0.737562149)} lb·ft` : `${Math.round(r.brake_torque_Nm)} N·m`;
+  const lam = r.lambda_air;
+  const mix = lam > 1.05 ? "lean" : lam < 0.95 ? "rich" : "stoichiometric";
+  const cr = inp.compression_ratio;
+  let line = `A <b>${dispL.toFixed(1)} L ${aspWord} ${typeWord} ${cyl}-cylinder</b> — about <b>${hp} hp</b> and <b>${tq}</b> at ${Math.round(inp.rpm)} rpm. `;
+  line += fuel === "diesel"
+    ? `It squeezes the air to <b>${cr.toFixed(0)}:1</b> until it self-ignites the injected fuel — no spark plug — running ${mix} (λ ${fmt(lam, 2)}, as diesels do). `
+    : `A spark plug lights a ${mix} mix (λ ${fmt(lam, 2)}) at <b>${cr.toFixed(1)}:1</b> compression. `;
+  const warns = r.operating_warnings || [];
+  if (warns.some((w) => w.kind === "knock")) line += `⚠ It is <b>knocking</b> — too much compression or boost for this fuel. Back it off or run higher octane.`;
+  else if (warns.some((w) => w.kind === "smoke")) line += `⚠ It is over-fuelled into <b>smoke</b> — lean out the fuelling.`;
+  else if (warns.some((w) => w.kind === "lean_misfire")) line += `⚠ The mixture is too lean to fire cleanly.`;
+  else line += `No knock or smoke flags — a healthy operating point.`;
+  el.innerHTML = line;
 }
 
 /* ---------- canvas helpers ---------- */
@@ -464,18 +542,55 @@ function drawEngine() {
     ctx.beginPath(); ctx.moveTo(vx - 6, headY + lift); ctx.lineTo(vx + 6, headY + lift); ctx.lineTo(vx, headY + lift + 6); ctx.closePath(); ctx.fill();
   }
 
-  // --- spark flash on the actual timing ---
-  const fire = 360 + inputVal("combustion_start_deg", -15);
+  // --- ignition: petrol fires a spark plug, diesel injects into hot air ---
+  const fuel = (document.querySelector('[data-key="fuel"]') || {}).value || "gasoline";
+  const compression = fuel === "diesel";
+  const fire = 360 + inputVal("combustion_start_deg", compression ? -8 : -15);
   const da = (((animTheta - fire) % 720) + 720) % 720;
-  const spark = da < 28 ? 1 - da / 28 : 0;
-  if (spark > 0 && inputVal("compression_ratio", 0) >= 0) {
-    const fuel = (document.querySelector('[data-key="fuel"]') || {}).value;
-    if (fuel !== "diesel" || da < 12) {
-      const r = 6 + spark * 26;
-      const g = ctx.createRadialGradient(cx, headY + 6, 0, cx, headY + 6, r);
-      g.addColorStop(0, `rgba(255,243,214,${0.85 * spark})`);
-      g.addColorStop(1, "rgba(255,243,214,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, headY + 6, r, 0, Math.PI * 2); ctx.fill();
+
+  if (compression) {
+    // injector nozzle (thin) at the head centre
+    ctx.strokeStyle = "rgba(190,196,206,0.8)"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx, headY - 21); ctx.lineTo(cx, headY - 1); ctx.stroke();
+    ctx.lineCap = "butt";
+    // fuel spray cone during injection
+    if (da < 38) {
+      const sf = 1 - da / 38;
+      const reach = Math.min(crownY - headY - 2, (crownY - headY) * (0.4 + 0.5 * (1 - sf)));
+      ctx.strokeStyle = `rgba(170,190,230,${0.55 * sf})`; ctx.lineWidth = 1.2;
+      for (const ang of [-26, -13, 0, 13, 26]) {
+        const a = ang * Math.PI / 180;
+        ctx.beginPath(); ctx.moveTo(cx, headY); ctx.lineTo(cx + Math.sin(a) * reach * 0.6, headY + reach); ctx.stroke();
+      }
+    }
+    // compression-ignition bloom: fiery, organic, no electric spark
+    const bloom = da < 34 ? Math.sin((da / 34) * Math.PI) : 0;
+    if (bloom > 0) {
+      const cyb = headY + Math.min(crownY - headY, 16) + 4;
+      const r = 8 + bloom * Math.min(borePx * 0.55, 42);
+      const g = ctx.createRadialGradient(cx, cyb, 0, cx, cyb, r);
+      g.addColorStop(0, `rgba(255,176,96,${0.82 * bloom})`);
+      g.addColorStop(0.55, `rgba(232,110,50,${0.35 * bloom})`);
+      g.addColorStop(1, "rgba(232,110,50,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cyb, r, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    // spark plug body + electrode
+    ctx.strokeStyle = "rgba(190,196,206,0.85)"; ctx.lineWidth = 4.5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx, headY - 22); ctx.lineTo(cx, headY - 6); ctx.stroke();
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, headY - 6); ctx.lineTo(cx, headY + 1); ctx.stroke();
+    ctx.lineCap = "butt";
+    // crisp electric spark (blue-white)
+    const spark = da < 24 ? 1 - da / 24 : 0;
+    if (spark > 0) {
+      const r = 5 + spark * 22;
+      const g = ctx.createRadialGradient(cx, headY + 2, 0, cx, headY + 2, r);
+      g.addColorStop(0, `rgba(223,233,255,${0.95 * spark})`);
+      g.addColorStop(0.5, `rgba(160,190,255,${0.4 * spark})`);
+      g.addColorStop(1, "rgba(160,190,255,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, headY + 2, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(240,246,255,${spark})`; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(cx, headY + 1); ctx.lineTo(cx - 3, headY + 6); ctx.lineTo(cx + 2, headY + 9); ctx.stroke();
     }
   }
 
@@ -641,6 +756,17 @@ export function startPiston() {
   });
   unitBtn.textContent = `Units: ${unit}`;
 
+  // engine type (petrol / diesel)
+  document.querySelectorAll(".etype").forEach((b) =>
+    b.addEventListener("click", () => applyEngineType(b.dataset.type)));
+  // keep type toggle + ignition badge in sync when the fuel itself changes
+  const fuelSel = document.getElementById("fuel");
+  if (fuelSel) fuelSel.addEventListener("change", syncEngineType);
+
+  // view mode (enthusiast / engineer)
+  document.querySelectorAll(".mode-opt").forEach((b) =>
+    b.addEventListener("click", () => setMode(b.dataset.mode)));
+
   // living-engine play / pause
   const playBtn = document.getElementById("enginePlay");
   if (playBtn) playBtn.addEventListener("click", () => {
@@ -653,6 +779,8 @@ export function startPiston() {
   let rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawAllDiagrams(); drawDyno(); }, 150); });
 
+  setMode(localStorage.getItem(MODE_KEY) || "enthusiast");
+  syncEngineType();
   updateReadouts();
   solve();
   requestAnimationFrame(animFrame);   // start the live engine

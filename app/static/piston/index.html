@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl7" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl9" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -25,6 +25,10 @@
       </a>
       <nav class="mission-nav">
         <span id="apiStatus" class="status-pill">Linking</span>
+        <div class="mode-toggle" id="modeToggle" role="tablist" aria-label="View mode">
+          <button class="mode-opt is-active" data-mode="enthusiast" role="tab">Enthusiast</button>
+          <button class="mode-opt" data-mode="engineer" role="tab">Engineer</button>
+        </div>
         <button class="nav-link unit-toggle" type="button" id="unitToggle" title="Switch SI / US units">Units: SI</button>
         <a class="nav-link" href="#methodology">Methodology</a>
         <a class="nav-link" href="/lab/">PropulsionLab</a>
@@ -49,6 +53,23 @@
       <div class="workspace">
         <!-- ===================== CONTROLS ===================== -->
         <aside class="controls">
+          <div class="engine-type" id="engineType" role="tablist" aria-label="Engine type">
+            <button class="etype is-active" data-type="petrol" role="tab">
+              <span class="etype-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 9h6l-1.5 4h-3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M11 13l-1 5m4-5l1 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              </span>
+              <span class="etype-name">Petrol</span>
+              <span class="etype-sub">spark ignition</span>
+            </button>
+            <button class="etype" data-type="diesel" role="tab">
+              <span class="etype-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 14l3-3 3 3-3 7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="etype-name">Diesel</span>
+              <span class="etype-sub">compression ignition</span>
+            </button>
+          </div>
+
           <section class="card">
             <div class="card-head"><h2>Presets</h2><span class="hint">Real-ish engines</span></div>
             <div class="presets" id="presetRow"></div>
@@ -129,7 +150,7 @@
             <div class="field"><label>Intake temp <small data-unit="temp">K</small></label><input type="number" data-key="intake_temperature_K" value="330" step="5" /></div>
           </section>
 
-          <details class="card accordion">
+          <details class="card accordion engineer-only">
             <summary><span>Combustion &amp; losses</span><svg viewBox="0 0 16 16" class="chev"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></summary>
             <div class="accordion-body">
               <div class="field"><label>Spark / SOC <small>°CA</small> <b data-readout="combustion_start_deg"></b></label><input type="range" data-key="combustion_start_deg" min="-45" max="10" step="1" value="-15" /></div>
@@ -146,17 +167,20 @@
           <!-- living engine: the centerpiece -->
           <section class="card engine-card">
             <div class="card-head">
-              <h2>Live engine</h2>
+              <div class="card-head-left">
+                <h2>Live engine</h2>
+                <span class="ignition-badge" id="ignitionBadge" data-ign="spark">Spark</span>
+              </div>
               <div class="engine-controls">
                 <span class="stroke-pill" id="strokeLabel">Intake</span>
                 <button class="ghost-btn engine-play" id="enginePlay" type="button" aria-label="Pause">❚❚</button>
               </div>
             </div>
             <div class="plot-wrap"><canvas id="engineCanvas" height="340"></canvas></div>
-            <p class="plot-note">
-              A four-stroke cycle in motion, on your geometry. The charge colour tracks
-              gas temperature and the spark fires on your timing; watch the marker trace
-              the P–V and T–s loops below as the piston moves.
+            <p class="plot-note" id="engineNote">
+              A four-stroke cycle in motion, on your geometry. Charge colour tracks
+              gas temperature; the spark plug fires on your timing. Watch the marker
+              trace the P–V and T–s loops below as the piston moves.
             </p>
           </section>
 
@@ -165,6 +189,12 @@
 
           <!-- hero metrics -->
           <section class="metrics" id="metricCards"></section>
+
+          <!-- plain-English summary (enthusiast mode) -->
+          <section class="card summary-card enthusiast-only" id="summaryCard">
+            <div class="card-head"><h2>What you've built</h2></div>
+            <p class="summary-text" id="summaryText">—</p>
+          </section>
 
           <!-- diagrams: two loops side by side, live -->
           <section class="card">
@@ -189,7 +219,7 @@
           </section>
 
           <!-- indicated vs brake -->
-          <section class="card">
+          <section class="card engineer-only">
             <div class="card-head"><h2>Indicated → brake</h2><span class="hint">Where the work goes</span></div>
             <div class="rows" id="breakdownRows"></div>
           </section>
@@ -241,7 +271,7 @@
     </main>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl7";
+      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl9";
       startPiston();
     </script>
   </body>
