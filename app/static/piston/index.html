@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl4" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl5" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -149,18 +149,25 @@
           <!-- hero metrics -->
           <section class="metrics" id="metricCards"></section>
 
-          <!-- diagrams -->
+          <!-- diagrams: two loops side by side, live -->
           <section class="card">
             <div class="card-head">
-              <h2>P–V loop</h2>
-              <div class="chart-tabs" id="diagramTabs">
-                <button class="chart-tab is-active" data-diagram="pv">P–V</button>
-                <button class="chart-tab" data-diagram="ts">T–s</button>
-                <button class="chart-tab" data-diagram="ptheta">P–θ</button>
-                <button class="chart-tab" data-diagram="ttheta">T–θ</button>
+              <h2>Cycle diagrams</h2>
+              <div class="chart-tabs" id="diagramModeTabs">
+                <button class="chart-tab is-active" data-mode="loop">Loops</button>
+                <button class="chart-tab" data-mode="crank">Crank angle</button>
               </div>
             </div>
-            <div class="plot-wrap"><canvas id="diagramCanvas" height="320"></canvas></div>
+            <div class="diagram-pair">
+              <div class="diagram-cell">
+                <span class="diagram-title" id="titleA">P–V loop</span>
+                <div class="plot-wrap"><canvas id="canvasA" height="300"></canvas></div>
+              </div>
+              <div class="diagram-cell">
+                <span class="diagram-title" id="titleB">T–s loop</span>
+                <div class="plot-wrap"><canvas id="canvasB" height="300"></canvas></div>
+              </div>
+            </div>
             <p class="plot-note" id="diagramNote"></p>
           </section>
 
@@ -217,7 +224,7 @@
     </main>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl4";
+      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl5";
       startPiston();
     </script>
   </body>

@@ -97,7 +97,7 @@ function setStatus(text, cls) {
 
 /* ---------- solve + render ---------- */
 let lastResult = null;
-let activeDiagram = "pv";
+let diagramMode = "loop"; // "loop" (P–V + T–s side by side) | "crank" (P–θ + T–θ)
 
 async function postJson(url, body) {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -171,7 +171,7 @@ function renderResult(r) {
   if (Math.abs(r.boost_pressure_Pa) > 1000) extra("Boost", uval("press", r.boost_pressure_Pa, 2));
   document.getElementById("breakdownRows").innerHTML = rows.join("");
 
-  drawDiagram();
+  drawAllDiagrams();
 }
 
 /* ---------- canvas helpers ---------- */
@@ -195,17 +195,6 @@ function frame(ctx, x, y, w, h) {
     ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke();
   }
 }
-function axisLabels(ctx, xlab, ylab, x, y, w, h) {
-  ctx.fillStyle = cssVar("--c-axis");
-  ctx.font = "500 10px 'JetBrains Mono', monospace";
-  ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ctx.fillText(xlab, x + w / 2, y + h + 12);
-  ctx.save();
-  ctx.translate(x - 34, y + h / 2); ctx.rotate(-Math.PI / 2);
-  ctx.textBaseline = "bottom"; ctx.textAlign = "center"; ctx.fillText(ylab, 0, 0);
-  ctx.restore();
-}
-
 function plotLine(ctx, pts, color, width = 1.8, fill = false, baseY = null) {
   if (pts.length < 2) return;
   if (fill && baseY != null) {
@@ -221,63 +210,116 @@ function plotLine(ctx, pts, color, width = 1.8, fill = false, baseY = null) {
   pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
   ctx.stroke();
 }
-function tickLabels(ctx, x, y, w, h, xlo, xhi, ylo, yhi) {
-  ctx.fillStyle = cssVar("--c-axis");
-  ctx.font = "500 9px 'JetBrains Mono', monospace";
-  ctx.textAlign = "left"; ctx.textBaseline = "top";
-  ctx.fillText(fmt(xlo, 0), x, y + h + 2);
-  ctx.textAlign = "right"; ctx.fillText(fmt(xhi, 0), x + w, y + h + 2);
-  ctx.textAlign = "right"; ctx.textBaseline = "top"; ctx.fillText(fmt(yhi, 0), x - 4, y);
-  ctx.textBaseline = "bottom"; ctx.fillText(fmt(ylo, 0), x - 4, y + h);
-}
 
 /* ---------- diagrams ---------- */
-function drawDiagram() {
-  const canvas = document.getElementById("diagramCanvas");
+const DIAGRAMS = {
+  pv: {
+    title: "P–V loop", loop: true, color: () => cssVar("--c-pv"),
+    x: (t) => uconv("vol", t.volume_m3), y: (t) => uconv("press", t.pressure_Pa),
+    xlab: () => `Volume [${ulabel("vol")}]`, ylab: () => `Pressure [${ulabel("press")}]`,
+  },
+  ts: {
+    title: "T–s loop", loop: true, color: () => cssVar("--c-temp"),
+    x: (t) => t.entropy_J_per_kg_K, y: (t) => uconv("temp", t.temperature_K),
+    xlab: () => "Entropy [J/kg·K]", ylab: () => `Temperature [${ulabel("temp")}]`,
+  },
+  ptheta: {
+    title: "P–θ", loop: false, color: () => cssVar("--c-pv"),
+    x: (t) => t.theta_deg, y: (t) => uconv("press", t.pressure_Pa),
+    xlab: () => "Crank angle [°]", ylab: () => `Pressure [${ulabel("press")}]`,
+  },
+  ttheta: {
+    title: "T–θ", loop: false, color: () => cssVar("--c-temp"),
+    x: (t) => t.theta_deg, y: (t) => uconv("temp", t.temperature_K),
+    xlab: () => "Crank angle [°]", ylab: () => `Temperature [${ulabel("temp")}]`,
+  },
+};
+
+/* Full grid (both axes) with value labels, the way the old console drew it. */
+function gridFull(ctx, x, y, w, h, xlo, xhi, ylo, yhi) {
+  ctx.strokeStyle = cssVar("--c-grid"); ctx.lineWidth = 1;
+  ctx.fillStyle = cssVar("--c-axis"); ctx.font = "500 9px 'JetBrains Mono', monospace";
+  const ticks = 4;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i = 0; i <= ticks; i++) {
+    const v = ylo + ((yhi - ylo) * i) / ticks;
+    const yy = y + h - ((v - ylo) / (yhi - ylo || 1)) * h;
+    ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke();
+    ctx.fillText(fmt(v, 0), x - 6, yy);
+  }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let i = 0; i <= ticks; i++) {
+    const v = xlo + ((xhi - xlo) * i) / ticks;
+    const xx = x + ((v - xlo) / (xhi - xlo || 1)) * w;
+    ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx, y + h); ctx.stroke();
+    ctx.fillText(fmt(v, 0), xx, y + h + 5);
+  }
+}
+
+/* TDC / BDC markers on a loop, the annotated-node feel of the old diagrams. */
+function markNodes(ctx, trace, X, Y, d) {
+  const nearest = (target) => trace.reduce((best, t, i) =>
+    Math.abs(t.theta_deg - target) < Math.abs(trace[best].theta_deg - target) ? i : best, 0);
+  ctx.font = "500 9px 'JetBrains Mono', monospace";
+  for (const [idx, label] of [[nearest(0), "TDC"], [nearest(-180), "BDC"]]) {
+    const t = trace[idx], x = X(d.x(t)), y = Y(d.y(t));
+    ctx.fillStyle = cssVar("--accent"); ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = cssVar("--c-axis"); ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+    ctx.fillText(label, x + 5, y - 3);
+  }
+}
+
+function drawChart(canvas, kind) {
   if (!canvas || !lastResult || canvas.clientWidth === 0) return;
-  const { ctx, w, h } = scaleCanvas(canvas);
-  ctx.clearRect(0, 0, w, h);
   const trace = lastResult.trace || [];
   if (trace.length < 2) return;
-  const padL = 44, padR = 16, padT = 14, padB = 26;
+  const d = DIAGRAMS[kind];
+  const { ctx, w, h } = scaleCanvas(canvas);
+  ctx.clearRect(0, 0, w, h);
+  const padL = 50, padR = 14, padT = 12, padB = 30;
   const px = padL, py = padT, pw = w - padL - padR, ph = h - padT - padB;
-  frame(ctx, px, py, pw, ph);
 
-  const note = document.getElementById("diagramNote");
-  let xs, ys, xlab, ylab, noteText, color = cssVar("--c-pv");
+  const xs = trace.map(d.x), ys = trace.map(d.y);
+  let xlo = Math.min(...xs), xhi = Math.max(...xs), ylo = Math.min(...ys), yhi = Math.max(...ys);
+  const xp = (xhi - xlo) * 0.05 || 1, yp = (yhi - ylo) * 0.08 || 1;
+  xlo -= xp; xhi += xp;
+  ylo = d.loop ? ylo - yp : Math.min(ylo, 0); yhi += yp;
+  const X = (v) => px + ((v - xlo) / (xhi - xlo || 1)) * pw;
+  const Y = (v) => py + ph - ((v - ylo) / (yhi - ylo || 1)) * ph;
 
-  if (activeDiagram === "pv") {
-    xs = trace.map((t) => uconv("vol", t.volume_m3));
-    ys = trace.map((t) => uconv("press", t.pressure_Pa));
-    xlab = `Volume [${ulabel("vol")}]`; ylab = `Pressure [${ulabel("press")}]`;
-    noteText = "The closed power loop: compression, finite-rate burn near TDC, then expansion. Loop area is the indicated work. Pumping is handled separately as PMEP.";
-  } else if (activeDiagram === "ts") {
-    xs = trace.map((t) => t.entropy_J_per_kg_K);
-    ys = trace.map((t) => uconv("temp", t.temperature_K));
-    xlab = "Entropy [J/kg·K]"; ylab = `Temperature [${ulabel("temp")}]`; color = cssVar("--c-temp");
-    noteText = "Temperature–entropy. Compression and expansion run near-vertical (close to isentropic); combustion adds heat, sweeping right. The datum is arbitrary, so read the shape, not the absolute entropy.";
-  } else if (activeDiagram === "ptheta") {
-    xs = trace.map((t) => t.theta_deg);
-    ys = trace.map((t) => uconv("press", t.pressure_Pa));
-    xlab = "Crank angle [°]"; ylab = `Pressure [${ulabel("press")}]`;
-    noteText = "Cylinder pressure through the cycle. TDC is 0°; the spike just after TDC is combustion.";
-  } else {
-    xs = trace.map((t) => t.theta_deg);
-    ys = trace.map((t) => uconv("temp", t.temperature_K));
-    xlab = "Crank angle [°]"; ylab = `Temperature [${ulabel("temp")}]`; color = cssVar("--c-temp");
-    noteText = "Gas temperature. The peak is the constant-cp adiabatic-flame ceiling, optimistically high without dissociation.";
-  }
-  if (note) note.textContent = noteText;
+  gridFull(ctx, px, py, pw, ph, xlo, xhi, ylo, yhi);
 
-  const xlo = Math.min(...xs), xhi = Math.max(...xs);
-  const ylo = Math.min(...ys, 0), yhi = Math.max(...ys);
-  const xspan = xhi - xlo || 1, yspan = yhi - ylo || 1;
-  const X = (v) => px + (pw * (v - xlo)) / xspan;
-  const Y = (v) => py + ph - (ph * (v - ylo)) / yspan;
   const pts = xs.map((v, i) => [X(v), Y(ys[i])]);
-  plotLine(ctx, pts, color, 1.9, activeDiagram === "pv", py + ph);
-  tickLabels(ctx, px, py, pw, ph, xlo, xhi, ylo, yhi);
-  axisLabels(ctx, xlab, ylab, px, py, pw, ph);
+  const col = d.color();
+  if (d.loop) {
+    ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = col;
+    ctx.beginPath(); pts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)));
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = "round";
+  ctx.beginPath(); pts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)));
+  if (d.loop) ctx.closePath();
+  ctx.stroke();
+
+  if (d.loop) markNodes(ctx, trace, X, Y, d);
+
+  ctx.fillStyle = cssVar("--c-axis"); ctx.font = "500 9px 'JetBrains Mono', monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(d.xlab(), px + pw / 2, h - 1);
+  ctx.save(); ctx.translate(11, py + ph / 2); ctx.rotate(-Math.PI / 2);
+  ctx.textBaseline = "top"; ctx.textAlign = "center"; ctx.fillText(d.ylab(), 0, 0); ctx.restore();
+}
+
+function drawAllDiagrams() {
+  const pair = diagramMode === "loop" ? ["pv", "ts"] : ["ptheta", "ttheta"];
+  const ta = document.getElementById("titleA"), tb = document.getElementById("titleB");
+  if (ta) ta.textContent = DIAGRAMS[pair[0]].title;
+  if (tb) tb.textContent = DIAGRAMS[pair[1]].title;
+  drawChart(document.getElementById("canvasA"), pair[0]);
+  drawChart(document.getElementById("canvasB"), pair[1]);
+  const note = document.getElementById("diagramNote");
+  if (note) note.textContent = diagramMode === "loop"
+    ? "Two closed loops, live: the P–V area is the indicated work, the T–s area the net heat. Compression and expansion run near-isentropic; combustion sweeps both rightward. Drag any control and watch them respond."
+    : "Cylinder pressure and temperature versus crank angle. TDC is 0°; the spike just after TDC is combustion.";
 }
 
 /* ---------- dyno sweep ---------- */
@@ -369,12 +411,12 @@ export function startPiston() {
     el.addEventListener("change", solveDebounced);
   });
 
-  // diagram tabs
-  document.querySelectorAll(".chart-tab").forEach((t) =>
+  // diagram mode toggle (Loops ⟷ Crank angle)
+  document.querySelectorAll("#diagramModeTabs .chart-tab").forEach((t) =>
     t.addEventListener("click", () => {
-      activeDiagram = t.dataset.diagram;
-      document.querySelectorAll(".chart-tab").forEach((x) => x.classList.toggle("is-active", x === t));
-      drawDiagram();
+      diagramMode = t.dataset.mode;
+      document.querySelectorAll("#diagramModeTabs .chart-tab").forEach((x) => x.classList.toggle("is-active", x === t));
+      drawAllDiagrams();
     }));
 
   // sweep
@@ -393,7 +435,7 @@ export function startPiston() {
 
   // redraw charts on resize
   let rt;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawDiagram(); drawDyno(); }, 150); });
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawAllDiagrams(); drawDyno(); }, 150); });
 
   updateReadouts();
   solve();

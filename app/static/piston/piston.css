@@ -213,8 +213,13 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 /* Pin canvas display height so a width:100% canvas never drives its own height
    from the bitmap aspect ratio (which can balloon under full-page capture). */
 canvas { width: 100%; display: block; }
-#diagramCanvas { height: 320px; }
+#canvasA, #canvasB { height: 300px; }
 #dynoCanvas { height: 300px; }
+
+/* Two loops side by side, the way the old console showed them. */
+.diagram-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px) { .diagram-pair { grid-template-columns: 1fr; } }
+.diagram-title { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; letter-spacing: -0.01em; }
 .plot-note { margin: 12px 2px 0; font-size: 12px; color: var(--text-3); line-height: 1.5; }
 .chart-tabs, .dyno-controls { display: flex; gap: 6px; align-items: center; }
 .chart-tab {
