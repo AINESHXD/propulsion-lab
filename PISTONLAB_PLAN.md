@@ -1,12 +1,18 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
 > **Status:** Living document. Update at the end of each day.
-> **Progress: Week 1 complete + Days 6-8.** Python crank-angle first-law solver
-> in `app/engine_core/piston/`: `geometry`, `wiebe`, `cycle` (midpoint
-> integrator), `heat_transfer` (Woschni), `friction` (Chen-Flynn), pumping
-> loop, `aspiration` NA / turbo / supercharged (Day 6), `fuel`
-> thermochemistry (Day 7), and **`limits` knock / smoke / lean (Day 8)**.
-> Loss stack: finite burn + wall heat + friction +
+> **Progress: Week 1 complete + Days 6-9 + console rebuild.** Python crank-angle
+> first-law solver in `app/engine_core/piston/`: `geometry`, `wiebe`, `cycle`
+> (midpoint integrator), `heat_transfer` (Woschni), `friction` (Chen-Flynn),
+> pumping loop, `aspiration` NA / turbo / supercharged (Day 6), `fuel`
+> thermochemistry (Day 7), and `limits` knock / smoke / lean (Day 8). **Day 9
+> exposed it over HTTP** (`/piston/simulate`, `/piston/sweep` with Pydantic
+> schemas in `app/schemas_piston.py`, gated from the public schema), and **the
+> `/piston` console was rebuilt to PropulsionLab level** — a live client on the
+> solver with the real P–V loop / P–θ / T–θ from the trace, the indicated→brake
+> MEP ladder, knock/smoke badges, fuel & aspiration controls, real-engine
+> presets, an rpm dyno curve and an SI/US toggle, in the DAS LABS design
+> language (warm amber). Loss stack: finite burn + wall heat + friction +
 > pumping; boost packs a denser charge so IMEP/power rise (NA 62 kW → boosted
 > 120 kW at 1.8 bar). The turbo/super split is modelled honestly: a
 > supercharger's belt compression power is debited from brake (super 110 kW =
@@ -25,7 +31,8 @@
 > caution; a CI smoke proxy fires when a diesel is over-fuelled past φ≈0.7; lean
 > SI mixtures flag misfire. A knocking point still returns a full result. Energy
 > closes to machine precision; throttling lowers brake efficiency.
-> **91 PistonLab tests.** Still fully gated — no portal link, no frontend wiring yet.
+> **99 PistonLab tests.** The console now runs the real solver; still gated
+> behind the portal's "coming soon" (no portal link) until the Week-4 launch.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without

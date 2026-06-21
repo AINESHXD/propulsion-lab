@@ -3,199 +3,220 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#060708" />
-    <meta name="description" content="PistonLab — interactive air-standard reciprocating-engine simulator. Otto, Diesel and Dual cycles with live P–V and T–s diagrams, indicated power, MEP and efficiency. A DAS LABS project, in development." />
-    <title>PistonLab — reciprocating-engine cycles</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260603-1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
+    <title>PistonLab · DAS LABS</title>
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl3" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
-      <link rel="icon" href="/lab/favicon.ico" sizes="any" />
+    <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/lab/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <img class="wordmark" src="/lab/assets/pistonlab_wordmark.png" alt="PistonLab"
-             onerror="this.outerHTML='<span style=&quot;font-weight:700;letter-spacing:.04em&quot;>PistonLab</span>'" />
-        <span class="badge-dev">In development</span>
-      </div>
-      <nav>
-        <a href="/">← DAS LABS</a>
-        <a href="/lab/">PropulsionLab</a>
+    <!-- ===================== TOP BAR ===================== -->
+    <header class="mission-bar">
+      <a class="brand" href="/" aria-label="DAS LABS home">
+        <span class="brand-labs">DAS&nbsp;LABS</span>
+        <span class="brand-dot"></span>
+        <img class="brand-product" src="/lab/assets/pistonlab_wordmark.png" alt="PistonLab"
+             onerror="this.outerHTML='&lt;span class=&quot;brand-fallback&quot;&gt;PistonLab&lt;/span&gt;'" />
+        <span class="badge-dev">dev</span>
+      </a>
+      <nav class="mission-nav">
+        <span id="apiStatus" class="status-pill">Linking</span>
+        <button class="nav-link unit-toggle" type="button" id="unitToggle" title="Switch SI / US units">Units: SI</button>
+        <a class="nav-link" href="#methodology">Methodology</a>
+        <a class="nav-link" href="/lab/">PropulsionLab</a>
+        <a class="nav-link" href="/">DAS LABS</a>
       </nav>
     </header>
 
     <main class="shell">
-      <!-- ============ controls ============ -->
-      <aside class="col-controls">
-        <section class="card hero">
-          <p class="eyebrow">PistonLab · Console</p>
-          <h1>Reciprocating-engine cycles</h1>
-          <p>The air-standard Otto, Diesel and Dual cycles — the thermodynamic
-             skeletons of every petrol and diesel engine. Tune the cylinder and
-             watch the P–V loop, efficiency and indicated power respond live.</p>
-        </section>
+      <!-- ===================== HERO ===================== -->
+      <section class="hero">
+        <p class="eyebrow"><span class="num">PL</span> PistonLab · crank-angle cycle</p>
+        <h1 class="hero-title">Reciprocating engines,<br /><span class="accent">crank angle by crank angle.</span></h1>
+        <p class="hero-sub">
+          A first-law cycle solver for petrol and diesel engines. Set the geometry,
+          fuel and operating point, and read the real rounded P–V loop, the
+          indicated-versus-brake split, and the dyno curve. Finite-rate Wiebe
+          combustion, Woschni wall heat, friction, pumping, aspiration, real fuel
+          thermochemistry and knock/smoke limits — every loss is modelled and shown.
+        </p>
+      </section>
 
-        <section class="card" style="margin-top:22px">
-          <h2>Presets</h2>
-          <div class="presets">
-            <button class="preset" data-preset="petrol">Petrol I4</button>
-            <button class="preset" data-preset="turbo">Turbo petrol</button>
-            <button class="preset" data-preset="diesel">Car diesel</button>
-            <button class="preset" data-preset="truck">Truck diesel</button>
-          </div>
+      <div class="workspace">
+        <!-- ===================== CONTROLS ===================== -->
+        <aside class="controls">
+          <section class="card">
+            <div class="card-head"><h2>Presets</h2><span class="hint">Real-ish engines</span></div>
+            <div class="presets" id="presetRow"></div>
+          </section>
 
-          <div class="control">
-            <label for="cycle">Cycle</label>
-            <select id="cycle">
-              <option value="otto">Otto (spark, constant volume)</option>
-              <option value="diesel">Diesel (constant pressure)</option>
-              <option value="dual">Dual (limited pressure)</option>
-            </select>
-            <p id="cycleBlurb"></p>
-          </div>
-
-          <div class="control">
-            <label for="r">Compression ratio <span class="val" data-for="r"></span></label>
-            <input type="range" id="r" min="6" max="24" step="0.5" value="10" />
-          </div>
-
-          <div class="control">
-            <label for="qin">Heat added per cycle <span class="val" data-for="qin"></span> kJ/kg</label>
-            <input type="range" id="qin" min="400" max="3000" step="50" value="1800" />
-          </div>
-
-          <div class="control" id="dualRow">
-            <label for="dualFraction">Const-volume heat fraction <span class="val" data-for="dualFraction"></span></label>
-            <input type="range" id="dualFraction" min="0.1" max="0.9" step="0.05" value="0.5" />
-          </div>
-
-          <div class="grid2">
-            <div class="control">
-              <label for="T1">Intake temp (K)</label>
-              <input type="number" id="T1" value="300" step="5" />
+          <section class="card">
+            <div class="card-head"><h2>Fuel &amp; mixture</h2></div>
+            <div class="field">
+              <label for="fuel">Fuel</label>
+              <div class="select-wrap">
+                <select id="fuel" data-key="fuel">
+                  <option value="gasoline">Gasoline (spark)</option>
+                  <option value="diesel">Diesel (compression)</option>
+                  <option value="ethanol">Ethanol (spark)</option>
+                  <option value="methanol">Methanol (spark)</option>
+                </select>
+              </div>
             </div>
-            <div class="control">
-              <label for="P1">Intake press (kPa)</label>
-              <input type="number" id="P1" value="100" step="5" />
+            <div class="field-row">
+              <div class="field">
+                <label>Equivalence ratio φ <b data-readout="equivalence_ratio"></b></label>
+                <input type="range" data-key="equivalence_ratio" min="0.4" max="1.4" step="0.01" value="1.0" />
+                <span class="field-foot" id="lambdaFoot"></span>
+              </div>
             </div>
-          </div>
-          <div class="control">
-            <label for="gamma">Ratio of specific heats γ <span class="val" data-for="gamma"></span></label>
-            <input type="range" id="gamma" min="1.30" max="1.40" step="0.01" value="1.40" />
-          </div>
-
-          <p class="sub-head">Cylinder geometry</p>
-          <div class="grid2">
-            <div class="control">
-              <label for="bore">Bore (mm)</label>
-              <input type="number" id="bore" value="86" step="1" />
+            <div class="field-row">
+              <div class="field">
+                <label>Combustion η <b data-readout="combustion_efficiency"></b></label>
+                <input type="range" data-key="combustion_efficiency" min="0.85" max="1.0" step="0.005" value="0.98" />
+              </div>
             </div>
-            <div class="control">
-              <label for="stroke">Stroke (mm)</label>
-              <input type="number" id="stroke" value="86" step="1" />
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2>Geometry</h2></div>
+            <div class="field-row">
+              <div class="field"><label>Bore <small data-unit="len_mm">mm</small></label><input type="number" data-key="bore_m" data-scale="0.001" value="86" step="1" /></div>
+              <div class="field"><label>Stroke <small data-unit="len_mm">mm</small></label><input type="number" data-key="stroke_m" data-scale="0.001" value="86" step="1" /></div>
             </div>
-            <div class="control">
-              <label for="cylinders">Cylinders</label>
-              <input type="number" id="cylinders" value="4" step="1" min="1" />
+            <div class="field-row">
+              <div class="field"><label>Compression ratio <b data-readout="compression_ratio"></b></label><input type="range" data-key="compression_ratio" min="6" max="24" step="0.1" value="10.5" /></div>
             </div>
-            <div class="control">
-              <label for="rpm">Speed (rpm)</label>
-              <input type="number" id="rpm" value="6000" step="100" />
+            <div class="field-row">
+              <div class="field"><label>Cylinders</label><input type="number" data-key="cylinders" value="4" step="1" min="1" max="16" /></div>
+              <div class="field"><label>Rod ratio L/a</label><input type="number" data-key="rod_ratio" value="3.5" step="0.1" min="1.5" max="5" /></div>
             </div>
-          </div>
-          <div class="control">
-            <label for="strokes">Strokes per cycle</label>
-            <select id="strokes">
-              <option value="4">4-stroke (fires every 2 revs)</option>
-              <option value="2">2-stroke (fires every rev)</option>
-            </select>
-          </div>
-        </section>
-      </aside>
+            <div class="field">
+              <label>Strokes per cycle</label>
+              <div class="select-wrap">
+                <select data-key="strokes_per_cycle" data-int="1">
+                  <option value="4">4-stroke (fires every 2 revs)</option>
+                  <option value="2">2-stroke (fires every rev)</option>
+                </select>
+              </div>
+            </div>
+          </section>
 
-      <!-- ============ results ============ -->
-      <div class="col-results">
-        <section class="metrics">
-          <div class="metric hl">
-            <div class="k">Thermal efficiency</div>
-            <div class="v" id="mEff">—</div>
-          </div>
-          <div class="metric">
-            <div class="k">Net work</div>
-            <div class="v"><span id="mWork">—</span><small>kJ/kg</small></div>
-          </div>
-          <div class="metric">
-            <div class="k">Mean eff. pressure</div>
-            <div class="v"><span id="mMep">—</span><small>kPa</small></div>
-          </div>
-          <div class="metric">
-            <div class="k">Indicated power</div>
-            <div class="v"><span id="mPower">—</span><small>kW</small></div>
-          </div>
-        </section>
+          <section class="card">
+            <div class="card-head"><h2>Operating point</h2></div>
+            <div class="field">
+              <label>Speed <small>rpm</small> <b data-readout="rpm"></b></label>
+              <input type="range" data-key="rpm" min="800" max="9000" step="100" value="3000" />
+            </div>
+            <div class="field">
+              <label>Aspiration</label>
+              <div class="select-wrap">
+                <select id="aspiration" data-key="aspiration">
+                  <option value="naturally_aspirated">Naturally aspirated</option>
+                  <option value="turbocharged">Turbocharged</option>
+                  <option value="supercharged">Supercharged</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Manifold pressure <small data-unit="press_bar">bar</small> <b data-readout="intake_pressure_Pa"></b></label>
+              <input type="range" data-key="intake_pressure_Pa" data-scale="100000" min="0.4" max="3.0" step="0.05" value="1.0" />
+            </div>
+            <div class="field"><label>Intake temp <small data-unit="temp">K</small></label><input type="number" data-key="intake_temperature_K" value="330" step="5" /></div>
+          </section>
 
-        <section class="plots">
-          <div class="card plot-card">
-            <h2>P–V diagram</h2>
-            <div class="plot-wrap"><canvas id="pvCanvas"></canvas></div>
-          </div>
-          <div class="card plot-card">
-            <h2>T–s diagram</h2>
-            <div class="plot-wrap"><canvas id="tsCanvas"></canvas></div>
-          </div>
-        </section>
+          <details class="card accordion">
+            <summary><span>Combustion &amp; losses</span><svg viewBox="0 0 16 16" class="chev"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></summary>
+            <div class="accordion-body">
+              <div class="field"><label>Spark / SOC <small>°CA</small> <b data-readout="combustion_start_deg"></b></label><input type="range" data-key="combustion_start_deg" min="-45" max="10" step="1" value="-15" /></div>
+              <div class="field"><label>Burn duration <small>°CA</small> <b data-readout="burn_duration_deg"></b></label><input type="range" data-key="burn_duration_deg" min="20" max="100" step="1" value="50" /></div>
+              <div class="field"><label>Wall temp <small data-unit="temp">K</small></label><input type="number" data-key="wall_temperature_K" value="450" step="10" /></div>
+              <div class="field"><label>Wall-heat multiplier <b data-readout="wall_heat_transfer_multiplier"></b></label><input type="range" data-key="wall_heat_transfer_multiplier" min="0" max="2.5" step="0.05" value="1.0" /></div>
+              <div class="field"><label>Friction multiplier <b data-readout="friction_multiplier"></b></label><input type="range" data-key="friction_multiplier" min="0" max="2.5" step="0.05" value="1.0" /></div>
+            </div>
+          </details>
+        </aside>
 
-        <section class="card">
-          <h2>Cycle readouts</h2>
-          <div class="readouts">
-            <div class="readout"><div class="k">Peak temp</div><div class="v" id="rPeakT">—</div></div>
-            <div class="readout"><div class="k">Peak press</div><div class="v" id="rPeakP">—</div></div>
-            <div class="readout"><div class="k">Heat rejected</div><div class="v" id="rQout">—</div></div>
-            <div class="readout"><div class="k">Cutoff ratio</div><div class="v" id="rCutoff">—</div></div>
-            <div class="readout"><div class="k">Displacement</div><div class="v" id="rDisp">—</div></div>
-            <div class="readout"><div class="k">Ind. torque</div><div class="v" id="rTorque">—</div></div>
-            <div class="readout"><div class="k">Ind. power</div><div class="v" id="rHp">—</div></div>
-            <div class="readout"><div class="k">Air / cycle</div><div class="v" id="rMass">—</div></div>
-          </div>
-        </section>
+        <!-- ===================== RESULTS ===================== -->
+        <div class="results">
+          <!-- limit banner -->
+          <div class="limit-banner" id="limitBanner"></div>
 
-        <section class="card">
-          <h2>State points</h2>
-          <table>
-            <thead>
-              <tr><th>State</th><th>P (bar)</th><th>T (K)</th><th>v (m³/kg)</th></tr>
-            </thead>
-            <tbody id="stateBody"></tbody>
-          </table>
-        </section>
+          <!-- hero metrics -->
+          <section class="metrics" id="metricCards"></section>
 
-        <section class="card">
-          <h2>What you are looking at</h2>
-          <p class="note">
-            <strong>These are ideal, air-standard numbers.</strong> The working
-            fluid is a fixed mass of air as an ideal gas with constant specific
-            heats; compression and expansion are isentropic; combustion is replaced
-            by heat addition. A real engine of the same size makes noticeably less —
-            friction, pumping work, heat loss to the walls, finite burn time and
-            incomplete combustion all subtract. Treat efficiency and power here as
-            the thermodynamic ceiling, not a dyno reading.
-          </p>
-        </section>
+          <!-- diagrams -->
+          <section class="card">
+            <div class="card-head">
+              <h2>P–V loop</h2>
+              <div class="chart-tabs" id="diagramTabs">
+                <button class="chart-tab is-active" data-diagram="pv">P–V</button>
+                <button class="chart-tab" data-diagram="ptheta">P–θ</button>
+                <button class="chart-tab" data-diagram="ttheta">T–θ</button>
+              </div>
+            </div>
+            <div class="plot-wrap"><canvas id="diagramCanvas" height="320"></canvas></div>
+            <p class="plot-note" id="diagramNote"></p>
+          </section>
+
+          <!-- indicated vs brake -->
+          <section class="card">
+            <div class="card-head"><h2>Indicated → brake</h2><span class="hint">Where the work goes</span></div>
+            <div class="rows" id="breakdownRows"></div>
+          </section>
+
+          <!-- dyno -->
+          <section class="card">
+            <div class="card-head">
+              <h2>Dyno curve</h2>
+              <div class="dyno-controls">
+                <div class="select-wrap small">
+                  <select id="sweepParameter">
+                    <option value="rpm">Speed (rpm)</option>
+                    <option value="compression_ratio">Compression ratio</option>
+                    <option value="equivalence_ratio">Equivalence ratio φ</option>
+                    <option value="intake_pressure_Pa">Manifold pressure</option>
+                    <option value="combustion_start_deg">Spark timing</option>
+                  </select>
+                </div>
+                <button class="ghost-btn" id="runSweep" type="button">Sweep</button>
+              </div>
+            </div>
+            <div class="plot-wrap"><canvas id="dynoCanvas" height="300"></canvas></div>
+            <p class="plot-note" id="dynoNote">Sweep speed to draw torque and power against rpm.</p>
+          </section>
+
+          <!-- assumptions -->
+          <section class="card" id="methodology">
+            <div class="card-head"><h2>What you are looking at</h2></div>
+            <p class="note">
+              These are <strong>crank-angle first-law</strong> results, not a dyno
+              sheet. The in-cylinder gas is marched through compression, finite-rate
+              Wiebe combustion and expansion with Woschni wall heat loss; friction
+              (Chen–Flynn) and the pumping loop convert indicated work to
+              <strong>brake</strong> work. Fuelling is real: the heat release comes
+              from the fuel's chemistry and the mixture strength, and knock / smoke
+              limits are flagged. Constant specific heats and a single-zone charge
+              are assumed, so peak temperatures run optimistically high and brake
+              numbers are model estimates with stated assumptions, not measurements.
+            </p>
+          </section>
+        </div>
       </div>
+
+      <footer class="foot">
+        <span>PistonLab</span><span class="sep">·</span>
+        <span>a DAS LABS project by Ainesh Das</span><span class="sep">·</span>
+        <a href="/lab/">PropulsionLab</a>
+      </footer>
     </main>
 
-    <footer>
-      <span>PistonLab</span><span class="sep">·</span>
-      <span>a DAS LABS project by Ainesh Das</span><span class="sep">·</span>
-      <a href="https://www.linkedin.com/in/ainesh-das/" target="_blank" rel="noopener">LinkedIn</a>
-      <a href="https://www.instagram.com/das.labs/" target="_blank" rel="noopener">Instagram</a>
-      <a href="mailto:aineshdas120706@gmail.com">Email</a>
-    </footer>
-
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260603-1";
+      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl3";
       startPiston();
     </script>
   </body>

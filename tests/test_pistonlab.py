@@ -27,25 +27,22 @@ def test_piston_page_is_honest_and_collects_nothing() -> None:
     html = (_PISTON / "index.html").read_text(encoding="utf-8").lower()
     # No payment / account machinery on this page.
     assert "<form" not in html
-    for processor in ("stripe", "paypal", "razorpay", "add to cart", "checkout"):
+    for processor in ("stripe", "paypal", "razorpay", "add to cart", "checkout", "password"):
         assert processor not in html
-    # It plainly states the air-standard idealisation rather than overclaiming.
-    assert "air-standard" in html
-    assert "ideal" in html
+    # The console is now wired to the crank-angle solver, and stays honest about
+    # being a reduced-order model rather than a dyno reading.
+    assert "crank-angle" in html
+    assert "model estimates" in html
+    assert "not measurements" in html
 
 
-def test_piston_js_exports_the_solver_surface() -> None:
+def test_piston_js_is_the_solver_api_client() -> None:
     js = (_PISTON / "piston.js").read_text(encoding="utf-8")
-    for symbol in (
-        "export function solveCycle",
-        "export function closedFormEfficiency",
-        "export function enginePerformance",
-        "export function startPiston",
-    ):
-        assert symbol in js, f"missing {symbol}"
-    # The three air-standard cycles must all be handled.
-    for cycle in ('"otto"', '"diesel"', '"dual"'):
-        assert cycle in js
+    # The console is a thin client on the Python solver, not a client-side
+    # physics engine: it boots via startPiston and POSTs to the API.
+    assert "export function startPiston" in js
+    assert "/piston/simulate" in js
+    assert "/piston/sweep" in js
 
 
 def test_piston_assets_referenced_exist() -> None:
