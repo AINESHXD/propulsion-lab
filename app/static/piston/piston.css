@@ -39,6 +39,8 @@
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 
   --r: 14px;
+  --ease-soft: cubic-bezier(0.32, 0.72, 0.0, 1.0);
+  --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
   color-scheme: dark;
 }
 
@@ -301,5 +303,102 @@ body.mode-engineer .enthusiast-only { display: none !important; }
 .foot .sep { color: rgba(244,244,245,0.2); }
 .note { font-size: 13.5px; line-height: 1.6; color: var(--text-2); margin: 0; }
 .note strong { color: var(--text); font-weight: 600; }
+
+/* ===================== ENERGY BALANCE ===================== */
+.ebar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.ebar-seg { height: 100%; transition: flex-grow 360ms var(--ease-soft); min-width: 1px; }
+.ebar-seg.work { background: linear-gradient(180deg, #e8923e, #cf7a2e); }
+.ebar-seg.wall { background: linear-gradient(180deg, #d9776a, #b85d52); }
+.ebar-seg.exhaust { background: linear-gradient(180deg, #5b6b8c, #47566f); }
+.ebar-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+.ebar-legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2); }
+.ebar-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.ebar-legend b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ===================== STATE TABLE ===================== */
+.state-wrap { overflow-x: auto; margin: 16px -18px -4px; padding: 0 18px; scrollbar-width: none; }
+.state-wrap::-webkit-scrollbar { display: none; }
+.state-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.state-table th, .state-table td { padding: 9px 10px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--line); }
+.state-table thead th { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); font-weight: 500; }
+.state-table th.s-name, .state-table td.s-name { text-align: left; color: var(--text); font-weight: 500; }
+.state-table tbody tr { transition: background 140ms var(--ease-out); }
+.state-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+.state-table tbody tr:last-child td { border-bottom: none; }
+
+/* =============================================================
+   CRAFT LAYER — motion, elevation, interaction, ⓘ tooltips
+   The difference between a styled template and a built product.
+   ============================================================= */
+
+/* page settles in */
+body { animation: pageIn 460ms var(--ease-out) both; }
+@keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+.shell > * { animation: riseIn 520ms var(--ease-out) both; }
+.hero { animation-delay: 40ms; }
+.workspace { animation-delay: 110ms; }
+@keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* cards: resting depth + hover lift */
+.card {
+  box-shadow: 0 14px 40px -30px rgba(0, 0, 0, 0.85);
+  transition: border-color 260ms var(--ease-out), box-shadow 260ms var(--ease-out), transform 260ms var(--ease-out);
+}
+.card:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 16px 34px -22px rgba(0,0,0,0.7);
+}
+.engine-card:hover, .summary-card:hover { transform: translateY(-2px); }
+
+/* metric cards: lift + accent edge on hover */
+.metric { transition: border-color 220ms var(--ease-out), box-shadow 220ms var(--ease-out), transform 220ms var(--ease-out); }
+.metric:hover { transform: translateY(-2px); box-shadow: 0 12px 26px -18px rgba(0,0,0,0.7); border-color: var(--line-strong); }
+.metric .v { transition: color 200ms var(--ease-out); }
+
+/* buttons / chips: hover lift, active press */
+.preset, .etype, .ghost-btn, .chart-tab, .mode-opt, .nav-link, .unit-toggle, .engine-play {
+  transition: background 200ms var(--ease-out), border-color 200ms var(--ease-out),
+              color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), transform 140ms var(--ease-out);
+}
+.preset:hover, .etype:hover, .ghost-btn:hover { transform: translateY(-1px); }
+.preset:active, .etype:active, .ghost-btn:active, .chart-tab:active, .mode-opt:active { transform: scale(0.97); }
+.ghost-btn:hover:not(:disabled) { box-shadow: 0 6px 16px -10px rgba(0,0,0,0.6); }
+
+/* sliders: animated thumb */
+input[type="range"]::-webkit-slider-thumb { transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out); }
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.25); box-shadow: 0 0 0 6px var(--accent-soft); }
+
+/* result rows: subtle hover */
+.row { transition: background 140ms var(--ease-out); border-radius: 6px; }
+.row:hover { background: rgba(255,255,255,0.02); }
+
+/* the animated stroke pill + status changes feel intentional */
+.stroke-pill, .ignition-badge { transition: color 220ms var(--ease-out), background 220ms var(--ease-out), border-color 220ms var(--ease-out); }
+
+/* ⓘ info tooltips — teach on hover, the considered touch */
+.info {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; margin-left: 6px; vertical-align: middle;
+  border: 1px solid rgba(255,255,255,0.22); border-radius: 50%;
+  color: var(--text-3); font-family: var(--font-mono); font-size: 9px; line-height: 1;
+  cursor: help; position: relative; user-select: none;
+  transition: border-color 160ms, color 160ms;
+}
+.info:hover { border-color: var(--accent-line); color: var(--text); }
+.info::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%) translateY(3px);
+  width: max-content; max-width: 250px; padding: 9px 11px;
+  border: 1px solid var(--line-strong); border-radius: 7px; background: #16181d;
+  color: var(--text-2); font-family: var(--font-sans); font-size: 11.5px; line-height: 1.45;
+  letter-spacing: 0; text-align: left; white-space: normal; text-transform: none; font-weight: 400;
+  pointer-events: none; opacity: 0; visibility: hidden; z-index: 60;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.45);
+  transition: opacity 180ms var(--ease-soft), transform 180ms var(--ease-soft);
+}
+.info:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+.metric .info::after, .summary-card .info::after { left: 0; transform: translateX(0) translateY(3px); }
+.metric .info:hover::after, .summary-card .info:hover::after { transform: translateX(0) translateY(0); }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

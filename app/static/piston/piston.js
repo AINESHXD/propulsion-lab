@@ -181,18 +181,45 @@ async function solve() {
   }
 }
 
-function metricCard(k, valueHtml, primary) {
-  return `<div class="metric ${primary ? "primary" : ""}"><div class="k">${k}</div><div class="v">${valueHtml}</div></div>`;
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const info = (tip) => `<span class="info" data-tip="${tip.replace(/"/g, "&quot;")}">i</span>`;
+
+/* metric cards: persistent nodes with eased count-ups + ⓘ tooltips */
+const METRICS = [
+  { id: "mPower", label: "Brake power", cls: "primary", kind: "power", get: (r) => r.brake_power_W, dig: () => 1,
+    tip: "Power delivered to the crankshaft after friction and pumping — what a dyno reads." },
+  { id: "mTorque", label: "Brake torque", cls: "", kind: "torque", get: (r) => r.brake_torque_Nm, dig: () => 0,
+    tip: "Turning effort at the crank: power ÷ rpm. Strong low-end torque is what you feel pulling away." },
+  { id: "mBmep", label: "BMEP", cls: "", kind: "press", get: (r) => r.bmep_Pa, dig: () => 1,
+    tip: "Brake mean effective pressure — torque normalised by engine size, so a 1L and a 6L compare directly. ~10 bar NA petrol, 20+ bar boosted." },
+  { id: "mBsfc", label: "BSFC", cls: "", kind: "bsfc", get: (r) => r.bsfc_g_per_kWh, dig: () => (unit === "US" ? 3 : 0),
+    tip: "Fuel burned per unit of work — lower is more efficient. ~250 g/kWh good petrol, ~200 diesel." },
+];
+const metricLive = {}, metricRAF = {};
+function buildMetricCards() {
+  document.getElementById("metricCards").innerHTML = METRICS.map((m) =>
+    `<div class="metric ${m.cls}"><div class="k">${m.label}${info(m.tip)}</div><div class="v" id="${m.id}">—</div></div>`).join("");
+}
+function setMetric(id, target, digits, unitLabel) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  if (metricRAF[id]) cancelAnimationFrame(metricRAF[id]);
+  const from = metricLive[id] !== undefined ? metricLive[id] : 0;
+  const start = performance.now(), dur = 420;
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / dur);
+    const v = from + (target - from) * easeOutCubic(t);
+    metricLive[id] = v;
+    node.innerHTML = `${fmt(v, digits)}<span class="u">${unitLabel}</span>`;
+    if (t < 1) metricRAF[id] = requestAnimationFrame(step);
+    else { metricLive[id] = target; metricRAF[id] = null; }
+  };
+  metricRAF[id] = requestAnimationFrame(step);
 }
 
 function renderResult(r) {
-  // metric cards
-  document.getElementById("metricCards").innerHTML = [
-    metricCard("Brake power", `${fmt(uconv("power", r.brake_power_W), 1)}<span class="u">${ulabel("power")}</span>`, true),
-    metricCard("Brake torque", `${fmt(uconv("torque", r.brake_torque_Nm), 0)}<span class="u">${ulabel("torque")}</span>`),
-    metricCard("BMEP", `${fmt(uconv("press", r.bmep_Pa), 1)}<span class="u">${ulabel("press")}</span>`),
-    metricCard("BSFC", `${fmt(uconv("bsfc", r.bsfc_g_per_kWh), unit === "US" ? 3 : 0)}<span class="u">${ulabel("bsfc")}</span>`),
-  ].join("");
+  // metric cards (eased count-up)
+  for (const m of METRICS) setMetric(m.id, uconv(m.kind, m.get(r)), m.dig(), ulabel(m.kind));
 
   // limit banner
   const banner = document.getElementById("limitBanner");
@@ -203,14 +230,14 @@ function renderResult(r) {
   // breakdown ladder
   const rows = [];
   const pr = (label, v, cls = "") => rows.push(`<div class="row ${cls}"><span class="rk">${label}</span><span class="rv">${uval("press", v, 2)}</span></div>`);
-  pr("Gross IMEP", r.imep_Pa);
+  pr("Gross IMEP " + info("Indicated mean effective pressure — the work the gas does on the piston, before any losses are taken out."), r.imep_Pa);
   pr("− Pumping (PMEP)", r.pmep_Pa, "sub");
   pr("Net IMEP", r.net_imep_Pa);
   pr("− Friction (FMEP)", r.fmep_Pa, "sub");
   if (r.supercharger_power_W > 0) {
     rows.push(`<div class="row sub"><span class="rk">− Supercharger drive</span><span class="rv">${uval("power", r.supercharger_power_W, 1)}</span></div>`);
   }
-  pr("BMEP", r.bmep_Pa, "total");
+  pr("BMEP " + info("Brake MEP: what's left at the crank after pumping and friction. This is the number that makes torque."), r.bmep_Pa, "total");
   const extra = (label, val) => rows.push(`<div class="row"><span class="rk">${label}</span><span class="rv">${val}</span></div>`);
   extra("Indicated power", uval("power", r.indicated_power_W, 1));
   extra("Mechanical efficiency", `${fmt(r.mechanical_efficiency * 100, 1)} %`);
@@ -223,7 +250,57 @@ function renderResult(r) {
   document.getElementById("breakdownRows").innerHTML = rows.join("");
 
   renderSummary(r);
+  renderAnalysis(r);
   drawAllDiagrams();
+}
+
+/** Engineer-mode depth: pro readouts, energy balance, key crank states. */
+function renderAnalysis(r) {
+  const inp = readInputs();
+  const dispL = (Math.PI / 4) * inp.bore_m * inp.bore_m * inp.stroke_m * inp.cylinders * 1000;
+  const meanPS = 2 * inp.stroke_m * inp.rpm / 60;
+  const cylRate = inp.cylinders * (inp.rpm / 60) * (2 / inp.strokes_per_cycle);
+  const airFlow = r.trapped_mass_kg * cylRate * 1000;
+  const fuelFlow = r.fuel_mass_per_cycle_kg * cylRate * 1000;
+  const specOut = (r.brake_power_W / 1000) / (dispL || 1);
+  const tr = r.trace || [];
+  let maxdP = 0;
+  for (let i = 1; i < tr.length; i++) {
+    const dth = tr[i].theta_deg - tr[i - 1].theta_deg;
+    if (dth > 0) { const rate = (tr[i].pressure_Pa - tr[i - 1].pressure_Pa) / 1e5 / dth; if (rate > maxdP) maxdP = rate; }
+  }
+  const rows = [];
+  const add = (label, val, tip) => rows.push(`<div class="row"><span class="rk">${label}${tip ? info(tip) : ""}</span><span class="rv">${val}</span></div>`);
+  add("Displacement", `${dispL.toFixed(2)} L`);
+  add("Mean piston speed", unit === "US" ? `${fmt(meanPS * 3.280839895, 1)} ft/s` : `${fmt(meanPS, 1)} m/s`,
+    "Average piston speed — the real limit on revs. Production engines top out near 20–25 m/s.");
+  add("Specific output", `${fmt(specOut, 1)} kW/L`, "Power per litre, i.e. how hard it's working. ~50 kW/L NA, 100+ boosted.");
+  add("Peak pressure-rise rate", `${fmt(maxdP, 1)} bar/°`, "How violently pressure climbs at combustion — high rates mean combustion noise and knock-like harshness.");
+  add("Air flow", `${fmt(airFlow, 1)} g/s`);
+  add("Fuel flow", `${fmt(fuelFlow, 2)} g/s`);
+  document.getElementById("analysisRows").innerHTML = rows.join("");
+
+  // energy balance: fuel heat released -> indicated work / walls / exhaust
+  const heat = r.heat_released_J || 1;
+  const work = Math.max(0, r.indicated_work_J);
+  const wall = Math.max(0, r.wall_heat_loss_J);
+  const exhaust = Math.max(0, heat - work - wall);
+  const tot = work + wall + exhaust || 1;
+  const segs = [["work", work, "Indicated work", "#e8923e"], ["wall", wall, "Wall heat loss", "#d9776a"], ["exhaust", exhaust, "Exhaust", "#5b6b8c"]];
+  document.getElementById("energyBar").innerHTML = segs.map(([c, v]) => `<div class="ebar-seg ${c}" style="flex-grow:${(v / tot).toFixed(4)}"></div>`).join("");
+  document.getElementById("energyLegend").innerHTML = segs.map(([c, v, lab, col]) => `<span><i style="background:${col}"></i>${lab} <b>${fmt(v / heat * 100, 0)}%</b></span>`).join("");
+
+  // key crank states from the trace
+  const nearest = (th) => tr.reduce((b, t, i) => Math.abs(t.theta_deg - th) < Math.abs(tr[b].theta_deg - th) ? i : b, 0);
+  let peakI = 0;
+  for (let i = 1; i < tr.length; i++) if (tr[i].pressure_Pa > tr[peakI].pressure_Pa) peakI = i;
+  const points = [["BDC (IVC)", -180], ["Ignition", inp.combustion_start_deg], ["Peak", null], ["EVO", 180]];
+  const head = document.getElementById("stateHead"), body = document.getElementById("stateBody");
+  if (head) head.innerHTML = `<tr><th class="s-name">Point</th><th>θ°</th><th>T ${ulabel("temp")}</th><th>P ${ulabel("press")}</th><th>V ${ulabel("vol")}</th></tr>`;
+  if (body) body.innerHTML = points.map(([name, th]) => {
+    const idx = th === null ? peakI : nearest(th); const t = tr[idx]; if (!t) return "";
+    return `<tr><td class="s-name">${name}</td><td>${fmt(t.theta_deg, 0)}</td><td>${fmt(uconv("temp", t.temperature_K), 0)}</td><td>${fmt(uconv("press", t.pressure_Pa), 1)}</td><td>${fmt(uconv("vol", t.volume_m3), 1)}</td></tr>`;
+  }).join("");
 }
 
 /** Plain-English description of the engine for Enthusiast mode. */
@@ -723,6 +800,7 @@ function drawDyno() {
 
 /* ---------- boot ---------- */
 export function startPiston() {
+  buildMetricCards();
   // presets
   const row = document.getElementById("presetRow");
   row.innerHTML = Object.keys(PRESETS).map((n) => `<button class="preset" data-preset="${n}">${n}</button>`).join("");

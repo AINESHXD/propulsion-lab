@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl9" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl10" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -224,6 +224,21 @@
             <div class="rows" id="breakdownRows"></div>
           </section>
 
+          <!-- engineering depth: energy balance, analysis, key crank states -->
+          <section class="card engineer-only">
+            <div class="card-head"><h2>Energy balance</h2><span class="hint">Of the fuel released</span></div>
+            <div class="ebar" id="energyBar"></div>
+            <div class="ebar-legend" id="energyLegend"></div>
+          </section>
+
+          <section class="card engineer-only">
+            <div class="card-head"><h2>Analysis</h2><span class="hint">Crank-resolved</span></div>
+            <div class="rows" id="analysisRows"></div>
+            <div class="state-wrap">
+              <table class="state-table" id="stateTable"><thead id="stateHead"></thead><tbody id="stateBody"></tbody></table>
+            </div>
+          </section>
+
           <!-- dyno -->
           <section class="card">
             <div class="card-head">
@@ -271,7 +286,7 @@
     </main>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl9";
+      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl10";
       startPiston();
     </script>
   </body>
