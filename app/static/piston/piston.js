@@ -600,23 +600,36 @@ function drawEngine() {
   ctx.fillStyle = grad;
   ctx.fillRect(xL, headY, borePx, Math.max(0, crownY - headY));
 
-  // --- cylinder walls ---
-  ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 2; ctx.lineJoin = "round";
+  // --- cylinder walls: honed-bore look (subtle inner shading + bright liner) ---
+  const wallGrad = ctx.createLinearGradient(xL, 0, xR, 0);
+  wallGrad.addColorStop(0, "rgba(255,255,255,0.06)"); wallGrad.addColorStop(0.5, "rgba(0,0,0,0)"); wallGrad.addColorStop(1, "rgba(0,0,0,0.10)");
+  ctx.fillStyle = wallGrad; ctx.fillRect(xL, headY, borePx, cyCrank - headY);
+  ctx.strokeStyle = "rgba(255,255,255,0.20)"; ctx.lineWidth = 2; ctx.lineJoin = "round";
   ctx.beginPath();
-  ctx.moveTo(xL, headY - 8); ctx.lineTo(xL, cyCrank);
-  ctx.moveTo(xR, headY - 8); ctx.lineTo(xR, cyCrank);
+  ctx.moveTo(xL, headY - 6); ctx.lineTo(xL, cyCrank);
+  ctx.moveTo(xR, headY - 6); ctx.lineTo(xR, cyCrank);
   ctx.stroke();
-  // head
-  ctx.strokeStyle = "rgba(255,255,255,0.22)";
-  ctx.beginPath(); ctx.moveTo(xL - 10, headY - 8); ctx.lineTo(xR + 10, headY - 8); ctx.stroke();
 
-  // --- valves (intake left, exhaust right), lift downward when open ---
-  for (const [kind, vx, col] of [["intake", cx - borePx * 0.24, "#7ba7eb"], ["exhaust", cx + borePx * 0.24, "#d9776a"]]) {
-    const lift = valveLift(animTheta, kind) * 12;
-    ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(vx, headY - 22); ctx.lineTo(vx, headY + lift); ctx.stroke();
-    ctx.fillStyle = lift > 1 ? col : "rgba(255,255,255,0.30)";
-    ctx.beginPath(); ctx.moveTo(vx - 6, headY + lift); ctx.lineTo(vx + 6, headY + lift); ctx.lineTo(vx, headY + lift + 6); ctx.closePath(); ctx.fill();
+  // --- cylinder head (solid block over the bore) ---
+  const headGrad = ctx.createLinearGradient(0, headY - 18, 0, headY);
+  headGrad.addColorStop(0, "#2b2f37"); headGrad.addColorStop(1, "#1a1d22");
+  ctx.fillStyle = headGrad;
+  roundRect(ctx, xL - 11, headY - 18, borePx + 22, 16, 6); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+  roundRect(ctx, xL - 11, headY - 18, borePx + 22, 16, 6); ctx.stroke();
+
+  // --- poppet valves (intake left, exhaust right), seat at the head ---
+  for (const [kind, vx, tilt, col] of [["intake", cx - borePx * 0.23, -0.16, "#7ba7eb"], ["exhaust", cx + borePx * 0.23, 0.16, "#d9776a"]]) {
+    const lift = valveLift(animTheta, kind) * 11;
+    const sx = Math.sin(tilt), cyv = Math.cos(tilt);
+    const seatX = vx + sx * lift, seatY = headY + cyv * lift;
+    ctx.strokeStyle = "rgba(176,182,192,0.72)"; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(vx - sx * 26, headY - 25); ctx.lineTo(seatX, seatY); ctx.stroke();
+    ctx.lineCap = "butt";
+    ctx.save(); ctx.translate(seatX, seatY); ctx.rotate(tilt);
+    ctx.fillStyle = lift > 1.2 ? col : "rgba(150,156,166,0.85)";
+    ctx.beginPath(); ctx.ellipse(0, 1.5, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
   // --- ignition: petrol fires a spark plug, diesel injects into hot air ---
@@ -671,30 +684,94 @@ function drawEngine() {
     }
   }
 
-  // --- connecting rod ---
-  ctx.strokeStyle = "rgba(210,214,222,0.85)"; ctx.lineWidth = Math.max(4, borePx * 0.07); ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(crankPinX, crankPinY); ctx.lineTo(cx, pinY); ctx.stroke();
+  // ===== rotating assembly (back to front: counterweight, throw, rod, piston, journals) =====
+  // counterweight: a shaped bob opposite the crank pin
+  const cwAng = th + Math.PI, cwR = crankR * 1.06;
+  ctx.fillStyle = "#23262d";
+  ctx.beginPath();
+  ctx.moveTo(cx, cyCrank);
+  ctx.arc(cx, cyCrank, cwR, cwAng - 0.56 * Math.PI, cwAng + 0.56 * Math.PI);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1; ctx.stroke();
+  // crank throw (web) from main journal to crank pin
+  ctx.strokeStyle = "#3c414b"; ctx.lineWidth = Math.max(8, crankR * 0.36); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx, cyCrank); ctx.lineTo(crankPinX, crankPinY); ctx.stroke();
   ctx.lineCap = "butt";
 
-  // --- piston ---
-  const pg = ctx.createLinearGradient(xL, 0, xR, 0);
-  pg.addColorStop(0, "#23262d"); pg.addColorStop(0.5, "#3c414b"); pg.addColorStop(1, "#23262d");
-  ctx.fillStyle = pg;
-  roundRect(ctx, xL + 2, crownY, borePx - 4, pistonH, 4); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
-  for (let i = 1; i <= 3; i++) { const ry = crownY + 5 + i * 4; ctx.beginPath(); ctx.moveTo(xL + 4, ry); ctx.lineTo(xR - 4, ry); ctx.stroke(); }
-  ctx.fillStyle = "rgba(180,186,196,0.9)"; ctx.beginPath(); ctx.arc(cx, pinY, Math.max(3, borePx * 0.05), 0, Math.PI * 2); ctx.fill();
+  drawRod(ctx, cx, pinY, crankPinX, crankPinY, borePx);
+  drawPiston(ctx, cx, xL, xR, crownY, pistonH, pinY, borePx);
 
-  // --- crankshaft ---
-  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(cx, cyCrank, crankR, 0, Math.PI * 2); ctx.stroke();
-  // counterweight opposite the pin
-  ctx.fillStyle = "rgba(60,65,75,0.9)";
-  ctx.beginPath(); ctx.arc(cx - crankR * Math.sin(th), cyCrank + crankR * Math.cos(th), crankR * 0.7, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(210,214,222,0.85)"; ctx.lineWidth = Math.max(3, borePx * 0.05);
-  ctx.beginPath(); ctx.moveTo(cx, cyCrank); ctx.lineTo(crankPinX, crankPinY); ctx.stroke();
-  ctx.fillStyle = cssVar("--accent"); ctx.beginPath(); ctx.arc(crankPinX, crankPinY, Math.max(3, borePx * 0.045), 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#9aa0aa"; ctx.beginPath(); ctx.arc(cx, cyCrank, 3, 0, Math.PI * 2); ctx.fill();
+  // journals on top
+  metalCircle(ctx, crankPinX, crankPinY, Math.max(5, crankR * 0.24), "#565b65", "#2a2d34");
+  ctx.fillStyle = cssVar("--accent"); ctx.beginPath(); ctx.arc(crankPinX, crankPinY, Math.max(2, crankR * 0.08), 0, Math.PI * 2); ctx.fill();
+  metalCircle(ctx, cx, cyCrank, Math.max(6, crankR * 0.32), "#51565f", "#23262d");
+  ctx.fillStyle = "#15171b"; ctx.beginPath(); ctx.arc(cx, cyCrank, Math.max(2, crankR * 0.09), 0, Math.PI * 2); ctx.fill();
+}
+
+/* metallic annulus (ring with a dark bore) — rod eyes, pin boss */
+function metalRing(ctx, cx, cy, outerR, innerR) {
+  const g = ctx.createLinearGradient(cx - outerR, cy - outerR, cx + outerR, cy + outerR);
+  g.addColorStop(0, "#565b65"); g.addColorStop(1, "#262931");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#14161a"; ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.stroke();
+}
+function metalCircle(ctx, cx, cy, r, c1, c2) {
+  const g = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1; ctx.stroke();
+}
+
+/* I-beam connecting rod: small end at (x0,y0), big end at (x1,y1) */
+function drawRod(ctx, x0, y0, x1, y1, borePx) {
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  const nx = Math.cos(ang + Math.PI / 2), ny = Math.sin(ang + Math.PI / 2);
+  const smallR = Math.max(5, borePx * 0.095), bigR = Math.max(7, borePx * 0.15);
+  const w0 = smallR * 0.5, w1 = bigR * 0.62;
+  const grad = ctx.createLinearGradient(x0 - nx * w1, y0 - ny * w1, x0 + nx * w1, y0 + ny * w1);
+  grad.addColorStop(0, "#2a2d34"); grad.addColorStop(0.5, "#565b65"); grad.addColorStop(1, "#23262d");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(x0 + nx * w0, y0 + ny * w0);
+  ctx.lineTo(x1 + nx * w1, y1 + ny * w1);
+  ctx.lineTo(x1 - nx * w1, y1 - ny * w1);
+  ctx.lineTo(x0 - nx * w0, y0 - ny * w0);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.30)"; ctx.lineWidth = Math.max(1.5, bigR * 0.2);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();   // I-beam web shadow
+  metalRing(ctx, x0, y0, smallR, smallR * 0.48);                          // small end
+  metalRing(ctx, x1, y1, bigR, bigR * 0.56);                              // big end
+}
+
+/* piston: crown, ring pack with depth, tapered skirt, pin boss */
+function drawPiston(ctx, cx, xL, xR, crownY, pistonH, pinY, borePx) {
+  const top = crownY, bot = crownY + pistonH;
+  const skirt = (xR - xL) * 0.05, ringZone = top + pistonH * 0.44;
+  ctx.beginPath();
+  ctx.moveTo(xL + 1, top);
+  ctx.lineTo(xR - 1, top);
+  ctx.lineTo(xR - 1, ringZone);
+  ctx.lineTo(xR - 1 - skirt, bot - 3);
+  ctx.quadraticCurveTo(xR - 1 - skirt, bot, xR - 5 - skirt, bot);
+  ctx.lineTo(xL + 5 + skirt, bot);
+  ctx.quadraticCurveTo(xL + 1 + skirt, bot, xL + 1 + skirt, bot - 3);
+  ctx.lineTo(xL + 1, ringZone);
+  ctx.closePath();
+  const pg = ctx.createLinearGradient(xL, 0, xR, 0);
+  pg.addColorStop(0, "#191c21"); pg.addColorStop(0.32, "#5a5f69"); pg.addColorStop(0.5, "#3a3f48");
+  pg.addColorStop(0.74, "#262931"); pg.addColorStop(1, "#131519");
+  ctx.fillStyle = pg; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1.4;   // crown highlight
+  ctx.beginPath(); ctx.moveTo(xL + 2, top + 0.8); ctx.lineTo(xR - 2, top + 0.8); ctx.stroke();
+  for (let i = 0; i < 3; i++) {                                      // ring pack with depth
+    const ry = top + pistonH * (0.13 + i * 0.085);
+    ctx.strokeStyle = "rgba(0,0,0,0.45)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(xL + 2, ry); ctx.lineTo(xR - 2, ry); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.09)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xL + 2, ry + 1.7); ctx.lineTo(xR - 2, ry + 1.7); ctx.stroke();
+  }
+  metalRing(ctx, cx, pinY, Math.max(4, borePx * 0.08), Math.max(2, borePx * 0.038));
 }
 
 function roundRect(ctx, x, y, w, h, r) {
