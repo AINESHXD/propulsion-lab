@@ -922,6 +922,16 @@ export function startPiston() {
   document.querySelectorAll(".mode-opt").forEach((b) =>
     b.addEventListener("click", () => setMode(b.dataset.mode)));
 
+  // mobile nav menu (hamburger)
+  const burger = document.getElementById("navBurger");
+  const nav = document.getElementById("missionNav");
+  if (burger && nav) {
+    const setOpen = (o) => { nav.classList.toggle("open", o); burger.setAttribute("aria-expanded", o ? "true" : "false"); };
+    burger.addEventListener("click", (e) => { e.stopPropagation(); setOpen(!nav.classList.contains("open")); });
+    nav.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setOpen(false)));
+    document.addEventListener("click", (e) => { if (nav.classList.contains("open") && !nav.contains(e.target) && e.target !== burger) setOpen(false); });
+  }
+
   // living-engine play / pause
   const playBtn = document.getElementById("enginePlay");
   if (playBtn) playBtn.addEventListener("click", () => {

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl11" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl13" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -23,7 +23,10 @@
              onerror="this.outerHTML='&lt;span class=&quot;brand-fallback&quot;&gt;PistonLab&lt;/span&gt;'" />
         <span class="badge-dev">dev</span>
       </a>
-      <nav class="mission-nav">
+      <button class="nav-burger" id="navBurger" type="button" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="mission-nav" id="missionNav">
         <span id="apiStatus" class="status-pill">Linking</span>
         <div class="mode-toggle" id="modeToggle" role="tablist" aria-label="View mode">
           <button class="mode-opt is-active" data-mode="enthusiast" role="tab">Enthusiast</button>
@@ -286,7 +289,7 @@
     </main>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl11";
+      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl13";
       startPiston();
     </script>
   </body>

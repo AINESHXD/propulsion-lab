@@ -388,17 +388,67 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.25); box-s
 .info::after {
   content: attr(data-tip);
   position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%) translateY(3px);
-  width: max-content; max-width: 250px; padding: 9px 11px;
+  transform: translateX(-50%);
+  width: max-content; max-width: 230px; padding: 9px 11px;
   border: 1px solid var(--line-strong); border-radius: 7px; background: #16181d;
   color: var(--text-2); font-family: var(--font-sans); font-size: 11.5px; line-height: 1.45;
   letter-spacing: 0; text-align: left; white-space: normal; text-transform: none; font-weight: 400;
-  pointer-events: none; opacity: 0; visibility: hidden; z-index: 60;
+  pointer-events: none; z-index: 60;
   box-shadow: 0 14px 30px rgba(0,0,0,0.45);
-  transition: opacity 180ms var(--ease-soft), transform 180ms var(--ease-soft);
+  /* display:none so hidden tooltips take no layout space (no phantom overflow) */
+  display: none;
 }
-.info:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
-.metric .info::after, .summary-card .info::after { left: 0; transform: translateX(0) translateY(3px); }
-.metric .info:hover::after, .summary-card .info:hover::after { transform: translateX(0) translateY(0); }
+.info:hover::after { display: block; animation: tipIn 160ms var(--ease-soft) both; }
+@keyframes tipIn { from { opacity: 0; transform: translateX(-50%) translateY(3px); } to { opacity: 1; transform: translateX(-50%); } }
+/* right-aligned so metric tooltips never push past the right edge */
+.metric .info::after, .summary-card .info::after { left: auto; right: 0; transform: none; }
+.metric .info:hover::after, .summary-card .info:hover::after { animation: tipInR 160ms var(--ease-soft) both; }
+@keyframes tipInR { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* =============================================================
+   MOBILE — collapse the top bar into a menu, tighten spacing
+   ============================================================= */
+.nav-burger {
+  display: none;
+  width: 38px; height: 34px; flex: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: var(--surface-2); border: 1px solid var(--line-strong);
+  border-radius: 9px; cursor: pointer;
+}
+.nav-burger span { width: 16px; height: 1.7px; border-radius: 2px; background: var(--text); transition: transform 0.22s var(--ease-out), opacity 0.2s; }
+.nav-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(5.7px) rotate(45deg); }
+.nav-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-5.7px) rotate(-45deg); }
+
+@media (max-width: 760px) {
+  .mission-bar { padding: 0 16px; gap: 10px; }
+  .nav-burger { display: flex; }
+  .brand-labs { display: none; }              /* keep the brand compact */
+
+  .mission-nav {
+    position: absolute; top: calc(100% + 8px); right: 12px; left: 12px;
+    flex-direction: column; align-items: stretch; gap: 8px;
+    padding: 12px; border-radius: 12px;
+    background: var(--surface-2); border: 1px solid var(--line-strong);
+    box-shadow: 0 24px 48px -20px rgba(0,0,0,0.75);
+    display: none;
+  }
+  .mission-nav.open { display: flex; animation: riseIn 220ms var(--ease-out) both; }
+  .mission-nav .status-pill { justify-content: center; }
+  .mission-nav .mode-toggle { display: inline-flex !important; width: 100%; }
+  .mission-nav .mode-opt { flex: 1; }
+  .mission-nav .nav-link { text-align: center; padding: 11px 12px; border: 1px solid var(--line); }
+
+  .shell { padding: 20px 16px 48px; }
+  .hero { margin: 6px 0 20px; }
+  .card { padding: 15px; }
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .diagram-pair { grid-template-columns: 1fr; }
+  .card-head { flex-wrap: wrap; }
+  .info::after { max-width: 220px; }
+  /* keep any wide child from forcing horizontal scroll */
+  .workspace, .controls, .results, .card { min-width: 0; }
+  .state-wrap { margin: 16px -15px -4px; padding: 0 15px; }
+}
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
