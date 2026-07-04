@@ -88,14 +88,19 @@ button, input, select { font-family: inherit; }
   text-decoration: none;
   min-width: 0;
 }
-.m-mark { width: 30px; height: 16px; color: var(--text); flex: none; }
-.m-brand-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.m-brand-text { display: flex; flex-direction: column; gap: 3px; line-height: 1.05; min-width: 0; }
 .m-brand-labs {
   font-family: var(--font-mono);
   font-size: 9.5px;
   letter-spacing: 0.16em;
   color: var(--text-3);
   text-transform: uppercase;
+}
+/* Real PropulsionLab wordmark, treated exactly like the desktop bar (the art is
+   mid-grey silver; screen-blend dims it, so lift it back up to full parity). */
+.m-brand-product-img {
+  height: 15px; width: auto; display: block;
+  mix-blend-mode: screen; filter: brightness(1.45) contrast(1.05);
 }
 .m-brand-product {
   font-size: 15px;
