@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Wiebe combustion, Woschni wall heat, friction, pumping, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
+    <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Two-zone Wiebe combustion with temperature-dependent specific heats, Woschni wall heat, friction, pumping, valve-limited breathing, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260621-pl13" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260726-pl24" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -14,282 +14,417 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
   </head>
   <body>
-    <!-- ===================== TOP BAR ===================== -->
-    <header class="mission-bar">
-      <a class="brand" href="/" aria-label="DAS LABS home">
-        <span class="brand-labs">DAS&nbsp;LABS</span>
-        <span class="brand-dot"></span>
-        <img class="brand-product" src="/lab/assets/pistonlab_wordmark.png" alt="PistonLab"
-             onerror="this.outerHTML='&lt;span class=&quot;brand-fallback&quot;&gt;PistonLab&lt;/span&gt;'" />
-        <span class="badge-dev">dev</span>
-      </a>
-      <button class="nav-burger" id="navBurger" type="button" aria-label="Menu" aria-expanded="false">
-        <span></span><span></span><span></span>
+    <!-- ============================================
+         BOOT SCREEN  (~1s DAS LABS intro)
+         ============================================ -->
+    <div class="boot-screen" id="bootScreen" aria-hidden="true">
+      <div class="boot-logo">
+        <img class="boot-logo-img" src="/lab/assets/das_labs_logo_dark.png?v=20260529-2"
+             alt="DAS LABS" width="822" height="116"
+             onerror="this.style.display='none';var f=document.getElementById('bootLogoFallback');if(f)f.style.display='flex';" />
+        <div id="bootLogoFallback" class="boot-fallback" style="display:none">
+          <span class="boot-word">DAS LABS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         MISSION BAR
+         ============================================ -->
+    <header class="mission-bar" role="banner">
+      <div class="mission-bar-left">
+        <a class="brand" href="/" aria-label="DAS LABS home">
+          <span class="brand-mark">DAS&nbsp;LABS</span>
+          <span class="brand-dot"></span>
+          <img class="brand-product-img" src="/lab/assets/pistonlab_wordmark.png" alt="PistonLab"
+               onerror="this.outerHTML='&lt;span class=&quot;brand-fallback&quot;&gt;PistonLab&lt;/span&gt;'" />
+        </a>
+      </div>
+
+      <!-- Hamburger toggle, visible only on mobile (<=760px) via CSS. -->
+      <button class="nav-toggle" type="button" id="navToggle"
+              aria-label="Open menu" aria-expanded="false" aria-controls="missionNav">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
       </button>
-      <nav class="mission-nav" id="missionNav">
+
+      <div class="mission-bar-right" id="missionNav">
         <span id="apiStatus" class="status-pill">Linking</span>
         <div class="mode-toggle" id="modeToggle" role="tablist" aria-label="View mode">
           <button class="mode-opt is-active" data-mode="enthusiast" role="tab">Enthusiast</button>
           <button class="mode-opt" data-mode="engineer" role="tab">Engineer</button>
         </div>
-        <button class="nav-link unit-toggle" type="button" id="unitToggle" title="Switch SI / US units">Units: SI</button>
-        <a class="nav-link" href="#methodology">Methodology</a>
-        <a class="nav-link" href="/lab/">PropulsionLab</a>
-        <a class="nav-link" href="/">DAS LABS</a>
-      </nav>
+        <button class="mission-link unit-toggle" type="button" id="unitToggle"
+                title="Switch between SI and US customary units">Units: SI</button>
+        <a class="mission-link" href="#methodology">Methodology</a>
+        <a class="mission-link" href="/lab/">PropulsionLab</a>
+        <a class="mission-link" href="/">DAS LABS</a>
+      </div>
     </header>
 
-    <main class="shell">
-      <!-- ===================== HERO ===================== -->
-      <section class="hero">
-        <p class="eyebrow"><span class="num">PL</span> PistonLab · crank-angle cycle</p>
-        <h1 class="hero-title">Reciprocating engines,<br /><span class="accent">crank angle by crank angle.</span></h1>
-        <p class="hero-sub">
-          A first-law cycle solver for petrol and diesel engines. Set the geometry,
-          fuel and operating point, and read the real rounded P–V loop, the
-          indicated-versus-brake split, and the dyno curve. Finite-rate Wiebe
-          combustion, Woschni wall heat, friction, pumping, aspiration, real fuel
-          thermochemistry and knock/smoke limits — every loss is modelled and shown.
-        </p>
-      </section>
+    <main class="app-shell" role="main">
+      <!-- ============================================
+           HERO
+           ============================================ -->
+      <section class="hero-band" aria-label="Mission briefing">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="num">01</span> PistonLab · crank-angle cycle</p>
 
-      <div class="workspace">
-        <!-- ===================== CONTROLS ===================== -->
-        <aside class="controls">
-          <div class="engine-type" id="engineType" role="tablist" aria-label="Engine type">
-            <button class="etype is-active" data-type="petrol" role="tab">
-              <span class="etype-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 9h6l-1.5 4h-3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M11 13l-1 5m4-5l1 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-              </span>
-              <span class="etype-name">Petrol</span>
-              <span class="etype-sub">spark ignition</span>
-            </button>
-            <button class="etype" data-type="diesel" role="tab">
-              <span class="etype-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 14l3-3 3 3-3 7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-              </span>
-              <span class="etype-name">Diesel</span>
-              <span class="etype-sub">compression ignition</span>
-            </button>
-          </div>
+          <h1 class="hero-title">
+            Reciprocating engines,<br />
+            <span class="accent">crank angle by crank angle.</span>
+          </h1>
 
-          <section class="card">
-            <div class="card-head"><h2>Presets</h2><span class="hint">Real-ish engines</span></div>
-            <div class="presets" id="presetRow"></div>
-          </section>
+          <p class="hero-sub">
+            A first-law cycle solver for petrol and diesel engines. Set the
+            geometry, fuel and operating point, and read the real rounded P–V
+            loop, the indicated-versus-brake split, and the dyno curve. Finite-rate
+            Wiebe combustion resolved into burned and unburned zones, specific
+            heats that follow temperature and composition, Woschni wall heat,
+            friction, pumping, valve-limited breathing and real fuel
+            thermochemistry — every loss is modelled and shown.
+          </p>
 
-          <section class="card">
-            <div class="card-head"><h2>Fuel &amp; mixture</h2></div>
-            <div class="field">
-              <label for="fuel">Fuel</label>
-              <div class="select-wrap">
-                <select id="fuel" data-key="fuel">
-                  <option value="gasoline">Gasoline (spark)</option>
-                  <option value="diesel">Diesel (compression)</option>
-                  <option value="ethanol">Ethanol (spark)</option>
-                  <option value="methanol">Methanol (spark)</option>
-                </select>
+          <div class="hero-stats" aria-label="Capability summary">
+            <div class="hero-stat">
+              <div class="hero-stat-label">Solver parameters</div>
+              <div class="hero-stat-value">49</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-label">Loss models</div>
+              <div class="hero-stat-value">6</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-label">Combustion zones</div>
+              <div class="hero-stat-value">2</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-label">Compression envelope</div>
+              <div class="hero-stat-value">
+                6<span class="hero-stat-arrow">→</span>24
               </div>
             </div>
-            <div class="field-row">
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CONSOLE
+           ============================================ -->
+      <section class="section" aria-labelledby="consoleHeading">
+        <div class="section-header">
+          <p class="eyebrow"><span class="num">02</span> Console <span class="rule"></span> <span id="engineModeLabel">Live solver</span></p>
+          <h2 class="section-title" id="consoleHeading">Build an engine, watch it run.</h2>
+          <p class="section-sub">
+            Every control re-solves the cycle. The animation, the loops and the
+            numbers all come from the same crank-angle integration.
+          </p>
+        </div>
+
+        <div class="concept-strip" role="note">
+          <div>
+            <span class="concept-eyebrow">CONCEPT · PETROL VS DIESEL</span>
+            <div class="concept-body">
+              Both squeeze air and burn fuel in it; they differ in what starts the
+              fire. A <b>petrol</b> engine premixes fuel and air, compresses
+              modestly, and a <b>spark</b> lights it — so compression is capped by
+              knock. A <b>diesel</b> compresses air alone, hard enough that
+              injected fuel <b>self-ignites</b> — so it runs lean, at high
+              compression, and trades peak revs for efficiency and torque.
+            </div>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <!-- ===================== CONTROLS ===================== -->
+          <aside class="controls">
+            <button class="primary-button build-cta" type="button" id="openBuilder">
+              Build a custom engine
+              <span>Layout, capacity, cam, head and boost — step by step</span>
+            </button>
+
+            <div class="engine-type" id="engineType" role="tablist" aria-label="Engine type">
+              <button class="etype is-active" data-type="petrol" role="tab">
+                <span class="etype-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M9 9h6l-1.5 4h-3z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/><path d="M11 13l-1 5m4-5l1 5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+                </span>
+                <span class="etype-name">Petrol</span>
+                <span class="etype-sub">spark ignition</span>
+              </button>
+              <button class="etype" data-type="diesel" role="tab">
+                <span class="etype-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M9 14l3-3 3 3-3 7z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="etype-name">Diesel</span>
+                <span class="etype-sub">compression ignition</span>
+              </button>
+            </div>
+
+            <section class="card">
+              <div class="card-head"><h2>Presets</h2><span class="hint">Real-ish engines</span></div>
+              <div class="presets" id="presetRow"></div>
+            </section>
+
+            <section class="card">
+              <div class="card-head"><h2>Fuel &amp; mixture</h2></div>
+              <div class="field">
+                <label for="fuel">Fuel</label>
+                <div class="select-wrap">
+                  <select id="fuel" data-key="fuel">
+                    <option value="gasoline">Gasoline (spark)</option>
+                    <option value="diesel">Diesel (compression)</option>
+                    <option value="ethanol">Ethanol (spark)</option>
+                    <option value="methanol">Methanol (spark)</option>
+                  </select>
+                </div>
+              </div>
               <div class="field">
                 <label>Equivalence ratio φ <b data-readout="equivalence_ratio"></b></label>
                 <input type="range" data-key="equivalence_ratio" min="0.4" max="1.4" step="0.01" value="1.0" />
                 <span class="field-foot" id="lambdaFoot"></span>
               </div>
-            </div>
-            <div class="field-row">
               <div class="field">
                 <label>Combustion η <b data-readout="combustion_efficiency"></b></label>
                 <input type="range" data-key="combustion_efficiency" min="0.85" max="1.0" step="0.005" value="0.98" />
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section class="card">
-            <div class="card-head"><h2>Geometry</h2></div>
-            <div class="field-row">
-              <div class="field"><label>Bore <small data-unit="len_mm">mm</small></label><input type="number" data-key="bore_m" data-scale="0.001" value="86" step="1" /></div>
-              <div class="field"><label>Stroke <small data-unit="len_mm">mm</small></label><input type="number" data-key="stroke_m" data-scale="0.001" value="86" step="1" /></div>
-            </div>
-            <div class="field-row">
-              <div class="field"><label>Compression ratio <b data-readout="compression_ratio"></b></label><input type="range" data-key="compression_ratio" min="6" max="24" step="0.1" value="10.5" /></div>
-            </div>
-            <div class="field-row">
-              <div class="field"><label>Cylinders</label><input type="number" data-key="cylinders" value="4" step="1" min="1" max="16" /></div>
-              <div class="field"><label>Rod ratio L/a</label><input type="number" data-key="rod_ratio" value="3.5" step="0.1" min="1.5" max="5" /></div>
-            </div>
-            <div class="field">
-              <label>Strokes per cycle</label>
-              <div class="select-wrap">
-                <select data-key="strokes_per_cycle" data-int="1">
-                  <option value="4">4-stroke (fires every 2 revs)</option>
-                  <option value="2">2-stroke (fires every rev)</option>
-                </select>
+            <section class="card">
+              <div class="card-head"><h2>Geometry</h2></div>
+              <div class="field-row">
+                <div class="field"><label>Bore <small data-unit="len_mm">mm</small></label><input type="number" data-key="bore_m" data-scale="0.001" value="86" step="1" /></div>
+                <div class="field"><label>Stroke <small data-unit="len_mm">mm</small></label><input type="number" data-key="stroke_m" data-scale="0.001" value="86" step="1" /></div>
               </div>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="card-head"><h2>Operating point</h2></div>
-            <div class="field">
-              <label>Speed <small>rpm</small> <b data-readout="rpm"></b></label>
-              <input type="range" data-key="rpm" min="800" max="9000" step="100" value="3000" />
-            </div>
-            <div class="field">
-              <label>Aspiration</label>
-              <div class="select-wrap">
-                <select id="aspiration" data-key="aspiration">
-                  <option value="naturally_aspirated">Naturally aspirated</option>
-                  <option value="turbocharged">Turbocharged</option>
-                  <option value="supercharged">Supercharged</option>
-                </select>
+              <div class="field">
+                <label>Compression ratio <b data-readout="compression_ratio"></b></label>
+                <input type="range" data-key="compression_ratio" min="6" max="24" step="0.1" value="10.5" />
               </div>
-            </div>
-            <div class="field">
-              <label>Manifold pressure <small data-unit="press_bar">bar</small> <b data-readout="intake_pressure_Pa"></b></label>
-              <input type="range" data-key="intake_pressure_Pa" data-scale="100000" min="0.4" max="3.0" step="0.05" value="1.0" />
-            </div>
-            <div class="field"><label>Intake temp <small data-unit="temp">K</small></label><input type="number" data-key="intake_temperature_K" value="330" step="5" /></div>
-          </section>
-
-          <details class="card accordion engineer-only">
-            <summary><span>Combustion &amp; losses</span><svg viewBox="0 0 16 16" class="chev"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></summary>
-            <div class="accordion-body">
-              <div class="field"><label>Spark / SOC <small>°CA</small> <b data-readout="combustion_start_deg"></b></label><input type="range" data-key="combustion_start_deg" min="-45" max="10" step="1" value="-15" /></div>
-              <div class="field"><label>Burn duration <small>°CA</small> <b data-readout="burn_duration_deg"></b></label><input type="range" data-key="burn_duration_deg" min="20" max="100" step="1" value="50" /></div>
-              <div class="field"><label>Wall temp <small data-unit="temp">K</small></label><input type="number" data-key="wall_temperature_K" value="450" step="10" /></div>
-              <div class="field"><label>Wall-heat multiplier <b data-readout="wall_heat_transfer_multiplier"></b></label><input type="range" data-key="wall_heat_transfer_multiplier" min="0" max="2.5" step="0.05" value="1.0" /></div>
-              <div class="field"><label>Friction multiplier <b data-readout="friction_multiplier"></b></label><input type="range" data-key="friction_multiplier" min="0" max="2.5" step="0.05" value="1.0" /></div>
-            </div>
-          </details>
-        </aside>
-
-        <!-- ===================== RESULTS ===================== -->
-        <div class="results">
-          <!-- living engine: the centerpiece -->
-          <section class="card engine-card">
-            <div class="card-head">
-              <div class="card-head-left">
-                <h2>Live engine</h2>
-                <span class="ignition-badge" id="ignitionBadge" data-ign="spark">Spark</span>
+              <div class="field-row">
+                <div class="field"><label>Cylinders</label><input type="number" data-key="cylinders" value="4" step="1" min="1" max="16" /></div>
+                <div class="field"><label>Rod ratio L/a</label><input type="number" data-key="rod_ratio" value="3.5" step="0.1" min="1.5" max="5" /></div>
               </div>
-              <div class="engine-controls">
-                <span class="stroke-pill" id="strokeLabel">Intake</span>
-                <button class="ghost-btn engine-play" id="enginePlay" type="button" aria-label="Pause">❚❚</button>
-              </div>
-            </div>
-            <div class="plot-wrap"><canvas id="engineCanvas" height="340"></canvas></div>
-            <p class="plot-note" id="engineNote">
-              A four-stroke cycle in motion, on your geometry. Charge colour tracks
-              gas temperature; the spark plug fires on your timing. Watch the marker
-              trace the P–V and T–s loops below as the piston moves.
-            </p>
-          </section>
-
-          <!-- limit banner -->
-          <div class="limit-banner" id="limitBanner"></div>
-
-          <!-- hero metrics -->
-          <section class="metrics" id="metricCards"></section>
-
-          <!-- plain-English summary (enthusiast mode) -->
-          <section class="card summary-card enthusiast-only" id="summaryCard">
-            <div class="card-head"><h2>What you've built</h2></div>
-            <p class="summary-text" id="summaryText">—</p>
-          </section>
-
-          <!-- diagrams: two loops side by side, live -->
-          <section class="card">
-            <div class="card-head">
-              <h2>Cycle diagrams</h2>
-              <div class="chart-tabs" id="diagramModeTabs">
-                <button class="chart-tab is-active" data-mode="loop">Loops</button>
-                <button class="chart-tab" data-mode="crank">Crank angle</button>
-              </div>
-            </div>
-            <div class="diagram-pair">
-              <div class="diagram-cell">
-                <span class="diagram-title" id="titleA">P–V loop</span>
-                <div class="plot-wrap"><canvas id="canvasA" height="300"></canvas></div>
-              </div>
-              <div class="diagram-cell">
-                <span class="diagram-title" id="titleB">T–s loop</span>
-                <div class="plot-wrap"><canvas id="canvasB" height="300"></canvas></div>
-              </div>
-            </div>
-            <p class="plot-note" id="diagramNote"></p>
-          </section>
-
-          <!-- indicated vs brake -->
-          <section class="card engineer-only">
-            <div class="card-head"><h2>Indicated → brake</h2><span class="hint">Where the work goes</span></div>
-            <div class="rows" id="breakdownRows"></div>
-          </section>
-
-          <!-- engineering depth: energy balance, analysis, key crank states -->
-          <section class="card engineer-only">
-            <div class="card-head"><h2>Energy balance</h2><span class="hint">Of the fuel released</span></div>
-            <div class="ebar" id="energyBar"></div>
-            <div class="ebar-legend" id="energyLegend"></div>
-          </section>
-
-          <section class="card engineer-only">
-            <div class="card-head"><h2>Analysis</h2><span class="hint">Crank-resolved</span></div>
-            <div class="rows" id="analysisRows"></div>
-            <div class="state-wrap">
-              <table class="state-table" id="stateTable"><thead id="stateHead"></thead><tbody id="stateBody"></tbody></table>
-            </div>
-          </section>
-
-          <!-- dyno -->
-          <section class="card">
-            <div class="card-head">
-              <h2>Dyno curve</h2>
-              <div class="dyno-controls">
-                <div class="select-wrap small">
-                  <select id="sweepParameter">
-                    <option value="rpm">Speed (rpm)</option>
-                    <option value="compression_ratio">Compression ratio</option>
-                    <option value="equivalence_ratio">Equivalence ratio φ</option>
-                    <option value="intake_pressure_Pa">Manifold pressure</option>
-                    <option value="combustion_start_deg">Spark timing</option>
+              <div class="field">
+                <label>Strokes per cycle</label>
+                <div class="select-wrap">
+                  <select data-key="strokes_per_cycle" data-int="1">
+                    <option value="4">4-stroke (fires every 2 revs)</option>
+                    <option value="2">2-stroke (fires every rev)</option>
                   </select>
                 </div>
-                <button class="ghost-btn" id="runSweep" type="button">Sweep</button>
               </div>
-            </div>
-            <div class="plot-wrap"><canvas id="dynoCanvas" height="300"></canvas></div>
-            <p class="plot-note" id="dynoNote">Sweep speed to draw torque and power against rpm.</p>
-          </section>
+            </section>
 
-          <!-- assumptions -->
-          <section class="card" id="methodology">
-            <div class="card-head"><h2>What you are looking at</h2></div>
-            <p class="note">
-              These are <strong>crank-angle first-law</strong> results, not a dyno
-              sheet. The in-cylinder gas is marched through compression, finite-rate
-              Wiebe combustion and expansion with Woschni wall heat loss; friction
-              (Chen–Flynn) and the pumping loop convert indicated work to
-              <strong>brake</strong> work. Fuelling is real: the heat release comes
-              from the fuel's chemistry and the mixture strength, and knock / smoke
-              limits are flagged. Constant specific heats and a single-zone charge
-              are assumed, so peak temperatures run optimistically high and brake
-              numbers are model estimates with stated assumptions, not measurements.
-            </p>
-          </section>
+            <section class="card">
+              <div class="card-head"><h2>Operating point</h2></div>
+              <div class="field">
+                <label>Speed <small>rpm</small> <b data-readout="rpm"></b></label>
+                <input type="range" data-key="rpm" min="800" max="12000" step="100" value="3000" />
+              </div>
+              <div class="field">
+                <label>Aspiration</label>
+                <div class="select-wrap">
+                  <select id="aspiration" data-key="aspiration">
+                    <option value="naturally_aspirated">Naturally aspirated</option>
+                    <option value="turbocharged">Turbocharged</option>
+                    <option value="supercharged">Supercharged</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label>Manifold pressure <small data-unit="press_bar">bar</small> <b data-readout="intake_pressure_Pa"></b></label>
+                <input type="range" data-key="intake_pressure_Pa" data-scale="100000" min="0.4" max="3.0" step="0.05" value="1.0" />
+              </div>
+              <div class="field"><label>Intake temp <small data-unit="temp">K</small></label><input type="number" data-key="intake_temperature_K" value="330" step="5" /></div>
+            </section>
+
+            <details class="card accordion engineer-only">
+              <summary>Combustion &amp; losses</summary>
+              <div class="accordion-body">
+                <div class="field"><label>Spark / SOC <small>°CA</small> <b data-readout="combustion_start_deg"></b></label><input type="range" data-key="combustion_start_deg" min="-45" max="10" step="1" value="-15" /></div>
+                <div class="field"><label>Burn duration <small>°CA</small> <b data-readout="burn_duration_deg"></b></label><input type="range" data-key="burn_duration_deg" min="20" max="100" step="1" value="50" /></div>
+                <div class="field"><label>Wall temp <small data-unit="temp">K</small></label><input type="number" data-key="wall_temperature_K" value="450" step="10" /></div>
+                <div class="field"><label>Wall-heat multiplier <b data-readout="wall_heat_transfer_multiplier"></b></label><input type="range" data-key="wall_heat_transfer_multiplier" min="0" max="2.5" step="0.05" value="1.0" /></div>
+                <div class="field"><label>Friction multiplier <b data-readout="friction_multiplier"></b></label><input type="range" data-key="friction_multiplier" min="0" max="2.5" step="0.05" value="1.0" /></div>
+              </div>
+            </details>
+          </aside>
+
+          <!-- ===================== RESULTS ===================== -->
+          <div class="results">
+            <!-- living engine: the centerpiece -->
+            <section class="card">
+              <div class="card-head">
+                <div class="card-head-left">
+                  <h2>Live engine</h2>
+                  <span class="ignition-badge" id="ignitionBadge" data-ign="spark">Spark</span>
+                </div>
+                <div class="engine-controls">
+                  <span class="stroke-pill" id="strokeLabel">Intake</span>
+                  <button class="ghost-btn engine-play" id="enginePlay" type="button" aria-label="Pause">❚❚</button>
+                </div>
+              </div>
+              <div class="plot-wrap"><canvas id="engineCanvas" height="340"></canvas></div>
+              <p class="plot-note" id="engineNote">
+                A four-stroke cycle in motion, on your geometry. Charge colour tracks
+                gas temperature; the spark plug fires on your timing. Watch the marker
+                trace the P–V and T–s loops below as the piston moves.
+              </p>
+            </section>
+
+            <!-- limit banner -->
+            <div class="limit-banner" id="limitBanner"></div>
+
+            <!-- hero metrics -->
+            <section class="metrics" id="metricCards"></section>
+
+            <!-- plain-English summary (enthusiast mode) -->
+            <section class="card enthusiast-only" id="summaryCard">
+              <div class="card-head"><h2>What you've built</h2></div>
+              <p class="note" id="summaryText">—</p>
+            </section>
+
+            <!-- configuration analysis: only present once an engine has been built -->
+            <section class="card" id="configCard" hidden>
+              <div class="card-head">
+                <h2>Configuration</h2>
+                <span class="hint" id="configName">—</span>
+              </div>
+              <div class="rows" id="configRows"></div>
+              <div class="verdicts" id="configVerdicts"></div>
+            </section>
+
+            <!-- diagrams: two loops side by side, live -->
+            <section class="card">
+              <div class="card-head">
+                <h2>Cycle diagrams</h2>
+                <div class="chart-tabs" id="diagramModeTabs">
+                  <button class="chart-tab is-active" data-mode="loop">Loops</button>
+                  <button class="chart-tab" data-mode="crank">Crank angle</button>
+                </div>
+              </div>
+              <div class="diagram-pair">
+                <div class="diagram-cell">
+                  <span class="diagram-title" id="titleA">P–V loop</span>
+                  <div class="plot-wrap"><canvas id="canvasA" height="300"></canvas></div>
+                </div>
+                <div class="diagram-cell">
+                  <span class="diagram-title" id="titleB">T–s loop</span>
+                  <div class="plot-wrap"><canvas id="canvasB" height="300"></canvas></div>
+                </div>
+              </div>
+              <p class="plot-note" id="diagramNote"></p>
+            </section>
+
+            <!-- indicated vs brake -->
+            <section class="card engineer-only">
+              <div class="card-head"><h2>Indicated → brake</h2><span class="hint">Where the work goes</span></div>
+              <div class="rows" id="breakdownRows"></div>
+            </section>
+
+            <!-- engineering depth: energy balance, analysis, key crank states -->
+            <section class="card engineer-only">
+              <div class="card-head"><h2>Energy balance</h2><span class="hint">Of the fuel released</span></div>
+              <div class="ebar" id="energyBar"></div>
+              <div class="ebar-legend" id="energyLegend"></div>
+            </section>
+
+            <section class="card engineer-only">
+              <div class="card-head"><h2>Analysis</h2><span class="hint">Crank-resolved</span></div>
+              <div class="rows" id="analysisRows"></div>
+              <div class="state-wrap">
+                <table class="state-table" id="stateTable"><thead id="stateHead"></thead><tbody id="stateBody"></tbody></table>
+              </div>
+            </section>
+
+            <!-- dyno -->
+            <section class="card">
+              <div class="card-head">
+                <h2>Dyno curve</h2>
+                <div class="dyno-controls">
+                  <div class="select-wrap small">
+                    <select id="sweepParameter">
+                      <option value="rpm">Speed (rpm)</option>
+                      <option value="compression_ratio">Compression ratio</option>
+                      <option value="equivalence_ratio">Equivalence ratio φ</option>
+                      <option value="intake_pressure_Pa">Manifold pressure</option>
+                      <option value="combustion_start_deg">Spark timing</option>
+                    </select>
+                  </div>
+                  <button class="ghost-btn" id="runSweep" type="button">Sweep</button>
+                </div>
+              </div>
+              <div class="plot-wrap"><canvas id="dynoCanvas" height="300"></canvas></div>
+              <p class="plot-note" id="dynoNote">Sweep speed to draw torque and power against rpm.</p>
+            </section>
+
+            <!-- assumptions -->
+            <section class="card" id="methodology">
+              <div class="card-head"><h2>What you are looking at</h2></div>
+              <p class="note">
+                These are <strong>crank-angle first-law</strong> results, not a dyno
+                sheet. The in-cylinder gas is marched through compression, finite-rate
+                Wiebe combustion and expansion with Woschni wall heat loss; friction
+                (Chen–Flynn) and the pumping loop convert indicated work to
+                <strong>brake</strong> work. Fuelling is real: the heat release comes
+                from the fuel's chemistry and the mixture strength, and knock / smoke
+                limits are flagged. Specific heats follow temperature and composition
+                (fitted to <strong>Cantera</strong>), and combustion is resolved into
+                <strong>burned and unburned zones</strong>, so the end-gas temperature
+                that drives knock is computed rather than estimated. Composition is
+                frozen — dissociation is not modelled, so burned-zone temperatures
+                still read high — and brake numbers remain model estimates with stated
+                assumptions, not measurements.
+              </p>
+            </section>
+          </div>
         </div>
-      </div>
-
-      <footer class="foot">
-        <span>PistonLab</span><span class="sep">·</span>
-        <span>a DAS LABS project by Ainesh Das</span><span class="sep">·</span>
-        <a href="/lab/">PropulsionLab</a>
-      </footer>
+      </section>
     </main>
 
+    <footer class="mission-footer">
+      <div class="mission-footer-grid">
+        <div class="footer-block">
+          <strong>DAS LABS</strong>
+          PistonLab — a crank-angle reciprocating-engine cycle simulator.
+          Reduced-order, educational physics with every assumption stated.
+        </div>
+        <div class="footer-block">
+          <strong>Labs</strong>
+          <a href="/lab/">PropulsionLab</a><br />
+          <a href="/">DAS LABS</a>
+        </div>
+        <div class="footer-block">
+          <strong>This page</strong>
+          <a href="#methodology">Methodology</a><br />
+          Built by Ainesh Das
+        </div>
+      </div>
+    </footer>
+
+    <!-- ============================================
+         CUSTOM ENGINE BUILDER  (branching wizard)
+         ============================================ -->
+    <div class="bd-overlay" id="builderOverlay" hidden>
+      <div class="bd-panel" role="dialog" aria-modal="true" aria-label="Custom engine builder">
+        <header class="bd-head">
+          <div class="bd-head-text">
+            <span class="bd-brand">DAS&nbsp;LABS · PistonLab</span>
+            <h2 class="bd-heading">Custom engine builder</h2>
+          </div>
+          <button class="bd-close" type="button" id="bdClose" aria-label="Close builder">✕</button>
+        </header>
+        <div class="bd-progress" id="bdProgress"></div>
+        <div class="bd-body" id="bdBody"></div>
+        <footer class="bd-foot">
+          <button class="ghost-btn" type="button" id="bdBack">Back</button>
+          <button class="ghost-btn" type="button" id="bdNext">Continue</button>
+        </footer>
+      </div>
+    </div>
+
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260621-pl13";
+      import { startPiston } from "/lab/piston/piston.js?v=20260726-pl24";
       startPiston();
     </script>
   </body>

@@ -58,19 +58,41 @@ def test_boost_raises_imep_and_power_over_na() -> None:
     assert boosted.trapped_mass_kg > na.trapped_mass_kg     # denser charge
 
 
-def test_supercharger_debits_brake_but_turbo_does_not() -> None:
+def test_turbo_and_supercharger_pay_in_different_currencies() -> None:
+    """Each pays for its boost, but through a different term.
+
+    A supercharger's compression work comes off the crank. A turbo's comes out
+    of the exhaust, which it can only tap by expanding across a turbine, and
+    that raises the pressure the piston pushes against. Both engines induct the
+    same charge, so the indicated work is identical and the entire difference in
+    brake power is those two costs netting off.
+    """
+
     common = dict(intake_pressure_Pa=1.8e5, exhaust_pressure_Pa=1.2e5)
     turbo = simulate_piston_cycle(PistonCycleInputs(aspiration="turbocharged", **common))
     sc = simulate_piston_cycle(PistonCycleInputs(aspiration="supercharged", **common))
-    # Same indicated work (same trapped charge), but the supercharger's
-    # parasitic load lowers its brake power by exactly that power.
+
+    # Neither the turbo's compressor nor its turbine touches the crankshaft...
     assert turbo.supercharger_power_W == 0.0
+    assert turbo.compressor_power_W > 0.0
     assert sc.supercharger_power_W > 0.0
+    # ...but the turbine has to raise exhaust pressure to drive that compressor,
+    # while the supercharged engine's exhaust stays where the caller put it.
+    assert turbo.exhaust_pressure_Pa > sc.exhaust_pressure_Pa
+    assert sc.exhaust_pressure_Pa == pytest.approx(1.2e5)
+    assert turbo.pmep_Pa > sc.pmep_Pa
+
+    # Same charge in, so identical indicated work.
     assert sc.indicated_power_W == pytest.approx(turbo.indicated_power_W, rel=1e-9)
-    assert sc.brake_power_W < turbo.brake_power_W
-    assert turbo.brake_power_W - sc.brake_power_W == pytest.approx(
-        sc.supercharger_power_W, rel=1e-6
-    )
+
+    # The turbo still wins, but by less than the supercharger's full parasitic
+    # load: it hands back exactly the extra pumping work its turbine costs.
+    gap = turbo.brake_power_W - sc.brake_power_W
+    assert 0.0 < gap < sc.supercharger_power_W
+
+    swept_rate = turbo.total_displacement_m3 * (3000.0 / 60.0) * 0.5   # m^3/s
+    pumping_tax = (turbo.pmep_Pa - sc.pmep_Pa) * swept_rate
+    assert gap == pytest.approx(sc.supercharger_power_W - pumping_tax, rel=1e-9)
 
 
 def test_supercharger_lowers_brake_efficiency_vs_turbo() -> None:

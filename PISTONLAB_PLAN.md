@@ -31,8 +31,87 @@
 > caution; a CI smoke proxy fires when a diesel is over-fuelled past φ≈0.7; lean
 > SI mixtures flag misfire. A knocking point still returns a full result. Energy
 > closes to machine precision; throttling lowers brake efficiency.
-> **99 PistonLab tests.** The console now runs the real solver; still gated
-> behind the portal's "coming soon" (no portal link) until the Week-4 launch.
+> **Custom engine builder (2026-07-26).** A branching wizard over the solver,
+> plus the physics to back it. `layout.py` computes firing intervals and
+> reciprocating balance from cylinder axes and crank phases — the classic
+> results fall out rather than being tabulated (inline-4 leaves a unit secondary
+> shaking force, inline-6 and V12 cancel everything, a boxer twin is
+> force-balanced with a rocking couple, a 90 deg V6 is odd-fire at 90/150 and a
+> 30 deg split pin brings it back to even, and a cross-plane crank cancels the
+> secondary force a flat-plane V8 leaves). `valvetrain.py` moves the integration
+> window off BDC: compression now starts at intake-valve close and expansion
+> ends at exhaust-valve open, so the **effective** compression ratio diverges
+> from the geometric one and Miller/Atkinson is a consequence of the geometry
+> rather than a special mode. Breathing is valve-limited through Taylor's inlet
+> Mach index (a reduced-order correlation, labelled as such), and exhaust
+> restriction raises back-pressure and therefore PMEP. All of it is optional:
+> omit the new inputs and the solver behaves exactly as before. **191 PistonLab
+> tests, 496 total.** The console now runs the real solver; still gated behind
+> the portal's "coming soon" (no portal link) until the Week-4 launch.
+>
+> Note: this pulls **variable valve timing** and the **firing-order / balance
+> visualiser** forward from the Deferred list below, at the user's request.
+>
+> **Turbo back-pressure + residual gas (2026-07-26).** Two gaps the app used to
+> disclose are now closed. A **turbocharger** no longer gets a free ride: the
+> turbine's expansion ratio is solved from the turbo *shaft power balance*
+> (`eta_m * W_turbine = W_compressor`), and the exhaust manifold sits that far
+> above whatever is downstream, so back-pressure is charged to the pumping loop.
+> Turbo still beats supercharger, but by the supercharger's parasitic load
+> *minus* the turbo's pumping tax, and that identity closes to 1e-9. **Valve
+> overlap** now does physical work instead of being a readout: burned gas left
+> in the clearance volume is sized from the exhaust state, and overlap couples
+> the intake/exhaust pressure ratio into it — boost scavenges it out (0.4% on a
+> race cam at 1.8 bar), throttling draws it back in (35% on the same cam at
+> 0.5 bar), which is exactly why a big cam pulls hard and idles terribly. The
+> residual is hot (raises charge temperature at IVC) and already burned (only
+> the fresh mass carries fuel), and the mixing closes algebraically so it costs
+> one extra solve, not an iteration. **229 PistonLab tests, 534 total.**
+>
+> **Variable specific heats + two-zone combustion (2026-07-26).** The constant
+> `gamma = 1.35` is gone. `thermo.py` carries cp(T) for air and for the products
+> of PistonLab's own gasoline chemistry, fitted offline against **Cantera**
+> (GRI-Mech 3.0) to better than 0.5% over 250-3500 K and hard-coded, so the
+> solver has no runtime Cantera dependency; the tests re-validate against
+> Cantera whenever it is importable. The integrator now marches **internal
+> energy** and inverts for temperature, which conserves energy by construction
+> even as composition shifts. Effect on an NA petrol engine: peak temperature
+> **3342 -> 2805 K**, peak pressure **75.7 -> 62.9 bar**, indicated efficiency
+> **46.3 -> 40.8%** — all moving into the band real engines occupy. The
+> methodology card's "peak temperatures run optimistically high" caveat is
+> retired.
+>
+> **Combustion is now two-zone.** Burned and unburned gas are tracked at a
+> shared pressure: the unburned zone follows the exact variable-cp isentropic
+> relation (`phi(T) - R ln p` conserved), its volume follows from the ideal-gas
+> law, the burned zone takes the rest, and a secant on pressure closes the
+> energy. Temperatures order correctly — burned 3056 K > bulk 2805 K > end-gas
+> 1016 K. **Knock is now judged on the tracked end gas** instead of the
+> isentropic proxy, so it responds to intercooling, boost *and* residual
+> dilution raising the charge temperature at IVC, which the proxy structurally
+> could not see. Real gas is on by default at the API layer. **279 PistonLab
+> tests, 584 total.**
+>
+> Caveats carried forward: composition is **frozen** — dissociation is not
+> modelled, so the burned-zone temperature (~3050 K) still reads a few hundred
+> kelvin above the ~2800-3000 K a real charge reaches, and the turbine
+> back-pressure model inherits some of that through the EVO temperature.
+> Two-zone costs ~69 ms per solve against ~4 ms constant-gamma; fine
+> interactively, noticeable on a multi-point sweep.
+>
+> **Cosmetic pass (2026-07-26).** The hero band had gone stale under the physics
+> work — it claimed 18 solver parameters against an actual 49, and 4 loss models
+> against 6 — so the stats, the hero copy and the meta description were all
+> brought back in line, and "Fuels 4" was swapped for "Combustion zones 2". The
+> **live engine now draws the flame front**: the trace carries burned *volume*
+> fraction and both zone temperatures, so the chamber renders as a flame kernel
+> growing from the plug with hot burned gas behind it and cool end-gas pushed to
+> the periphery, each tinted against its own peak. Burned volume runs well ahead
+> of burned mass (0.26 mass -> 0.53 volume) because burned gas is far less dense,
+> which is what makes the sweep visible. When the knock flag fires the far
+> corners of the chamber take a hot edge — which is exactly where knock starts.
+> The **configuration card** had grown to 21 undifferentiated rows and is now
+> grouped under *Architecture / Breathing & gas exchange / Gas model*.
 > **Owner:** Solo developer, mechanical-engineering undergraduate.
 > **Goal:** Turn the air-standard *scaffold* into a **credible reciprocating-engine
 > simulator** — the DAS LABS sibling to PropulsionLab — over ~20 working days, without

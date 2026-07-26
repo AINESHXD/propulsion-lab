@@ -98,6 +98,35 @@ def clearance_volume(displacement_m3: float, compression_ratio: float) -> float:
     return displacement_m3 / (compression_ratio - 1.0)
 
 
+def bore_stroke_from_displacement(
+    total_displacement_m3: float,
+    cylinders: int,
+    bore_stroke_ratio: float,
+) -> tuple[float, float]:
+    """Solve bore and stroke from a target capacity and a bore/stroke ratio.
+
+    A builder naturally starts from "two litres, four cylinders, slightly
+    oversquare" rather than from millimetres. With ``k = B / S``::
+
+        V_total = n * (pi / 4) * B**2 * S = n * pi * B**3 / (4 k)
+
+    so ``B = cbrt(4 k V_total / (n pi))`` and ``S = B / k``. A ratio above 1 is
+    oversquare (a short-stroke, high-revving engine); below 1 is undersquare
+    (long-stroke, torque-biased).
+    """
+
+    if total_displacement_m3 <= 0.0:
+        raise ValueError("total_displacement_m3 must be positive.")
+    if cylinders < 1:
+        raise ValueError("cylinders must be >= 1.")
+    if bore_stroke_ratio <= 0.0:
+        raise ValueError("bore_stroke_ratio must be positive.")
+
+    bore = (4.0 * bore_stroke_ratio * total_displacement_m3
+            / (cylinders * math.pi)) ** (1.0 / 3.0)
+    return bore, bore / bore_stroke_ratio
+
+
 def piston_position_from_tdc(theta_rad: float, geom: CylinderGeometry) -> float:
     """Piston displacement from TDC [m] at crank angle ``theta_rad``."""
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.engine_core.piston import (
     FUEL_NAMES,
@@ -22,9 +22,85 @@ from app.engine_core.piston import (
     PistonCycleResult,
     simulate_piston_cycle,
 )
+from app.engine_core.piston.geometry import bore_stroke_from_displacement
+from app.engine_core.piston.layout import EngineLayout
+from app.engine_core.piston.valvetrain import ValveGeometry, ValveTiming
 
 AspirationMode = Literal["naturally_aspirated", "turbocharged", "supercharged"]
 FuelName = Literal["gasoline", "diesel", "ethanol", "methanol"]
+LayoutKind = Literal["single", "inline", "vee", "flat", "w", "radial"]
+CrankType = Literal["flat_plane", "cross_plane"]
+
+
+class PistonLayoutIn(BaseModel):
+    """How the cylinders are arranged.
+
+    The cylinder count and stroke count are deliberately *not* repeated here —
+    they come from the parent input, so the two can never disagree.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: LayoutKind = "inline"
+    bank_angle_deg: float = Field(default=0.0, ge=0.0, le=180.0)
+    crankpin_offset_deg: float = Field(default=0.0, ge=-180.0, le=180.0)
+    crank_type: CrankType = "flat_plane"
+
+    def to_engine_layout(self, cylinders: int, strokes_per_cycle: int,
+                         rod_ratio: float) -> EngineLayout:
+        return EngineLayout(
+            kind=self.kind,
+            cylinders=cylinders,
+            bank_angle_deg=self.bank_angle_deg,
+            crankpin_offset_deg=self.crankpin_offset_deg,
+            strokes_per_cycle=strokes_per_cycle,
+            rod_ratio=rod_ratio,
+            crank_type=self.crank_type,
+        )
+
+
+class PistonValveTimingIn(BaseModel):
+    """Cam card, in the usual workshop convention."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    intake_open_btdc_deg: float = Field(default=10.0, ge=-60.0, le=120.0)
+    intake_close_abdc_deg: float = Field(default=40.0, ge=-60.0, le=120.0)
+    exhaust_open_bbdc_deg: float = Field(default=45.0, ge=-60.0, le=120.0)
+    exhaust_close_atdc_deg: float = Field(default=10.0, ge=-60.0, le=120.0)
+
+    def to_valve_timing(self) -> ValveTiming:
+        return ValveTiming(
+            intake_open_btdc_deg=self.intake_open_btdc_deg,
+            intake_close_abdc_deg=self.intake_close_abdc_deg,
+            exhaust_open_bbdc_deg=self.exhaust_open_bbdc_deg,
+            exhaust_close_atdc_deg=self.exhaust_close_atdc_deg,
+        )
+
+
+class PistonValveGeometryIn(BaseModel):
+    """Port and valve sizing, as ratios of the bore."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    intake_valves_per_cylinder: int = Field(default=2, ge=1, le=4)
+    exhaust_valves_per_cylinder: int = Field(default=2, ge=1, le=4)
+    intake_valve_diameter_ratio: float = Field(default=0.38, ge=0.15, le=0.60)
+    exhaust_valve_diameter_ratio: float = Field(default=0.33, ge=0.15, le=0.60)
+    max_lift_ratio: float = Field(default=0.25, ge=0.10, le=0.40)
+    discharge_coefficient: float = Field(default=0.35, ge=0.15, le=0.80)
+    exhaust_restriction: float = Field(default=1.0, ge=0.0, le=4.0)
+
+    def to_valve_geometry(self) -> ValveGeometry:
+        return ValveGeometry(
+            intake_valves_per_cylinder=self.intake_valves_per_cylinder,
+            exhaust_valves_per_cylinder=self.exhaust_valves_per_cylinder,
+            intake_valve_diameter_ratio=self.intake_valve_diameter_ratio,
+            exhaust_valve_diameter_ratio=self.exhaust_valve_diameter_ratio,
+            max_lift_ratio=self.max_lift_ratio,
+            discharge_coefficient=self.discharge_coefficient,
+            exhaust_restriction=self.exhaust_restriction,
+        )
 
 
 class PistonSimulateInput(BaseModel):
@@ -54,6 +130,9 @@ class PistonSimulateInput(BaseModel):
     aspiration: AspirationMode = "naturally_aspirated"
     ambient_pressure_Pa: float = Field(default=1.0e5, gt=1.0e4, le=2.0e5)
     supercharger_efficiency: float = Field(default=0.65, gt=0.0, le=1.0)
+    compressor_efficiency: float = Field(default=0.72, gt=0.0, le=1.0)
+    turbine_efficiency: float = Field(default=0.70, gt=0.0, le=1.0)
+    turbo_mechanical_efficiency: float = Field(default=0.98, gt=0.0, le=1.0)
 
     # Heat release (raw path; ignored when a fuel is set)
     heat_release_J_per_kg: float = Field(default=2.5e6, ge=0.0, le=5.0e6)
@@ -77,15 +156,53 @@ class PistonSimulateInput(BaseModel):
     friction_multiplier: float = Field(default=1.0, ge=0.0, le=4.0)
     fuel_lhv_J_per_kg: float = Field(default=43.5e6, gt=1.0e6, le=1.4e8)
 
+    # --- Custom engine builder ---
+    # A builder thinks in capacity, not millimetres. Supplying both of these
+    # derives bore and stroke server-side and overrides the pair above, so the
+    # geometry has exactly one source of truth.
+    displacement_L: float | None = Field(default=None, gt=0.05, le=100.0)
+    bore_stroke_ratio: float | None = Field(default=None, gt=0.4, le=2.5)
+
+    layout: PistonLayoutIn | None = None
+    valve_timing: PistonValveTimingIn | None = None
+    valve_geometry: PistonValveGeometryIn | None = None
+
+    # --- Gas model. On by default here: the browser should get the honest
+    # model without having to ask for it. The engine-core dataclass keeps
+    # them off so a direct solver call is unchanged. ---
+    variable_specific_heats: bool = True
+    two_zone_combustion: bool = True
+
     # Output control
     include_trace: bool = True
+
+    @model_validator(mode="after")
+    def _capacity_needs_a_ratio(self) -> "PistonSimulateInput":
+        if (self.displacement_L is None) != (self.bore_stroke_ratio is None):
+            raise ValueError(
+                "displacement_L and bore_stroke_ratio must be given together: "
+                "a capacity alone does not fix the bore and stroke."
+            )
+        return self
+
+    def resolved_bore_stroke_m(self) -> tuple[float, float]:
+        """Bore and stroke actually used, after any capacity-driven override."""
+
+        if self.displacement_L is None or self.bore_stroke_ratio is None:
+            return self.bore_m, self.stroke_m
+        return bore_stroke_from_displacement(
+            total_displacement_m3=self.displacement_L * 1.0e-3,
+            cylinders=self.cylinders,
+            bore_stroke_ratio=self.bore_stroke_ratio,
+        )
 
     def to_cycle_inputs(self) -> PistonCycleInputs:
         """Build the engine-core inputs (integration window left at defaults)."""
 
+        bore_m, stroke_m = self.resolved_bore_stroke_m()
         return PistonCycleInputs(
-            bore_m=self.bore_m,
-            stroke_m=self.stroke_m,
+            bore_m=bore_m,
+            stroke_m=stroke_m,
             compression_ratio=self.compression_ratio,
             rod_ratio=self.rod_ratio,
             cylinders=self.cylinders,
@@ -99,6 +216,9 @@ class PistonSimulateInput(BaseModel):
             aspiration=self.aspiration,
             ambient_pressure_Pa=self.ambient_pressure_Pa,
             supercharger_efficiency=self.supercharger_efficiency,
+            compressor_efficiency=self.compressor_efficiency,
+            turbine_efficiency=self.turbine_efficiency,
+            turbo_mechanical_efficiency=self.turbo_mechanical_efficiency,
             heat_release_J_per_kg=self.heat_release_J_per_kg,
             fuel=self.fuel,
             equivalence_ratio=self.equivalence_ratio,
@@ -111,6 +231,23 @@ class PistonSimulateInput(BaseModel):
             wall_heat_transfer_multiplier=self.wall_heat_transfer_multiplier,
             friction_multiplier=self.friction_multiplier,
             fuel_lhv_J_per_kg=self.fuel_lhv_J_per_kg,
+            layout=(
+                self.layout.to_engine_layout(
+                    cylinders=self.cylinders,
+                    strokes_per_cycle=self.strokes_per_cycle,
+                    rod_ratio=self.rod_ratio,
+                )
+                if self.layout is not None else None
+            ),
+            valve_timing=(
+                self.valve_timing.to_valve_timing() if self.valve_timing is not None else None
+            ),
+            valve_geometry=(
+                self.valve_geometry.to_valve_geometry()
+                if self.valve_geometry is not None else None
+            ),
+            variable_specific_heats=self.variable_specific_heats,
+            two_zone_combustion=self.two_zone_combustion,
         )
 
 
@@ -126,6 +263,43 @@ class PistonTracePointOut(BaseModel):
     pressure_Pa: float
     temperature_K: float
     entropy_J_per_kg_K: float
+    burned_fraction: float = 0.0
+    # Present only on a two-zone solve; the console draws the flame front from
+    # the volume fraction and tints each zone by its own temperature.
+    burned_volume_fraction: float | None = None
+    unburned_temperature_K: float | None = None
+    burned_temperature_K: float | None = None
+
+
+class PistonBalanceOut(BaseModel):
+    """Dimensionless shaking residuals: 0 cancels, 1 is one bare cylinder."""
+
+    primary_force: float
+    secondary_force: float
+    primary_couple: float
+    secondary_couple: float
+    secondary_force_ratio: float
+
+
+class PistonLayoutOut(BaseModel):
+    """Firing and balance analysis for the chosen arrangement."""
+
+    kind: str
+    cylinders: int
+    banks: int
+    cylinders_per_bank: int
+    bank_angle_deg: float
+    crankpin_offset_deg: float
+    crank_throws: int
+    main_bearings: int
+    cylinder_heads: int
+    ideal_firing_interval_deg: float
+    firing_intervals_deg: list[float]
+    even_fire: bool
+    balance: PistonBalanceOut
+    balance_verdict: str
+    friction_scale: float
+    description: str
 
 
 class PistonSimulateOutput(BaseModel):
@@ -163,6 +337,19 @@ class PistonSimulateOutput(BaseModel):
     aspiration: str
     boost_pressure_Pa: float
     supercharger_power_W: float
+    exhaust_pressure_Pa: float = 1.0e5
+    compressor_power_W: float = 0.0
+    turbine_pressure_ratio: float | None = None
+    boost_sustainable: bool = True
+    exhaust_temperature_K: float = 0.0
+    residual_fraction: float | None = None
+    fresh_mass_kg: float | None = None
+    mixed_temperature_K: float | None = None
+    variable_specific_heats: bool = False
+    two_zone_combustion: bool = False
+    mean_gamma: float | None = None
+    peak_unburned_temperature_K: float | None = None
+    peak_burned_temperature_K: float | None = None
     # Fuelling
     fuel: str
     equivalence_ratio: float
@@ -170,6 +357,21 @@ class PistonSimulateOutput(BaseModel):
     fuel_air_ratio: float
     air_fuel_ratio: float
     operating_warnings: list[PistonOperatingWarningOut]
+    # --- Builder extras. Null unless the matching input was supplied. ---
+    effective_compression_ratio: float | None = None
+    effective_expansion_ratio: float | None = None
+    volumetric_efficiency: float | None = None
+    inlet_mach_index: float | None = None
+    exhaust_mach_index: float | None = None
+    valve_overlap_deg: float | None = None
+    closed_period_deg: float | None = None
+    breathing_verdict: str | None = None
+    layout: PistonLayoutOut | None = None
+    layout_friction_scale: float | None = None
+    # Resolved geometry, so a capacity-driven build can read back what it got.
+    bore_m: float | None = None
+    stroke_m: float | None = None
+    total_displacement_m3: float | None = None
     trace: list[PistonTracePointOut]
 
     @classmethod

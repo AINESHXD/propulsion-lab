@@ -235,21 +235,19 @@ def mobile_console() -> FileResponse:
 def piston_lab() -> FileResponse:
     """Serve the PistonLab reciprocating-engine console at a clean /piston/ URL.
 
-    PistonLab is the DAS LABS sibling to PropulsionLab. It is in development and
-    intentionally not yet linked from the portal (the portal still shows it as
-    "coming soon"); the page is reachable directly so it can be built and shared
-    for review before launch.
+    PistonLab is the DAS LABS sibling to PropulsionLab: a crank-angle-resolved
+    reciprocating-engine cycle solver. Launched and linked from the portal.
     """
 
     return FileResponse(STATIC_PATH / "piston" / "index.html")
 
 
-@app.post("/piston/simulate", response_model=PistonSimulateOutput, include_in_schema=False)
+@app.post("/piston/simulate", response_model=PistonSimulateOutput, tags=["piston"])
 def piston_simulate(payload: PistonSimulateInput) -> PistonSimulateOutput:
     """Run one PistonLab crank-angle cycle. SI in, SI out.
 
-    Gated (not in the public schema) until the PistonLab launch. The physics is
-    the source-of-truth solver in ``app/engine_core/piston``; this just wraps it.
+    The physics is the source-of-truth solver in ``app/engine_core/piston``;
+    this just wraps it for the browser and for anyone calling the API directly.
     """
 
     try:
@@ -258,7 +256,7 @@ def piston_simulate(payload: PistonSimulateInput) -> PistonSimulateOutput:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/piston/sweep", response_model=PistonSweepOutput, include_in_schema=False)
+@app.post("/piston/sweep", response_model=PistonSweepOutput, tags=["piston"])
 def piston_sweep(payload: PistonSweepInput) -> PistonSweepOutput:
     """Sweep one PistonLab parameter (e.g. rpm for a dyno curve)."""
 

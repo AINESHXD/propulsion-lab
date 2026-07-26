@@ -110,6 +110,7 @@ def evaluate_operating_limits(
     peak_pressure_Pa: float,
     intake_pressure_Pa: float,
     gamma: float,
+    measured_end_gas_temperature_K: float | None = None,
 ) -> list[OperatingWarning]:
     """Return any knock / smoke / lean-misfire warnings for an operating point.
 
@@ -117,6 +118,12 @@ def evaluate_operating_limits(
     for knock and lean misfire, compression-ignition fuels for smoke. With no
     fuel selected (the raw-heat path) there is nothing to judge, so the list is
     empty.
+
+    ``measured_end_gas_temperature_K`` is the peak unburned-zone temperature
+    when the cycle was solved with two zones. Knock is an end-gas phenomenon, so
+    a tracked unburned temperature is strictly better than the isentropic
+    estimate this module falls back on, and it is used in preference whenever
+    the caller has one.
     """
 
     if not fuel_name or fuel_name == "manual":
@@ -126,7 +133,17 @@ def evaluate_operating_limits(
     lam = 1.0 / equivalence_ratio if equivalence_ratio > 0 else float("inf")
 
     if fuel.ignition == "spark":
-        margin = knock_margin_K(fuel_name, intake_temperature_K, peak_pressure_Pa, intake_pressure_Pa, gamma)
+        if measured_end_gas_temperature_K is not None:
+            # Two-zone solve: the end gas was tracked, so judge it directly.
+            limit = autoignition_temperature_K(
+                fuel.research_octane_number, peak_pressure_Pa,
+            ) if fuel.research_octane_number is not None else None
+            margin = (limit - measured_end_gas_temperature_K) if limit is not None else None
+        else:
+            margin = knock_margin_K(
+                fuel_name, intake_temperature_K, peak_pressure_Pa,
+                intake_pressure_Pa, gamma,
+            )
         if margin is not None:
             if margin < 0.0:
                 warnings.append(OperatingWarning(

@@ -53,9 +53,37 @@ def test_piston_assets_referenced_exist() -> None:
     assert (_ROOT / "app" / "static" / "assets" / "pistonlab_wordmark.png").exists()
 
 
-def test_portal_still_shows_pistonlab_as_coming_soon() -> None:
-    # PistonLab is built but NOT launched: the portal must still gate it.
-    portal = (_ROOT / "app" / "static" / "portal.html").read_text(encoding="utf-8").lower()
-    assert "coming soon" in portal
-    # And it must not yet link the live /piston/ console from the portal card.
-    assert 'href="/piston' not in portal
+def test_portal_presents_pistonlab_as_launched() -> None:
+    # PistonLab is launched: the portal links it and no longer gates it. This
+    # replaces the pre-launch check that asserted the opposite.
+    portal = (_ROOT / "app" / "static" / "portal.html").read_text(encoding="utf-8")
+    assert 'href="/piston/"' in portal
+    lowered = portal.lower()
+    assert "coming soon" not in lowered
+    assert "in development" not in lowered
+    # Both cards now carry the live treatment, so neither is the disabled variant.
+    assert 'aria-disabled="true"' not in lowered
+    assert 'class="card live piston"' in lowered
+
+
+def test_both_labs_are_reachable_from_the_portal() -> None:
+    portal = (_ROOT / "app" / "static" / "portal.html").read_text(encoding="utf-8")
+    assert 'href="/lab/"' in portal        # PropulsionLab
+    assert 'href="/piston/"' in portal     # PistonLab
+
+
+def test_the_console_no_longer_wears_a_dev_badge() -> None:
+    html = (_PISTON / "index.html").read_text(encoding="utf-8")
+    assert "badge-dev" not in html
+
+
+def test_the_piston_api_is_published() -> None:
+    # At launch the endpoints join the public schema, the way PropulsionLab's are.
+    from app.main import app
+
+    paths = {r.path for r in app.routes}
+    assert "/piston/simulate" in paths
+    assert "/piston/sweep" in paths
+    schema_paths = set(app.openapi()["paths"])
+    assert "/piston/simulate" in schema_paths
+    assert "/piston/sweep" in schema_paths

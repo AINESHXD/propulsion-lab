@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#050608" />
-    <meta name="description" content="DAS LABS, interactive engine simulators. PropulsionLab models airbreathing and gas-turbine propulsion; PistonLab (coming soon) models reciprocating internal-combustion engines." />
+    <meta name="description" content="DAS LABS, interactive engine simulators. PropulsionLab models airbreathing and gas-turbine propulsion; PistonLab models reciprocating internal-combustion engines." />
     <title>DAS LABS, engine simulators</title>
     <style>
       :root{
@@ -40,6 +40,8 @@
       .card.live:hover{transform:translateY(-5px);border-color:rgba(123,167,235,.5);
         box-shadow:0 24px 60px rgba(0,0,0,.5)}
       .card.live:hover .glow{opacity:1;box-shadow:0 0 0 1px rgba(123,167,235,.4),0 0 40px rgba(123,167,235,.18) inset}
+      .card.live.piston:hover{border-color:rgba(240,136,62,.5)}
+      .card.live.piston:hover .glow{box-shadow:0 0 0 1px rgba(240,136,62,.4),0 0 40px rgba(240,136,62,.18) inset}
       .card.soon{opacity:.72}
       .wordmark{width:100%;max-width:236px;height:auto;margin:2px 0;
         mix-blend-mode:screen;}   /* silver-on-black wordmark: black bg drops out on the dark card */
@@ -86,15 +88,16 @@
           <span class="enter">Enter →</span>
         </a>
 
-        <!-- PistonLab, coming soon -->
-        <div class="card soon piston" aria-disabled="true">
-          <span class="badge dev">Coming soon</span>
+        <!-- PistonLab, live -->
+        <a class="card live piston" href="/piston/">
+          <span class="glow"></span>
+          <span class="badge ok">● Live</span>
           <img class="wordmark" src="/lab/assets/pistonlab_wordmark.png?v=1" alt="PistonLab"
                onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
           <div class="wm-fallback">PistonLab</div>
-          <p>Reciprocating internal-combustion engines: Otto, Diesel, turbocharging, and the classic P-V loop. In development.</p>
-          <span class="enter">In development</span>
-        </div>
+          <p>Reciprocating internal-combustion engines: petrol and diesel, crank-angle resolved, with two-zone combustion, turbocharging and the real P-V loop.</p>
+          <span class="enter">Enter →</span>
+        </a>
       </div>
     </main>
 

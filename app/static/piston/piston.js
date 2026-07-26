@@ -5,8 +5,15 @@
    source of truth in app/engine_core/piston; this renders it.
    ============================================================= */
 
+import { initBuilder, openBuilder } from "/lab/piston/builder.js?v=20260726-pl24";
+
 const API_SIM = "/piston/simulate";
 const API_SWEEP = "/piston/sweep";
+
+/* Structured builder data — layout, cam and head have no form controls, so they
+   live here and ride along with every solve until a different engine is built.
+   The scalar answers go into the normal controls so they stay editable. */
+let builderExtras = null;
 
 /* ---------- units (SI solver, display-only conversion) ---------- */
 const U = {
@@ -45,7 +52,43 @@ function readInputs() {
     if (INT_KEYS.has(key)) v = Math.round(v);
     body[key] = v;
   });
+  if (builderExtras) Object.assign(body, builderExtras);
   return body;
+}
+
+/** Write one solver key into whichever control owns it, honouring its scale. */
+function setKey(key, val) {
+  const el = document.querySelector(`[data-key="${key}"]`);
+  if (!el) return;
+  if (STRING_KEYS.has(key)) el.value = val;
+  else el.value = el.dataset.scale ? val / parseFloat(el.dataset.scale) : val;
+}
+
+/** Load a freshly built engine into the console and re-solve it. */
+function applyBuiltEngine(spec, result) {
+  // Bore and stroke come from the *server's* capacity solve, not a client-side
+  // copy of the formula, so the console shows exactly what was simulated. They
+  // land in millimetre fields, so round to 0.1 mm — the capacity shifts by a
+  // fraction of a percent and the numbers stay something you could machine.
+  const mm = (m) => Math.round(m * 1e4) / 1e4;
+  setKey("bore_m", mm(result.bore_m));
+  setKey("stroke_m", mm(result.stroke_m));
+  for (const key of [
+    "fuel", "cylinders", "strokes_per_cycle", "compression_ratio", "rod_ratio",
+    "rpm", "equivalence_ratio", "combustion_start_deg", "burn_duration_deg",
+    "aspiration", "intake_pressure_Pa", "intake_temperature_K",
+  ]) {
+    if (spec[key] !== undefined) setKey(key, spec[key]);
+  }
+  builderExtras = {
+    layout: spec.layout,
+    valve_timing: spec.valve_timing,
+    valve_geometry: spec.valve_geometry,
+  };
+  document.querySelectorAll(".preset").forEach((b) => b.classList.remove("is-active"));
+  updateReadouts();
+  syncEngineType();
+  solve();
 }
 
 function updateReadouts() {
@@ -77,6 +120,10 @@ const PRESETS = {
 function applyPreset(name) {
   const p = PRESETS[name];
   if (!p) return;
+  // A stock preset replaces any bespoke layout/cam/head from the builder.
+  builderExtras = null;
+  const cfg = document.getElementById("configCard");
+  if (cfg) cfg.hidden = true;
   for (const [key, val] of Object.entries(p)) {
     const el = document.querySelector(`[data-key="${key}"]`);
     if (!el) continue;
@@ -224,7 +271,7 @@ function renderResult(r) {
   // limit banner
   const banner = document.getElementById("limitBanner");
   banner.innerHTML = (r.operating_warnings || [])
-    .map((w) => `<div class="limit ${w.severity}"><span><b>${w.kind.replace("_", " ")}</b> ${w.message}</span></div>`)
+    .map((w) => `<div class="limit ${w.severity}"><b>${w.kind.replace("_", " ")}</b><span>${w.message}</span></div>`)
     .join("");
 
   // breakdown ladder
@@ -251,7 +298,104 @@ function renderResult(r) {
 
   renderSummary(r);
   renderAnalysis(r);
+  renderConfig(r);
   drawAllDiagrams();
+}
+
+/** Arrangement + breathing analysis. Only present once an engine is built. */
+function renderConfig(r) {
+  const card = document.getElementById("configCard");
+  if (!card) return;
+  const L = r.layout;
+  const hasDepth = L || r.volumetric_efficiency != null
+    || r.residual_fraction != null || r.turbine_pressure_ratio != null
+    || r.mean_gamma != null;
+  if (!hasDepth) { card.hidden = true; return; }
+  card.hidden = false;
+
+  // The Python side stays ASCII-only; the console is where it gets its degree sign.
+  const pretty = (s) => String(s).replace(/ deg /g, "° ");
+  document.getElementById("configName").textContent =
+    L ? pretty(L.description) : r.volumetric_efficiency != null ? "custom valvetrain" : "gas model";
+
+  const rows = [];
+  const add = (label, val, tip) => rows.push(
+    `<div class="row"><span class="rk">${label}${tip ? info(tip) : ""}</span><span class="rv">${val}</span></div>`);
+  const group = (title) => rows.push(`<div class="row-group">${title}</div>`);
+
+  if (L) {
+    group("Architecture");
+    add("Arrangement", pretty(L.description));
+    add("Banks / heads", `${L.banks} × ${L.cylinders_per_bank}`);
+    add("Crank throws", `${L.crank_throws} on ${L.main_bearings} mains`,
+      "An opposed pair shares one throw station, which is why a flat-six runs fewer mains than an inline-six.");
+    const gaps = [...new Set(L.firing_intervals_deg.map((g) => Math.round(g)))].join(" / ");
+    add("Firing", `${L.even_fire ? "even" : "uneven"} · ${gaps}°`,
+      `Ideal interval is 720°/${L.cylinders} = ${fmt(L.ideal_firing_interval_deg, 0)}°. A shared crankpin fires its pair one bank-angle apart, so only a bank angle equal to the ideal gives even firing.`);
+    add("Friction scale", `${fmt(L.friction_scale, 3)}×`,
+      "Coarse model correction for bearing and head count, anchored so an inline-four reads 1.000. A model parameter, not a measurement.");
+  }
+  if (r.effective_compression_ratio != null || r.volumetric_efficiency != null
+      || r.residual_fraction != null || r.turbine_pressure_ratio != null
+      || r.exhaust_temperature_K) {
+    group("Breathing &amp; gas exchange");
+  }
+  if (r.effective_compression_ratio != null) {
+    add("Effective CR", `${fmt(r.effective_compression_ratio, 2)}:1`,
+      "V(IVC)/V_TDC — the ratio the trapped charge actually sees. Below the geometric ratio because the intake closes after BDC.");
+    add("Expansion ratio", `${fmt(r.effective_expansion_ratio, 2)}:1`,
+      "V(EVO)/V_TDC. When this exceeds the effective compression ratio the engine is running an Atkinson-style cycle.");
+  }
+  if (r.volumetric_efficiency != null) {
+    add("Volumetric efficiency", `${fmt(r.volumetric_efficiency * 100, 1)} %`,
+      "How much charge the head actually admits against what the cylinder could hold. Falls once the inlet starts choking.");
+    add("Inlet Mach index", fmt(r.inlet_mach_index, 3),
+      "Taylor's Z: the volume flow the piston demands over what the inlet valve can pass. Breathing falls away past about 0.5.");
+    add("Exhaust Mach index", fmt(r.exhaust_mach_index, 3));
+  }
+  if (r.valve_overlap_deg != null) {
+    add("Valve overlap", `${fmt(r.valve_overlap_deg, 0)}°`,
+      "Crank degrees with both valves open around gas-exchange TDC. While both are open the intake and exhaust are connected, so the pressure across them either scavenges the residual out (boosted) or draws it back in (throttled).");
+    add("Closed period", `${fmt(r.closed_period_deg, 0)}°`,
+      "Crank degrees actually integrated: intake-valve close through to exhaust-valve open.");
+  }
+  if (r.residual_fraction != null) {
+    add("Residual gas", `${fmt(r.residual_fraction * 100, 1)} %`,
+      "Burned gas from the last cycle still in the clearance volume when the intake shuts. It is hot, so it warms the charge, and already burned, so it dilutes — this is internal EGR.");
+    add("Charge temp at IVC", `${fmt(uconv("temp", r.mixed_temperature_K), 0)} ${ulabel("temp")}`,
+      "Fresh charge and hot residual after mixing. This, not the manifold temperature, is where compression starts.");
+  }
+  if (r.turbine_pressure_ratio != null) {
+    add("Turbine expansion", `${fmt(r.turbine_pressure_ratio, 3)}×`,
+      "Expansion the turbine needs to drive its compressor, solved from the turbo shaft power balance. The exhaust manifold sits this far above whatever is downstream of it.");
+    add("Compressor power", uval("power", r.compressor_power_W, 1),
+      "Shaft power the turbo compressor absorbs. A turbo takes it from the exhaust rather than the crank — but pays for it in back-pressure.");
+  }
+  if (r.exhaust_temperature_K) {
+    add("Exhaust temp (EVO)", `${fmt(uconv("temp", r.exhaust_temperature_K), 0)} ${ulabel("temp")}`,
+      "Gas temperature when the exhaust valve cracks open. This drives both the turbine's available energy and how much residual is left behind.");
+  }
+  if (r.peak_burned_temperature_K != null || r.mean_gamma != null) {
+    group("Gas model");
+  }
+  if (r.peak_burned_temperature_K != null) {
+    add("Burned zone peak", `${fmt(uconv("temp", r.peak_burned_temperature_K), 0)} ${ulabel("temp")}`,
+      "Gas temperature behind the flame front, which runs hotter than the cylinder mean. Frozen composition — real dissociation absorbs energy and would cap this nearer 2800–3000 K, so treat it as an over-estimate.");
+    add("End-gas peak", `${fmt(uconv("temp", r.peak_unburned_temperature_K), 0)} ${ulabel("temp")}`,
+      "Unburned charge ahead of the flame, compressed but not yet burned. This is the gas that knocks, and it is what the knock margin is now judged on.");
+  }
+  if (r.mean_gamma != null) {
+    add("Mean γ", fmt(r.mean_gamma, 4),
+      "Cycle-average ratio of specific heats. Real γ falls from about 1.40 in the cool fresh charge to about 1.25 in hot products, which is why a single fixed value over-predicts peak temperature.");
+    add("Gas model", r.two_zone_combustion ? "variable cp · two-zone" : "variable cp · single zone",
+      "Specific heats follow temperature and composition, fitted to Cantera. Two-zone tracks burned and unburned gas separately so the end-gas temperature is computed rather than estimated.");
+  }
+  document.getElementById("configRows").innerHTML = rows.join("");
+
+  const verdicts = [];
+  if (L) verdicts.push(`<p><span>Balance</span>${L.balance_verdict}</p>`);
+  if (r.breathing_verdict) verdicts.push(`<p><span>Breathing</span>${r.breathing_verdict}</p>`);
+  document.getElementById("configVerdicts").innerHTML = verdicts.join("");
 }
 
 /** Engineer-mode depth: pro readouts, energy balance, key crank states. */
@@ -286,7 +430,7 @@ function renderAnalysis(r) {
   const wall = Math.max(0, r.wall_heat_loss_J);
   const exhaust = Math.max(0, heat - work - wall);
   const tot = work + wall + exhaust || 1;
-  const segs = [["work", work, "Indicated work", "#e8923e"], ["wall", wall, "Wall heat loss", "#d9776a"], ["exhaust", exhaust, "Exhaust", "#5b6b8c"]];
+  const segs = [["work", work, "Indicated work", "#e8923e"], ["wall", wall, "Wall heat loss", "#d97757"], ["exhaust", exhaust, "Exhaust", "#4b5468"]];
   document.getElementById("energyBar").innerHTML = segs.map(([c, v]) => `<div class="ebar-seg ${c}" style="flex-grow:${(v / tot).toFixed(4)}"></div>`).join("");
   document.getElementById("energyLegend").innerHTML = segs.map(([c, v, lab, col]) => `<span><i style="background:${col}"></i>${lab} <b>${fmt(v / heat * 100, 0)}%</b></span>`).join("");
 
@@ -531,6 +675,92 @@ function gasTemperature(a) {
   return aa < 180 ? intakeT : endT;
 }
 
+const norm = (v, lo, hi) => Math.max(0, Math.min(1, (v - lo) / Math.max(1, hi - lo)));
+
+/** Zone state at this crank angle, or null when the solve had only one zone. */
+function engineZoneState(a) {
+  const idx = engineTraceIndex(a);
+  if (idx == null || !lastResult || !lastResult.trace) return null;
+  const t = lastResult.trace[idx];
+  if (!t || t.burned_volume_fraction == null) return null;
+  return {
+    burnedVolumeFraction: t.burned_volume_fraction,
+    unburnedT: t.unburned_temperature_K,
+    burnedT: t.burned_temperature_K,
+    peakUnburnedT: lastResult.peak_unburned_temperature_K || 1400,
+    peakBurnedT: lastResult.peak_burned_temperature_K || 2800,
+    knock: (lastResult.operating_warnings || []).some((w) => w.kind === "knock"),
+  };
+}
+
+/* Draw the chamber as two zones.
+ *
+ * The flame starts at the plug and grows outward, so the burned region is a
+ * disc centred on the plug and clipped to the chamber. Early on it is a true
+ * half-disc kernel — area pi r^2 / 2 — which is where the radius comes from;
+ * past about 60% burned that under-fills the corners, so the radius eases up to
+ * the one that reaches the far corner. The area being matched is the burned
+ * *volume* fraction, not the mass fraction: burned gas is several times less
+ * dense, so it fills the chamber far faster than it burns.
+ */
+function drawTwoZoneCharge(ctx, o) {
+  const { xL, headY, borePx, chamberH, cx } = o;
+  const f = Math.max(0, Math.min(1, o.burnedFraction));
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(xL, headY, borePx, chamberH);
+  ctx.clip();
+
+  // Unburned end-gas fills the chamber first; the burned zone is painted over it.
+  const cool = ctx.createLinearGradient(0, headY, 0, headY + chamberH);
+  cool.addColorStop(0, o.unburnedTint);
+  cool.addColorStop(1, "rgba(20,16,14,0.30)");
+  ctx.fillStyle = cool;
+  ctx.fillRect(xL, headY, borePx, chamberH);
+
+  if (f > 0.002) {
+    const area = borePx * chamberH;
+    const rKernel = Math.sqrt((2 * f * area) / Math.PI);
+    const rMax = Math.hypot(borePx / 2, chamberH) * 1.02;
+    // Ease from the kernel radius to full coverage over the back half of the burn.
+    const ease = Math.max(0, Math.min(1, (f - 0.55) / 0.45));
+    const r = Math.min(rKernel, rMax) * (1 - ease) + rMax * ease;
+
+    const flame = ctx.createRadialGradient(cx, headY, 0, cx, headY, r);
+    flame.addColorStop(0, o.burnedTint);
+    flame.addColorStop(0.82, o.burnedTint);
+    flame.addColorStop(1, "rgba(255,214,150,0.35)");
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.arc(cx, headY, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // The flame boundary itself, only while there is still end-gas to consume.
+    if (f < 0.985) {
+      ctx.strokeStyle = "rgba(255,236,200,0.55)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(cx, headY, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // End-gas about to autoignite: give the far corners a hot edge, which is
+  // exactly where knock starts.
+  if (o.knock && f > 0.05 && f < 0.98) {
+    const glow = ctx.createLinearGradient(xL, 0, xL + borePx, 0);
+    glow.addColorStop(0, "rgba(255,138,74,0.42)");
+    glow.addColorStop(0.28, "rgba(255,138,74,0)");
+    glow.addColorStop(0.72, "rgba(255,138,74,0)");
+    glow.addColorStop(1, "rgba(255,138,74,0.42)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(xL, headY, borePx, chamberH);
+  }
+
+  ctx.restore();
+}
+
 function gasTint(tnorm) {
   // steel-blue (cool) -> amber -> bright cream (combustion)
   const stops = [[74, 92, 120], [232, 146, 62], [255, 216, 150]];
@@ -589,16 +819,36 @@ function drawEngine() {
   ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1;
   roundRect(ctx, xL - 13, headY - 16, borePx + 26, cyCrank - (headY - 16) + 6, 11); ctx.stroke();
 
-  // --- gas charge (temperature-tinted) ---
+  // --- gas charge ---
+  // With a two-zone solve the trace carries the burned volume fraction and both
+  // zone temperatures, so the chamber is drawn as what it actually is: a flame
+  // kernel growing out from the plug, hot burned gas behind it, cool unburned
+  // end-gas pushed to the periphery. Without those the charge falls back to a
+  // single bulk tint.
   const Tmin = inputVal("intake_temperature_K", 330);
   const Tmax = (lastResult && lastResult.peak_temperature_K) || 2600;
-  const tnorm = Math.max(0, Math.min(1, (gasTemperature(animTheta) - Tmin) / Math.max(1, Tmax - Tmin)));
-  const tint = gasTint(tnorm);
-  const grad = ctx.createLinearGradient(0, headY, 0, crownY);
-  grad.addColorStop(0, tint);
-  grad.addColorStop(1, `rgba(20,16,14,0.25)`);
-  ctx.fillStyle = grad;
-  ctx.fillRect(xL, headY, borePx, Math.max(0, crownY - headY));
+  const chamberH = Math.max(0, crownY - headY);
+  const zone = engineZoneState(animTheta);
+
+  if (zone && chamberH > 1) {
+    drawTwoZoneCharge(ctx, {
+      xL, xR, headY, borePx, chamberH, cx,
+      burnedFraction: zone.burnedVolumeFraction,
+      // Normalise each zone against its own peak, or the burned zone saturates
+      // to white the instant it lights and the flame loses all its depth.
+      unburnedTint: gasTint(0.55 * norm(zone.unburnedT, Tmin, zone.peakUnburnedT)),
+      burnedTint: gasTint(0.55 + 0.45 * norm(zone.burnedT, 1400, zone.peakBurnedT)),
+      knock: zone.knock,
+    });
+  } else {
+    const tnorm = norm(gasTemperature(animTheta), Tmin, Tmax);
+    const tint = gasTint(tnorm);
+    const grad = ctx.createLinearGradient(0, headY, 0, crownY);
+    grad.addColorStop(0, tint);
+    grad.addColorStop(1, `rgba(20,16,14,0.25)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(xL, headY, borePx, chamberH);
+  }
 
   // --- cylinder walls: honed-bore look (subtle inner shading + bright liner) ---
   const wallGrad = ctx.createLinearGradient(xL, 0, xR, 0);
@@ -619,7 +869,8 @@ function drawEngine() {
   roundRect(ctx, xL - 11, headY - 18, borePx + 22, 16, 6); ctx.stroke();
 
   // --- poppet valves (intake left, exhaust right), seat at the head ---
-  for (const [kind, vx, tilt, col] of [["intake", cx - borePx * 0.23, -0.16, "#7ba7eb"], ["exhaust", cx + borePx * 0.23, 0.16, "#d9776a"]]) {
+  // cold intake reads steel, hot exhaust reads terracotta — physical coding, not brand hue
+  for (const [kind, vx, tilt, col] of [["intake", cx - borePx * 0.23, -0.16, "#8fa0b5"], ["exhaust", cx + borePx * 0.23, 0.16, "#d97757"]]) {
     const lift = valveLift(animTheta, kind) * 11;
     const sx = Math.sin(tilt), cyv = Math.cos(tilt);
     const seatX = vx + sx * lift, seatY = headY + cyv * lift;
@@ -911,9 +1162,20 @@ export function startPiston() {
   });
   unitBtn.textContent = `Units: ${unit}`;
 
+  // custom engine builder (branching wizard)
+  initBuilder();
+  const buildBtn = document.getElementById("openBuilder");
+  if (buildBtn) buildBtn.addEventListener("click", () => openBuilder(applyBuiltEngine));
+
   // engine type (petrol / diesel)
   document.querySelectorAll(".etype").forEach((b) =>
-    b.addEventListener("click", () => applyEngineType(b.dataset.type)));
+    b.addEventListener("click", () => {
+      // Picking a stock family clears any bespoke layout/cam/head.
+      builderExtras = null;
+      const card = document.getElementById("configCard");
+      if (card) card.hidden = true;
+      applyEngineType(b.dataset.type);
+    }));
   // keep type toggle + ignition badge in sync when the fuel itself changes
   const fuelSel = document.getElementById("fuel");
   if (fuelSel) fuelSel.addEventListener("change", syncEngineType);
@@ -923,7 +1185,7 @@ export function startPiston() {
     b.addEventListener("click", () => setMode(b.dataset.mode)));
 
   // mobile nav menu (hamburger)
-  const burger = document.getElementById("navBurger");
+  const burger = document.getElementById("navToggle");
   const nav = document.getElementById("missionNav");
   if (burger && nav) {
     const setOpen = (o) => { nav.classList.toggle("open", o); burger.setAttribute("aria-expanded", o ? "true" : "false"); };
