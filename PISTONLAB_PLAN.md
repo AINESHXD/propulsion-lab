@@ -1,5 +1,13 @@
 # PistonLab — One-Month Day-by-Day Build Plan
 
+> **LAUNCHED (2026-07-26).** Day 20 is done in the repository: the portal card
+> is live and links `/piston/`, the console's `dev` badge is gone, and
+> `/piston/simulate` and `/piston/sweep` are published to the public OpenAPI
+> schema alongside PropulsionLab's. Committed and pushed as `8c7c187`.
+> **The production deploy has not run** — the local Fly token (issued
+> 2026-06-08) has expired, so `fly deploy` needs `fly auth login` first. Until
+> that runs, daslabs.uk still serves the pre-launch build.
+>
 > **Status:** Living document. Update at the end of each day.
 > **Progress: Week 1 complete + Days 6-9 + console rebuild.** Python crank-angle
 > first-law solver in `app/engine_core/piston/`: `geometry`, `wiebe`, `cycle`
