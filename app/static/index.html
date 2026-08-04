@@ -314,56 +314,30 @@
 
         <div class="engine-card-grid" role="list">
           <button type="button" class="engine-card active" data-engine="turbojet">
-            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 11 L12 5 L52 5 L60 11 L52 17 L12 17 Z" stroke="currentColor" stroke-width="0.8"/>
-              <line x1="22" y1="6" x2="22" y2="16" stroke="currentColor" stroke-width="0.7"/>
-              <line x1="32" y1="6" x2="32" y2="16" stroke="currentColor" stroke-width="0.7"/>
-              <line x1="42" y1="6" x2="42" y2="16" stroke="currentColor" stroke-width="0.7"/>
-            </svg>
             <span class="ec-code">PL-01 · Stations 0-2-3-4-5-9</span>
             <span class="ec-name">Turbojet</span>
             <span class="ec-desc">Validated educational core. Sweep, reheat, and nozzle module.</span>
           </button>
 
           <button type="button" class="engine-card" data-engine="turbofan">
-            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 11 L10 3 L52 5 L60 11 L52 17 L10 19 Z" stroke="currentColor" stroke-width="0.8"/>
-              <circle cx="10" cy="11" r="5" stroke="currentColor" stroke-width="0.7" fill="none"/>
-              <line x1="32" y1="5.5" x2="32" y2="16.5" stroke="currentColor" stroke-width="0.7"/>
-              <line x1="42" y1="6" x2="42" y2="16" stroke="currentColor" stroke-width="0.7"/>
-            </svg>
             <span class="ec-code">PL-02 · Fan + bypass</span>
             <span class="ec-name">Turbofan</span>
             <span class="ec-desc">Separate-flow educational solver. BPR and FPR exposed.</span>
           </button>
 
           <button type="button" class="engine-card" data-engine="turboprop">
-            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <line x1="6" y1="1" x2="6" y2="21" stroke="currentColor" stroke-width="0.8"/>
-              <path d="M10 11 L20 5 L52 7 L60 11 L52 15 L20 17 Z" stroke="currentColor" stroke-width="0.8"/>
-              <line x1="30" y1="7" x2="30" y2="15" stroke="currentColor" stroke-width="0.7"/>
-              <line x1="42" y1="8" x2="42" y2="14" stroke="currentColor" stroke-width="0.7"/>
-            </svg>
             <span class="ec-code">PL-03 · Shaft power</span>
             <span class="ec-name">Turboprop</span>
             <span class="ec-desc">Gas-generator core with propeller extraction.</span>
           </button>
 
           <button type="button" class="engine-card" data-engine="ramjet">
-            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 11 L18 4 L48 4 L60 11 L48 18 L18 18 Z" stroke="currentColor" stroke-width="0.8"/>
-            </svg>
             <span class="ec-code">PL-04 · Ram compression</span>
             <span class="ec-name">Ramjet</span>
             <span class="ec-desc">Subsonic combustion. No rotating machinery.</span>
           </button>
 
           <button type="button" class="engine-card" data-engine="scramjet">
-            <svg class="ec-icon" viewBox="0 0 64 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 4 L22 11 L2 18 Z" stroke="currentColor" stroke-width="0.8"/>
-              <path d="M22 6 L62 9 L62 13 L22 16 Z" stroke="currentColor" stroke-width="0.8"/>
-              <line x1="42" y1="8" x2="42" y2="14" stroke="currentColor" stroke-width="0.7"/>
-            </svg>
             <span class="ec-code">PL-05 · Hypersonic</span>
             <span class="ec-name">Scramjet</span>
             <span class="ec-desc">Supersonic-combustion educational solver.</span>
@@ -427,7 +401,7 @@
               <label class="preset-control">
                 <span>Built-in preset</span>
                 <select id="presetSelect">
-                  <option value="">Loading…</option>
+                  <option value="">Loading presets…</option>
                 </select>
               </label>
 
@@ -559,6 +533,27 @@
                 </details>
 
                 <details class="input-section">
+                  <summary>Component efficiency preset</summary>
+                  <div class="input-grid">
+                    <label style="grid-column:1/-1">
+                      <span>Set every component efficiency at once</span>
+                      <select id="efficiencyPreset">
+                        <option value="">Custom (leave as set)</option>
+                        <option value="legacy">Legacy — compressor 0.80, turbine 0.83, nozzle 0.94</option>
+                        <option value="mature">Mature — compressor 0.86, turbine 0.88, nozzle 0.95</option>
+                        <option value="modern">Modern — compressor 0.90, turbine 0.91, nozzle 0.97</option>
+                      </select>
+                      <span class="field-hint">
+                        Three named points, each writing the values shown straight into the
+                        fields below so you can see and override every one. These are
+                        <b>plausible bands, not a fitted historical curve</b> — no engine's
+                        real efficiencies are being claimed.
+                      </span>
+                    </label>
+                  </div>
+                </details>
+
+                <details class="input-section" id="afterburnerSection">
                   <summary>Afterburner</summary>
                   <div class="input-grid">
                     <label>

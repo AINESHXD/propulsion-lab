@@ -78,10 +78,10 @@ const advancedEngineConfigs = {
       ["nozzle_configuration", "Nozzle config", "", { type: "select",
         options: [["separate", "Separate flow"], ["mixed", "Mixed flow"]] }],
       ["third_stream", "3-stream (variable cycle)", "", { type: "checkbox" }],
-      ["variable_cycle_mode", "Cycle mode", "", { type: "select",
+      ["variable_cycle_mode", "Cycle mode", "", { type: "select", showWhen: (v) => v.third_stream,
         options: [["high_efficiency", "High efficiency (open)"], ["high_thrust", "High thrust (closed)"]] }],
-      ["third_stream_ratio", "Third-stream ratio", ""],
-      ["third_stream_pressure_ratio", "Third-stream PR", ""],
+      ["third_stream_ratio", "Third-stream ratio", "", { showWhen: (v) => v.third_stream }],
+      ["third_stream_pressure_ratio", "Third-stream PR", "", { showWhen: (v) => v.third_stream }],
       ["altitude_m", "Altitude", "m"],
       ["mach", "Mach", ""],
       ["total_mass_flow_air_kg_s", "Total ṁ air", "kg/s"],
@@ -97,12 +97,13 @@ const advancedEngineConfigs = {
       ["combustor_pressure_loss_fraction", "Combustor ΔP/P", ""],
       ["core_nozzle_efficiency", "Core nozzle η", ""],
       ["bypass_nozzle_efficiency", "Bypass nozzle η", ""],
-      ["mixer_pressure_loss_fraction", "Mixer ΔP/P (mixed only)", ""],
+      ["mixer_pressure_loss_fraction", "Mixer ΔP/P", "",
+        { showWhen: (v) => v.nozzle_configuration === "mixed" }],
       ["inlet_pressure_recovery", "Inlet recovery", ""],
       ["use_afterburner", "Use afterburner", "", { type: "checkbox" }],
-      ["afterburner_exit_temperature_K", "AB exit T", "K"],
-      ["afterburner_efficiency", "AB η", ""],
-      ["afterburner_pressure_loss_fraction", "AB ΔP/P", ""],
+      ["afterburner_exit_temperature_K", "AB exit T", "K", { showWhen: (v) => v.use_afterburner }],
+      ["afterburner_efficiency", "AB η", "", { showWhen: (v) => v.use_afterburner }],
+      ["afterburner_pressure_loss_fraction", "AB ΔP/P", "", { showWhen: (v) => v.use_afterburner }],
     ],
     sweepParameters: [
       ["bypass_ratio", "Bypass ratio"],
@@ -1906,6 +1907,33 @@ function updateSweepExplanation(payload) {
  *  23. ADVANCED FORMS                                            *
  * ------------------------------------------------------------ */
 
+/* Show only the inputs that apply to the configuration currently selected.
+ * A mixer pressure loss means nothing on a separate-flow turbofan, and an
+ * afterburner temperature means nothing with the afterburner off; leaving them
+ * visible reads as "you forgot to set this" rather than "this does not apply".
+ */
+function applyAdvancedFieldVisibility() {
+  const config = advancedEngineConfigs[selectedEngine];
+  if (!config) return;
+  const values = readAdvancedFormValues();
+  for (const [key, , , opts] of config.fields) {
+    if (!opts?.showWhen) continue;
+    const wrapper = advancedInputGrid.querySelector(`[data-show-when="${key}"]`);
+    if (wrapper) wrapper.classList.toggle("hidden", !opts.showWhen(values));
+  }
+}
+
+/* Current state of the advanced form, as the predicates want to read it. */
+function readAdvancedFormValues() {
+  const out = {};
+  for (const el of advancedInputGrid.querySelectorAll("input, select")) {
+    if (el.type === "checkbox") out[el.name] = el.checked;
+    else if (el.type === "number") out[el.name] = parseFloat(el.value);
+    else out[el.name] = el.value;
+  }
+  return out;
+}
+
 function renderAdvancedInputs() {
   const config = advancedEngineConfigs[selectedEngine];
   if (!config) return;
@@ -1950,8 +1978,13 @@ function renderAdvancedInputs() {
       input.value = config.defaults[key];
     }
     wrapper.append(labelLine, input);
+    // A field that does not apply to the current configuration is hidden
+    // rather than left on screen to be guessed at.
+    if (opts?.showWhen) wrapper.dataset.showWhen = key;
     advancedInputGrid.append(wrapper);
   }
+  applyAdvancedFieldVisibility();
+  advancedInputGrid.addEventListener("change", applyAdvancedFieldVisibility);
   populateAdvancedPresets();
   renderAdvancedSweepControls(config);
 }
@@ -4209,3 +4242,51 @@ function initCompressorMap() {
   }
   refreshCompressorMap().catch(() => {});
 }
+
+
+/* ------------------------------------------------------------ *
+ *  CONDITIONAL FIELDS + EFFICIENCY PRESETS (turbojet form)       *
+ * ------------------------------------------------------------ */
+
+/* The afterburner inputs only mean something on the reheat variant. Hiding
+ * them on a dry turbojet removes a block of controls that otherwise reads as
+ * something you forgot to fill in. */
+function applyVariantVisibility() {
+  const variant = document.querySelector('[name="engine_variant"]')?.value;
+  const section = $("#afterburnerSection");
+  if (section) section.classList.toggle("hidden", variant !== "afterburning_turbojet");
+}
+
+/* Named efficiency points. Each writes the values it advertises straight into
+ * the visible fields, so nothing is set behind the user's back and every one
+ * stays editable afterwards. Deliberately three coarse, plausible bands rather
+ * than a continuous "era" curve: a smooth interpolation would imply historical
+ * calibration this project does not have and could not cite. */
+const EFFICIENCY_PRESETS = {
+  legacy: { compressor_efficiency: 0.80, turbine_efficiency: 0.83, nozzle_efficiency: 0.94,
+            combustor_efficiency: 0.97, inlet_pressure_recovery: 0.95 },
+  mature: { compressor_efficiency: 0.86, turbine_efficiency: 0.88, nozzle_efficiency: 0.95,
+            combustor_efficiency: 0.99, inlet_pressure_recovery: 0.98 },
+  modern: { compressor_efficiency: 0.90, turbine_efficiency: 0.91, nozzle_efficiency: 0.97,
+            combustor_efficiency: 0.995, inlet_pressure_recovery: 0.99 },
+};
+
+function applyEfficiencyPreset(name) {
+  const preset = EFFICIENCY_PRESETS[name];
+  if (!preset) return;
+  for (const [key, value] of Object.entries(preset)) {
+    const field = document.querySelector(`[name="${key}"]`);
+    if (field) field.value = value;
+  }
+}
+
+(function wireConditionalFields() {
+  const variant = document.querySelector('[name="engine_variant"]');
+  if (variant) variant.addEventListener("change", applyVariantVisibility);
+  applyVariantVisibility();
+
+  const effSelect = $("#efficiencyPreset");
+  if (effSelect) {
+    effSelect.addEventListener("change", () => applyEfficiencyPreset(effSelect.value));
+  }
+})();
