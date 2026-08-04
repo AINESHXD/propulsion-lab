@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="description" content="Gas-path analysis in the browser. Enter observable turbojet telemetry — thrust, fuel flow, gas-path temperatures — and solve for the internal component efficiencies you cannot measure, with honest uncertainty and identifiability. A DAS LABS project." />
+    <title>Inverse solver · PropulsionLab</title>
+    <link rel="stylesheet" href="/lab/styles.css?v=20260609-cachefix" />
+    <script src="/lab/launch.js?v=20260606-launch" defer></script>
+    <link rel="icon" href="/lab/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
+    <style>
+      .meas-row { display: grid; grid-template-columns: 1.6fr 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 10px; }
+      .meas-row button { padding: 8px 12px; }
+      .unknown-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px 18px; }
+      .param-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 12px; align-items: baseline;
+                   padding: 11px 0; border-top: 1px solid var(--line); font-size: 13px; }
+      .param-row:first-of-type { border-top: 0; }
+      .param-row b { font-family: var(--font-mono); font-weight: 500; color: var(--text); }
+      .param-row .band { font-family: var(--font-mono); color: var(--text-2); }
+      .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+             border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 9px; color: var(--text-3); white-space: nowrap; }
+      .tag.good { color: var(--ok); border-color: rgba(132,204,138,.4); }
+      .tag.weak { color: var(--warn); border-color: rgba(212,161,85,.4); }
+      .verdict { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-left: 2px solid var(--accent);
+                 border-radius: 6px; background: var(--surface); font-size: 14px; line-height: 1.55; }
+      .verdict.bad { border-left-color: var(--err); }
+      .verdict.warn { border-left-color: var(--warn); }
+      #inverseResults[hidden] { display: none; }
+      @media (max-width: 700px) {
+        .meas-row { grid-template-columns: 1fr 1fr; }
+        .param-row { grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="mission-bar" role="banner">
+      <div class="mission-bar-left">
+        <a class="brand" href="/" aria-label="DAS LABS home">
+          <span class="brand-mark">DAS&nbsp;LABS</span>
+          <span class="brand-dot"></span>
+          <img class="brand-product-img" src="/lab/assets/propulsionlab_wordmark.png" alt="PropulsionLab"
+               onerror="this.outerHTML='&lt;span class=&quot;brand-product&quot;&gt;PropulsionLab&lt;/span&gt;'" />
+        </a>
+      </div>
+      <div class="mission-bar-right">
+        <a class="mission-link" href="/lab/">Console</a>
+        <a class="mission-link" href="/lab/methodology.html">Methodology</a>
+        <a class="mission-link" href="/docs" target="_blank" rel="noopener">API</a>
+      </div>
+    </header>
+
+    <main class="app-shell" role="main">
+      <section class="section">
+        <div class="section-header">
+          <p class="eyebrow"><span class="num">01</span> Inverse solver <span class="rule"></span> Gas-path analysis</p>
+          <h1 class="section-title">Work backwards from what you can measure.</h1>
+          <p class="section-sub">
+            The console answers "given these efficiencies, what thrust do I get?".
+            On a real engine the arrow points the other way: you can measure thrust,
+            fuel flow and a few gas-path temperatures, but not the compressor's
+            efficiency — and that is the number that tells you whether the engine is
+            healthy. This solves the second from the first.
+          </p>
+        </div>
+
+        <div class="concept-strip" role="note">
+          <div>
+            <span class="concept-eyebrow">CONCEPT · WHY THE ANSWER NEEDS AN ERROR BAR</span>
+            <div class="concept-body">
+              An inverse problem will happily hand back a <b>perfect-looking fit that
+              means nothing</b>. Solve for more unknowns than you have measurements and
+              infinitely many answers fit exactly. Even with enough measurements, two
+              parameters can act on the observables almost identically — compressor and
+              turbine efficiency both mostly show up as thrust and fuel flow — so the fit
+              trades one against the other freely. Every result below carries its
+              uncertainty and a verdict on whether it is actually pinned down.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="workspace">
+          <div class="panel">
+            <div class="panel-heading"><h2>The problem</h2></div>
+
+            <details class="input-section" open>
+              <summary>Flight condition &amp; known inputs</summary>
+              <div class="input-grid">
+                <label><span>Altitude <span class="unit">m</span></span><input id="altitude_m" type="number" step="any" value="10000" /></label>
+                <label><span>Mach</span><input id="mach" type="number" step="any" value="0.8" /></label>
+                <label><span>Air mass flow <span class="unit">kg/s</span></span><input id="mass_flow_air_kg_s" type="number" step="any" value="50" /></label>
+                <label><span>Compressor PR</span><input id="compressor_pressure_ratio" type="number" step="any" value="12" /></label>
+                <label><span>Turbine inlet T <span class="unit">K</span></span><input id="turbine_inlet_temperature_K" type="number" step="any" value="1400" /></label>
+                <label><span>Compressor η</span><input id="compressor_efficiency" type="number" step="any" value="0.86" /></label>
+                <label><span>Turbine η</span><input id="turbine_efficiency" type="number" step="any" value="0.88" /></label>
+                <label><span>Nozzle η</span><input id="nozzle_efficiency" type="number" step="any" value="0.95" /></label>
+              </div>
+              <p class="field-hint" style="padding:0 4px 14px">
+                Anything you solve for below starts from these values; anything you do
+                not solve for stays pinned at them. A wrong fixed input biases the answer.
+              </p>
+            </details>
+
+            <details class="input-section" open>
+              <summary>What you measured</summary>
+              <div style="padding:4px 4px 8px">
+                <div id="measurementRows"></div>
+                <button type="button" class="ghost-button" id="addMeasurement">+ Add measurement</button>
+              </div>
+            </details>
+
+            <details class="input-section" open>
+              <summary>What to solve for</summary>
+              <div class="unknown-grid" id="unknownGrid" style="padding:4px 4px 14px"></div>
+            </details>
+
+            <div class="form-footer">
+              <button type="button" class="primary-button" id="runInverse">Solve</button>
+              <button type="button" class="ghost-button" id="loadDemo" title="Generate telemetry from a known engine, then see if the solver finds it back">Load a worked example</button>
+            </div>
+            <p class="field-hint" id="inverseStatus" style="margin-top:12px"></p>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading"><h2>Recovered condition</h2><span class="case-label" id="fitLabel"></span></div>
+            <div id="inverseEmpty" class="report-copy">
+              Enter what you measured, choose what to solve for, and press Solve. Or load
+              the worked example: it runs the forward model on a known engine, hands the
+              solver only the observable outputs, and shows whether the hidden values come
+              back.
+            </div>
+            <div id="inverseResults" hidden>
+              <div class="metric-grid" id="fitMetrics"></div>
+              <h3 style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:22px 0 10px">Parameters</h3>
+              <div id="paramRows"></div>
+              <h3 style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:24px 0 10px">Measurement fit</h3>
+              <div class="table-wrap" style="max-height:none;margin-top:0">
+                <table style="min-width:0"><thead><tr><th>Observable</th><th>Measured</th><th>Modelled</th><th>Residual (σ)</th></tr></thead>
+                <tbody id="residualRows"></tbody></table>
+              </div>
+              <div id="verdictBox"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      const $ = (s) => document.querySelector(s);
+      const fmt = (v, d = 4) => (v == null || Number.isNaN(v) ? "—" : Number(v).toLocaleString(undefined, { maximumSignificantDigits: 6 }));
+      const FIXED = ["altitude_m","mach","mass_flow_air_kg_s","compressor_pressure_ratio",
+                     "turbine_inlet_temperature_K","compressor_efficiency","turbine_efficiency","nozzle_efficiency"];
+      let catalogue = { observables: [], parameters: {} };
+
+      const label = (k) => k
+        .replace(/^station_(\d+)_stagnation_(temperature_K|pressure_Pa)$/,
+                 (_, n, f) => `Station ${n} ${f === "temperature_K" ? "Tt (K)" : "Pt (Pa)"}`)
+        .replace(/_/g, " ");
+
+      function measurementRow(key = "", value = "", sigma = "") {
+        const row = document.createElement("div");
+        row.className = "meas-row";
+        row.innerHTML = `
+          <label><span>Observable</span><select class="m-key">${
+            catalogue.observables.map((o) => `<option value="${o}"${o === key ? " selected" : ""}>${label(o)}</option>`).join("")
+          }</select></label>
+          <label><span>Measured</span><input class="m-val" type="number" step="any" value="${value}" /></label>
+          <label><span>± 1σ <span class="unit">blank = 1%</span></span><input class="m-sig" type="number" step="any" value="${sigma}" /></label>
+          <button type="button" class="ghost-button m-del" aria-label="Remove">✕</button>`;
+        row.querySelector(".m-del").addEventListener("click", () => row.remove());
+        return row;
+      }
+
+      function buildUnknowns() {
+        $("#unknownGrid").innerHTML = Object.keys(catalogue.parameters).map((k) => `
+          <label class="checkbox-line"><input type="checkbox" class="u-box" value="${k}" />
+          <span>${label(k)}</span></label>`).join("");
+      }
+
+      async function boot() {
+        catalogue = await (await fetch("/inverse/catalogue")).json();
+        buildUnknowns();
+        $("#measurementRows").append(measurementRow("thrust_N"), measurementRow("fuel_flow_kg_s"));
+      }
+
+      $("#addMeasurement").addEventListener("click", () => $("#measurementRows").append(measurementRow()));
+
+      $("#loadDemo").addEventListener("click", async () => {
+        // Twin experiment: run a known engine forward, then hand the solver only
+        // what an instrument could actually see.
+        $("#inverseStatus").textContent = "Generating telemetry from a known engine…";
+        const truth = { compressor_efficiency: 0.838, turbine_efficiency: 0.905, compressor_pressure_ratio: 11.2 };
+        const res = await fetch("/simulate/turbojet", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ altitude_m: 10000, mach: 0.8, mass_flow_air_kg_s: 50,
+            turbine_inlet_temperature_K: 1400, ...truth }),
+        });
+        if (!res.ok) { $("#inverseStatus").textContent = "Could not reach the forward solver."; return; }
+        const f = await res.json();
+        const st = f.station_table || {};
+        const pick = (n) => (st[n] || st[String(n)] || {}).stagnation_temperature_K;
+        $("#measurementRows").replaceChildren(
+          measurementRow("thrust_N", f.thrust_N?.toFixed(1)),
+          measurementRow("fuel_flow_kg_s", f.fuel_flow_kg_s?.toFixed(5)),
+          measurementRow("station_3_stagnation_temperature_K", pick(3)?.toFixed(2)),
+          measurementRow("station_5_stagnation_temperature_K", pick(5)?.toFixed(2)),
+        );
+        document.querySelectorAll(".u-box").forEach((b) => { b.checked = b.value === "compressor_efficiency"; });
+        // Everything not being solved for is set to its true value. That is the
+        // honest setup for a twin experiment: the solver is asked for exactly one
+        // unknown and given correct information about the rest, so if the method
+        // works it must return 0.838. Leaving the others wrong would bias the
+        // answer and make a working solver look broken.
+        $("#turbine_efficiency").value = truth.turbine_efficiency;
+        $("#compressor_pressure_ratio").value = truth.compressor_pressure_ratio;
+        $("#compressor_efficiency").value = 0.86;      // deliberately wrong start
+        $("#inverseStatus").innerHTML =
+          `Telemetry generated from an engine whose real compressor η is <b>0.838</b>. Everything else is ` +
+          `set correctly and only compressor η is unknown, starting from a wrong guess of 0.86. ` +
+          `Press <b>Solve</b>: it should come back to 0.838. Then try unticking nothing and ticking ` +
+          `turbine η and compressor PR as well — three unknowns on these four measurements is ` +
+          `ill-conditioned, and the solver will tell you so instead of pretending.`;
+      });
+
+      $("#runInverse").addEventListener("click", async () => {
+        const measurements = [...document.querySelectorAll(".meas-row")].map((r) => {
+          const v = parseFloat(r.querySelector(".m-val").value);
+          const s = parseFloat(r.querySelector(".m-sig").value);
+          return Number.isNaN(v) ? null : { key: r.querySelector(".m-key").value, value: v, ...(Number.isNaN(s) ? {} : { sigma: s }) };
+        }).filter(Boolean);
+        const unknowns = [...document.querySelectorAll(".u-box:checked")].map((b) => ({ key: b.value }));
+
+        if (!measurements.length) { $("#inverseStatus").textContent = "Add at least one measurement."; return; }
+        if (!unknowns.length) { $("#inverseStatus").textContent = "Choose at least one parameter to solve for."; return; }
+
+        const body = { measurements, unknowns };
+        for (const k of FIXED) body[k] = parseFloat($("#" + k).value);
+
+        $("#inverseStatus").textContent = "Solving…";
+        const res = await fetch("/inverse/solve", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+        const payload = await res.json();
+        if (!res.ok) {
+          const d = payload?.detail;
+          $("#inverseStatus").textContent = typeof d === "string" ? d
+            : Array.isArray(d) ? d.map((x) => x.msg || x).join("; ") : "Solve failed.";
+          return;
+        }
+        render(payload);
+        $("#inverseStatus").textContent = `${payload.function_evaluations} forward solves · ${payload.message}`;
+      });
+
+      function render(r) {
+        $("#inverseEmpty").hidden = true;
+        $("#inverseResults").hidden = false;
+        $("#fitLabel").textContent = r.converged ? "converged" : "did not converge";
+
+        $("#fitMetrics").innerHTML = [
+          ["RMS residual", `${r.rms_normalised_residual.toFixed(2)} σ`],
+          ["Worst error", `${(r.max_absolute_relative_error * 100).toFixed(2)} %`],
+          ["Conditioning", r.jacobian_condition_number == null ? "—"
+            : r.jacobian_condition_number > 1e6 ? "ill-posed" : r.jacobian_condition_number.toExponential(1)],
+        ].map(([k, v]) => `<div class="metric"><span>${k}</span><strong>${v}</strong></div>`).join("");
+
+        $("#paramRows").innerHTML = r.parameters.map((p) => {
+          const band = p.standard_error == null ? "—" : `± ${fmt(p.standard_error)}`;
+          const tag = p.identifiable
+            ? '<span class="tag good">pinned down</span>'
+            : `<span class="tag weak">${p.at_bound ? "at bound" : "not determined"}</span>`;
+          return `<div class="param-row"><span>${label(p.key)}</span><b>${fmt(p.value)}</b>
+                  <span class="band">${band}</span>${tag}</div>`;
+        }).join("");
+
+        $("#residualRows").innerHTML = r.residuals.map((x) => `
+          <tr><td>${label(x.key)}</td><td>${fmt(x.measured)}</td><td>${fmt(x.modelled)}</td>
+          <td>${x.normalised_residual.toFixed(2)}</td></tr>`).join("");
+
+        const cls = !r.determined || r.rms_normalised_residual > 3 ? "bad" : !r.well_conditioned ? "warn" : "";
+        $("#verdictBox").innerHTML =
+          `<div class="verdict ${cls}"><strong>${r.verdict}</strong>` +
+          (r.warnings.length ? "<ul style='margin:10px 0 0 18px;padding:0;color:var(--text-2)'>" +
+            r.warnings.map((w) => `<li style="margin-bottom:6px">${w}</li>`).join("") + "</ul>" : "") +
+          `</div>`;
+      }
+
+      boot();
+    </script>
+  </body>
+</html>

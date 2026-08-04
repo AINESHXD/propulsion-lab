@@ -28,6 +28,6 @@ def test_tour_anchors_exist_in_page() -> None:
         'class="engine-card-grid"', 'id="presetSelect"', 'id="simulationForm"',
         'id="runSimulationButton"', "results-panel", 'id="cycleInsights"',
         'id="emissionsPanel"', 'class="console-tabs"', 'id="shareLinkButton"',
-        "/lab/viewer3d.html", "/lab/mlsuite.html",
+        "/lab/viewer3d.html", "/lab/inverse.html",
     ):
         assert anchor in html, f"tour anchor missing from index.html: {anchor}"

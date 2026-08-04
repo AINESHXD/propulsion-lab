@@ -84,6 +84,13 @@ from app.engine_core.turbojet import simulate_turbojet_cycle
 from app.engine_core.types import CycleCalculationError
 from app.python_export import generate_python_script
 from app.reporting import build_turbojet_pdf_report
+from app.schemas_inverse import (
+    InverseCatalogueOutput,
+    InverseSolveInput,
+    InverseSolveOutput,
+    inverse_catalogue,
+    run_inverse_solve,
+)
 from app.schemas_piston import (
     PistonSimulateInput,
     PistonSimulateOutput,
@@ -190,7 +197,8 @@ async def cache_control(request, call_next):
     path = request.url.path
     if path.endswith(".html") or path in ("/", "/lab", "/lab/", "/classroom",
                                           "/classroom/", "/pro", "/pro/", "/piston",
-                                          "/piston/", "/m", "/m/", "/privacy", "/privacy/"):
+                                          "/piston/", "/m", "/m/", "/privacy", "/privacy/",
+                                          "/inverse", "/inverse/"):
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
     elif request.url.query.startswith("v=") and path.rsplit(".", 1)[-1] in (
         "css", "js", "png", "jpg", "jpeg", "svg", "webp", "woff", "woff2", "ico"
@@ -228,6 +236,38 @@ def mobile_console() -> FileResponse:
     """
 
     return FileResponse(STATIC_PATH / "m" / "index.html")
+
+
+@app.get("/inverse", include_in_schema=False)
+@app.get("/inverse/", include_in_schema=False)
+def inverse_page() -> FileResponse:
+    """Serve the gas-path analysis page at a clean /inverse/ URL."""
+
+    return FileResponse(STATIC_PATH / "inverse.html")
+
+
+@app.get("/inverse/catalogue", response_model=InverseCatalogueOutput, tags=["inverse"])
+def inverse_catalogue_endpoint() -> InverseCatalogueOutput:
+    """What the inverse solver can measure and what it can solve for."""
+
+    return inverse_catalogue()
+
+
+@app.post("/inverse/solve", response_model=InverseSolveOutput, tags=["inverse"])
+def inverse_solve(payload: InverseSolveInput) -> InverseSolveOutput:
+    """Recover hidden engine parameters from observable telemetry.
+
+    Gas-path analysis: given what can be measured on a real engine — thrust,
+    fuel flow, gas-path temperatures — solve for what cannot, such as component
+    efficiencies and lost pressure ratio. The response carries per-parameter
+    uncertainty and an identifiability verdict, because an inverse problem can
+    return a perfect-looking fit that means nothing.
+    """
+
+    try:
+        return run_inverse_solve(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/piston", include_in_schema=False)
