@@ -195,9 +195,9 @@ async def cache_control(request, call_next):
 
     response = await call_next(request)
     path = request.url.path
-    if path.endswith(".html") or path in ("/", "/lab", "/lab/", "/classroom",
-                                          "/classroom/", "/pro", "/pro/", "/piston",
-                                          "/piston/", "/m", "/m/", "/privacy", "/privacy/",
+    if path.endswith(".html") or path in ("/", "/lab", "/lab/", "/pro", "/pro/",
+                                          "/piston", "/piston/", "/m", "/m/",
+                                          "/privacy", "/privacy/",
                                           "/inverse", "/inverse/"):
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
     elif request.url.query.startswith("v=") and path.rsplit(".", 1)[-1] in (
@@ -213,14 +213,6 @@ def pro_stub() -> FileResponse:
     """Serve the PropulsionLab Pro teaser page at a clean /pro/ URL."""
 
     return FileResponse(STATIC_PATH / "pro" / "index.html")
-
-
-@app.get("/classroom", include_in_schema=False)
-@app.get("/classroom/", include_in_schema=False)
-def classroom() -> FileResponse:
-    """Serve the PropulsionLab Classroom (guided design challenges)."""
-
-    return FileResponse(STATIC_PATH / "classroom" / "index.html")
 
 
 @app.get("/m", include_in_schema=False)

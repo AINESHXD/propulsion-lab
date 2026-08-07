@@ -153,6 +153,10 @@
 
   function start() {
     if (active) return;
+    // end() defers its cleanup by 240ms for the fade; replaying inside that
+    // window would leave the outgoing card in the DOM and querySelector would
+    // keep finding it, so the tour would look stuck on its last step.
+    document.querySelectorAll("#tourBackdrop,#tourHi,#tourTip").forEach((n) => n.remove());
     // The tour's anchors live in the Cycle tab's turbojet workspace. If the user
     // opens it from another tab/engine, switch back so every step has a target.
     const dash = document.querySelector('.tab-button[data-tab="dashboard"]');

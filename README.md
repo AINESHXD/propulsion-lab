@@ -69,15 +69,11 @@ JS + Canvas/SVG with no build step, served by FastAPI from `app/static/`.
   turbine-inlet temperature (turbojet) or bypass ratio and fan pressure ratio (turbofan),
   subject to material-temperature and fuel-air constraints. Deterministic under a fixed
   seed; no third-party optimiser dependency.
-- **DASLAB ML Suite** — a small neural-net surrogate of the turbojet cycle, trained
-  from scratch (hand-written MLP, backpropagation and Adam in NumPy) on a Latin-Hypercube
-  sample of the design space. It predicts specific thrust, TSFC, overall efficiency and
-  Tt3 to R² > 0.999 on a held-out set, exports to plain JSON, and runs the identical
-  forward pass in pure browser JavaScript (microsecond inference, no server round-trip),
-  verified live against the exact solver.
-- **Classroom** — design-challenge problem sets for all five engine families, each with a
-  live target checker that re-runs the relevant `/simulate/...` endpoint and grades the
-  result against the brief.
+- **Inverse cycle solver** — the gas path run backwards. Feed in what a test cell can
+  actually measure (thrust, fuel flow, a few station temperatures and pressures) and
+  recover the component efficiencies you cannot instrument, by least-squares fitting the
+  forward solver to the data. Reports a covariance-derived uncertainty on every recovered
+  parameter, and says plainly when a measurement set does not constrain one.
 - **Methodology page** — an explicit page at `/lab/methodology.html` documenting the
   reduced-order model, every per-engine assumption, what the analysis tools assume, and
   what is *not* claimed (no manufacturer validation, no CFD, no real geometry).
@@ -498,8 +494,8 @@ two-spool turbofan transient (in addition to the single-spool turbojet transient
 variable-area nozzle scheduling + afterburner flame-stability loop, bleed + HPT cooling
 fractions, the optional **whole-cycle** real-gas variable-cp correction, reactor-network
 combustor emissions (NOx / CO + ICAO LTO), NSGA-II multi-objective design optimisation
-(turbojet + turbofan), tornado sensitivity (turbojet + turbofan), the Classroom problem
-sets, a methodology / limitations page, the reporting/export tooling, and the
+(turbojet + turbofan), tornado sensitivity (turbojet + turbofan), the inverse cycle
+solver, a methodology / limitations page, the reporting/export tooling, and the
 production launch infrastructure (Plausible + Sentry, env-var gated).
 
 The sibling **PistonLab** (reciprocating-engine cycles) is scaffolded and marked

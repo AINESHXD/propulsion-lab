@@ -197,6 +197,27 @@ let lastResult = null;
 let diagramMode = "loop"; // "loop" (P–V + T–s side by side) | "crank" (P–θ + T–θ)
 let markerIdx = null;     // trace index for the engine-synced loop marker
 
+/* Ghost trace: the loop as it stood *before* the edit you are making now, drawn
+ * faintly behind the live one so a change is visible rather than remembered.
+ *
+ * It is deliberately not "the previous solve". Dragging a slider re-solves every
+ * 180 ms, so the previous solve is almost the same shape and the ghost would be
+ * invisible. Instead it is captured when a gesture *starts* — pointer down on a
+ * control, a key press, a preset, a build — and held until the next gesture. So
+ * it answers "what did this look like before I touched it", which is the
+ * question you actually have while dragging. */
+let ghostTrace = null;
+let ghostArmed = false;   // guards against re-capturing mid-gesture
+
+function armGhost() {
+  if (ghostArmed) return;
+  ghostArmed = true;
+  ghostTrace = lastResult && Array.isArray(lastResult.trace) && lastResult.trace.length > 1
+    ? lastResult.trace
+    : null;
+}
+function disarmGhost() { ghostArmed = false; }
+
 async function postJson(url, body) {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const text = await res.text();
@@ -580,7 +601,12 @@ function drawChart(canvas, kind) {
   const px = padL, py = padT, pw = w - padL - padR, ph = h - padT - padB;
 
   const xs = trace.map(d.x), ys = trace.map(d.y);
-  let xlo = Math.min(...xs), xhi = Math.max(...xs), ylo = Math.min(...ys), yhi = Math.max(...ys);
+  // The ghost shares the axes, so both loops are read at one scale — a ghost on
+  // its own axes would make a smaller loop look identical to a bigger one.
+  const gxs = ghostTrace ? ghostTrace.map(d.x) : [];
+  const gys = ghostTrace ? ghostTrace.map(d.y) : [];
+  let xlo = Math.min(...xs, ...gxs), xhi = Math.max(...xs, ...gxs);
+  let ylo = Math.min(...ys, ...gys), yhi = Math.max(...ys, ...gys);
   const xp = (xhi - xlo) * 0.05 || 1, yp = (yhi - ylo) * 0.08 || 1;
   xlo -= xp; xhi += xp;
   ylo = d.loop ? ylo - yp : Math.min(ylo, 0); yhi += yp;
@@ -591,6 +617,22 @@ function drawChart(canvas, kind) {
 
   const pts = xs.map((v, i) => [X(v), Y(ys[i])]);
   const col = d.color();
+
+  // Ghost first, so the live loop always sits on top of it.
+  if (ghostTrace) {
+    const gpts = gxs.map((v, i) => [X(v), Y(gys[i])]);
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = cssVar("--c-axis");
+    ctx.lineWidth = 1.2;
+    ctx.lineJoin = "round";
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    gpts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)));
+    if (d.loop) ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
   if (d.loop) {
     ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = col;
     ctx.beginPath(); pts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)));
@@ -625,9 +667,14 @@ function drawAllDiagrams() {
   drawChart(document.getElementById("canvasA"), pair[0]);
   drawChart(document.getElementById("canvasB"), pair[1]);
   const note = document.getElementById("diagramNote");
-  if (note) note.textContent = diagramMode === "loop"
+  if (!note) return;
+  const base = diagramMode === "loop"
     ? "Two closed loops, live: the P–V area is the indicated work, the T–s area the net heat. Compression and expansion run near-isentropic; combustion sweeps both rightward. Drag any control and watch them respond."
     : "Cylinder pressure and temperature versus crank angle. TDC is 0°; the spike just after TDC is combustion.";
+  // An unexplained faint line reads as a rendering bug, so say what it is.
+  note.textContent = ghostTrace
+    ? `${base} The dashed outline is where you were before this change — both are drawn on the same axes, so the difference is real.`
+    : base;
 }
 
 /* ---------- living engine animation (the centerpiece) ----------
@@ -1064,6 +1111,7 @@ const SWEEP_LABEL = {
   combustion_start_deg: "Spark [°CA]",
 };
 let lastSweep = null;
+let ghostSweep = null;   // the sweep before this one, drawn faintly for comparison
 
 async function runSweep() {
   const btn = document.getElementById("runSweep");
@@ -1073,12 +1121,18 @@ async function runSweep() {
   try {
     const base = readInputs(); base.include_trace = false;
     const payload = await postJson(API_SWEEP, { base_input: base, sweep_parameter: param, values: SWEEP_VALUES[param] });
+    // Keep the outgoing sweep so a re-run draws against it. A sweep is always
+    // an explicit button press, so "the previous one" is exactly the right
+    // comparison here — unlike the live controls, there is no drag to smear it.
+    ghostSweep = lastSweep;
     lastSweep = { payload, param };
     drawDyno();
     const s = payload.summary;
+    const compared = ghostSweep && ghostSweep.param === param;
     document.getElementById("dynoNote").textContent =
       `${s.successful_cases} points · peak power ${uval("power", s.peak_brake_power_W, 1)} · peak torque ${uval("torque", s.peak_brake_torque_Nm, 0)}` +
-      (s.knock_cases ? ` · ${s.knock_cases} knock-limited` : "");
+      (s.knock_cases ? ` · ${s.knock_cases} knock-limited` : "") +
+      (compared ? " · dashed is your previous sweep" : "");
     setStatus("Solved", "ok");
   } catch (err) {
     setStatus(err.message.slice(0, 48), "err");
@@ -1101,11 +1155,33 @@ function drawDyno() {
   const xs = cases.map((c) => c.input_value);
   const power = cases.map((c) => uconv("power", c.output.brake_power_W));
   const torque = cases.map((c) => uconv("torque", c.output.brake_torque_Nm));
+
+  // Only compare like with like: a sweep of a different parameter has a
+  // different x axis, so ghosting it would draw a curve that means nothing.
+  const gcases = ghostSweep && ghostSweep.param === lastSweep.param
+    ? (ghostSweep.payload.cases || []).filter((c) => c.success && c.output)
+    : [];
+  const gPower = gcases.map((c) => uconv("power", c.output.brake_power_W));
+  const gTorque = gcases.map((c) => uconv("torque", c.output.brake_torque_Nm));
+
   const xlo = Math.min(...xs), xhi = Math.max(...xs), xspan = xhi - xlo || 1;
-  const pHi = Math.max(...power) * 1.08 || 1, tHi = Math.max(...torque) * 1.08 || 1;
+  // Both runs share the axes, so a curve that moved up really did move up.
+  const pHi = Math.max(...power, ...gPower) * 1.08 || 1;
+  const tHi = Math.max(...torque, ...gTorque) * 1.08 || 1;
   const X = (v) => px + (pw * (v - xlo)) / xspan;
   const YP = (v) => py + ph - (ph * v) / pHi;
   const YT = (v) => py + ph - (ph * v) / tHi;
+
+  if (gcases.length > 1) {
+    const gxs = gcases.map((c) => c.input_value);
+    ctx.save();
+    ctx.globalAlpha = 0.38;
+    ctx.setLineDash([4, 4]);
+    plotLine(ctx, gxs.map((v, i) => [X(v), YT(gTorque[i])]), cssVar("--c-torque"), 1.3);
+    plotLine(ctx, gxs.map((v, i) => [X(v), YP(gPower[i])]), cssVar("--c-power"), 1.3);
+    ctx.restore();
+  }
+
   plotLine(ctx, xs.map((v, i) => [X(v), YT(torque[i])]), cssVar("--c-torque"), 1.9);
   plotLine(ctx, xs.map((v, i) => [X(v), YP(power[i])]), cssVar("--c-power"), 1.9);
   cases.forEach((c, i) => {
@@ -1132,13 +1208,23 @@ export function startPiston() {
   // presets
   const row = document.getElementById("presetRow");
   row.innerHTML = Object.keys(PRESETS).map((n) => `<button class="preset" data-preset="${n}">${n}</button>`).join("");
-  row.querySelectorAll(".preset").forEach((b) => b.addEventListener("click", () => applyPreset(b.dataset.preset)));
+  row.querySelectorAll(".preset").forEach((b) => b.addEventListener("click", () => {
+    armGhost();          // so one preset can be read against the last
+    disarmGhost();
+    applyPreset(b.dataset.preset);
+  }));
 
-  // live inputs
+  // live inputs. armGhost is registered first so the pre-edit loop is captured
+  // before the solve that replaces it.
   document.querySelectorAll("[data-key]").forEach((el) => {
+    el.addEventListener("pointerdown", armGhost);
+    el.addEventListener("keydown", armGhost);
     el.addEventListener("input", solveDebounced);
     el.addEventListener("change", solveDebounced);
   });
+  // A gesture ends on release; the next one is free to capture a fresh ghost.
+  document.addEventListener("pointerup", disarmGhost);
+  document.addEventListener("keyup", disarmGhost);
 
   // diagram mode toggle (Loops ⟷ Crank angle)
   document.querySelectorAll("#diagramModeTabs .chart-tab").forEach((t) =>
@@ -1165,7 +1251,11 @@ export function startPiston() {
   // custom engine builder (branching wizard)
   initBuilder();
   const buildBtn = document.getElementById("openBuilder");
-  if (buildBtn) buildBtn.addEventListener("click", () => openBuilder(applyBuiltEngine));
+  if (buildBtn) buildBtn.addEventListener("click", () => {
+    armGhost();          // keep the outgoing engine to read the new build against
+    disarmGhost();
+    openBuilder(applyBuiltEngine);
+  });
 
   // engine type (petrol / diesel)
   document.querySelectorAll(".etype").forEach((b) =>

@@ -57,6 +57,7 @@
         </div>
         <button class="mission-link unit-toggle" type="button" id="unitToggle"
                 title="Switch between SI and US customary units">Units: SI</button>
+        <a class="mission-link" href="#" id="tutorialButton">Tutorial</a>
         <a class="mission-link" href="#methodology">Methodology</a>
         <a class="mission-link" href="/lab/">PropulsionLab</a>
         <a class="mission-link" href="/">DAS LABS</a>
@@ -190,7 +191,7 @@
               </div>
             </section>
 
-            <section class="card">
+            <section class="card" id="geometryCard">
               <div class="card-head"><h2>Geometry</h2></div>
               <div class="field-row">
                 <div class="field"><label>Bore <small data-unit="len_mm">mm</small></label><input type="number" data-key="bore_m" data-scale="0.001" value="86" step="1" /></div>
@@ -215,7 +216,7 @@
               </div>
             </section>
 
-            <section class="card">
+            <section class="card" id="operatingCard">
               <div class="card-head"><h2>Operating point</h2></div>
               <div class="field">
                 <label>Speed <small>rpm</small> <b data-readout="rpm"></b></label>
@@ -238,7 +239,7 @@
               <div class="field"><label>Intake temp <small data-unit="temp">K</small></label><input type="number" data-key="intake_temperature_K" value="330" step="5" /></div>
             </section>
 
-            <details class="card accordion engineer-only">
+            <details class="card accordion engineer-only" id="combustionCard">
               <summary>Combustion &amp; losses</summary>
               <div class="accordion-body">
                 <div class="field"><label>Spark / SOC <small>°CA</small> <b data-readout="combustion_start_deg"></b></label><input type="range" data-key="combustion_start_deg" min="-45" max="10" step="1" value="-15" /></div>
@@ -295,7 +296,7 @@
             </section>
 
             <!-- diagrams: two loops side by side, live -->
-            <section class="card">
+            <section class="card" id="diagramsCard">
               <div class="card-head">
                 <h2>Cycle diagrams</h2>
                 <div class="chart-tabs" id="diagramModeTabs">
@@ -424,8 +425,9 @@
     </div>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260726-pl24";
+      import { startPiston } from "/lab/piston/piston.js?v=20260805-pl25";
       startPiston();
     </script>
+    <script src="/lab/piston/piston-tour.js?v=20260805-pl25" defer></script>
   </body>
 </html>
