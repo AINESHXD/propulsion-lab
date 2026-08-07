@@ -82,6 +82,19 @@ from app.engine_core.variable_geometry import variable_geometry_analysis
 from app.engine_core.turbofan import TurbofanCycleInputs
 from app.engine_core.turbojet import simulate_turbojet_cycle
 from app.engine_core.types import CycleCalculationError
+from app.engine_core.validation import (
+    ASSUMPTIONS as VALIDATION_ASSUMPTIONS,
+)
+from app.engine_core.validation import (
+    load_cases as load_validation_cases,
+)
+from app.engine_core.validation import (
+    run_all as run_validation,
+)
+from app.engine_core.validation import (
+    summarise as summarise_validation,
+)
+from app.engine_core.validation import turbine_inlet_temperature_for
 from app.python_export import generate_python_script
 from app.reporting import build_turbojet_pdf_report
 from app.schemas_inverse import (
@@ -90,6 +103,11 @@ from app.schemas_inverse import (
     InverseSolveOutput,
     inverse_catalogue,
     run_inverse_solve,
+)
+from app.schemas_validation import (
+    ValidationCaseOutput,
+    ValidationReportOutput,
+    ValidationSummaryOutput,
 )
 from app.schemas_piston import (
     PistonSimulateInput,
@@ -198,7 +216,8 @@ async def cache_control(request, call_next):
     if path.endswith(".html") or path in ("/", "/lab", "/lab/", "/pro", "/pro/",
                                           "/piston", "/piston/", "/m", "/m/",
                                           "/privacy", "/privacy/",
-                                          "/inverse", "/inverse/"):
+                                          "/inverse", "/inverse/",
+                                          "/validation", "/validation/"):
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
     elif request.url.query.startswith("v=") and path.rsplit(".", 1)[-1] in (
         "css", "js", "png", "jpg", "jpeg", "svg", "webp", "woff", "woff2", "ico"
@@ -236,6 +255,62 @@ def inverse_page() -> FileResponse:
     """Serve the gas-path analysis page at a clean /inverse/ URL."""
 
     return FileResponse(STATIC_PATH / "inverse.html")
+
+
+@app.get("/validation", include_in_schema=False)
+@app.get("/validation/", include_in_schema=False)
+def validation_page() -> FileResponse:
+    """Serve the certified-engine validation report at a clean /validation/ URL."""
+
+    return FileResponse(STATIC_PATH / "validation.html")
+
+
+@app.get("/validation/report", response_model=ValidationReportOutput, tags=["validation"])
+def validation_report() -> ValidationReportOutput:
+    """Run the solver against 26 certified engines and report the disagreement.
+
+    Computed live from the same solver the console calls, so the published
+    figures cannot drift from the physics. Reference values come from the ICAO
+    Aircraft Engine Emissions Databank; each case keeps its ICAO engine UID.
+    """
+
+    library = load_validation_cases()
+    results = run_validation()
+    tit_by_uid = {
+        c["icao_uid"]: turbine_inlet_temperature_for(c["overall_pressure_ratio"])
+        for c in library["cases"]
+    }
+    return ValidationReportOutput(
+        summary=ValidationSummaryOutput(**summarise_validation(results)),
+        cases=[
+            ValidationCaseOutput(
+                icao_uid=r.icao_uid,
+                name=r.name,
+                manufacturer=r.manufacturer,
+                bypass_ratio=r.bypass_ratio,
+                overall_pressure_ratio=r.overall_pressure_ratio,
+                turbine_inlet_temperature_K=tit_by_uid[r.icao_uid],
+                reference_tsfc_kg_per_N_s=r.reference_tsfc,
+                predicted_tsfc_kg_per_N_s=r.predicted_tsfc,
+                error_percent=r.error_percent,
+            )
+            for r in results
+        ],
+        assumptions={k: float(v) for k, v in VALIDATION_ASSUMPTIONS.items()},
+        validated_quantity=(
+            "Thrust-specific fuel consumption at the certified sea-level-static "
+            "takeoff rating."
+        ),
+        not_validated=(
+            "Absolute thrust. It scales with air mass flow, which the databank "
+            "does not publish; back-solving mass flow from rated thrust would "
+            "make the comparison circular. TSFC is very nearly mass-flow "
+            "independent, so it is the honest figure of merit."
+        ),
+        primary_source=library["primary_source"],
+        intermediary_source=library["intermediary_source"],
+        source_note=library["source_note"],
+    )
 
 
 @app.get("/inverse/catalogue", response_model=InverseCatalogueOutput, tags=["inverse"])

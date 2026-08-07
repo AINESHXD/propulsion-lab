@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="description" content="PropulsionLab checked against 26 certified engines from the ICAO Aircraft Engine Emissions Databank — bypass ratio 0.6 to 11.6, 1968 to 2016. Every error shown, including the ones that do not flatter the model. A DAS LABS project." />
+    <title>Validation · PropulsionLab</title>
+    <link rel="stylesheet" href="/lab/styles.css?v=20260609-cachefix" />
+    <script src="/lab/launch.js?v=20260606-launch" defer></script>
+    <link rel="icon" href="/lab/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
+    <style>
+      .v-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
+      .v-stat { border: 1px solid var(--line); border-radius: 8px; padding: 15px 17px; background: var(--surface); }
+      .v-stat .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+                   color: var(--text-3); display: block; margin-bottom: 9px; }
+      .v-stat .v { font-size: 25px; letter-spacing: -.02em; font-feature-settings: "tnum"; display: block; }
+      .v-stat .s { font-size: 12px; color: var(--text-2); display: block; margin-top: 5px; line-height: 1.45; }
+      .v-stat.good .v { color: var(--ok); }
+      .v-stat.warn .v { color: var(--warn); }
+
+      .v-plot-wrap { position: relative; }
+      #vPlot { width: 100%; height: auto; display: block; }
+      .v-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); margin-top: 10px; }
+      .v-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px;
+                    vertical-align: -1px; }
+
+      .v-table-wrap { overflow-x: auto; }
+      #vTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+      #vTable th, #vTable td { padding: 9px 11px; text-align: right; border-bottom: 1px solid var(--line);
+                               white-space: nowrap; font-feature-settings: "tnum"; }
+      #vTable th { position: sticky; top: 0; background: var(--surface); color: var(--text-3);
+                   font-size: 10px; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; }
+      #vTable td.eng, #vTable th.eng { text-align: left; white-space: normal; }
+      #vTable td.eng b { font-weight: 550; }
+      #vTable td.eng span { display: block; color: var(--text-3); font-size: 11px; }
+      #vTable td.err { font-weight: 600; }
+      #vTable tbody tr:hover { background: var(--surface-2, rgba(255,255,255,.02)); }
+      .uid { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
+
+      .v-assume { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 7px 22px;
+                  font-size: 12.5px; }
+      .v-assume div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0;
+                      border-bottom: 1px solid var(--line); }
+      .v-assume b { font-family: var(--font-mono); font-weight: 500; font-feature-settings: "tnum"; }
+      .v-loading { color: var(--text-3); font-size: 13px; padding: 20px 0; }
+      @media (max-width: 640px) {
+        .v-stat .v { font-size: 21px; }
+        #vTable th, #vTable td { padding: 7px 8px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="mission-bar" role="banner">
+      <div class="mission-bar-left">
+        <a class="brand" href="/" aria-label="DAS LABS home">
+          <span class="brand-mark">DAS&nbsp;LABS</span>
+          <span class="brand-dot"></span>
+          <img class="brand-product-img" src="/lab/assets/propulsionlab_wordmark.png" alt="PropulsionLab"
+               onerror="this.outerHTML='&lt;span class=&quot;brand-product&quot;&gt;PropulsionLab&lt;/span&gt;'" />
+        </a>
+      </div>
+      <div class="mission-bar-right">
+        <a class="mission-link" href="/lab/">Console</a>
+        <a class="mission-link" href="/lab/methodology.html">Methodology</a>
+        <a class="mission-link" href="/docs" target="_blank" rel="noopener">API</a>
+      </div>
+    </header>
+
+    <main class="app-shell" role="main">
+      <section class="section">
+        <div class="section-header">
+          <p class="eyebrow"><span class="num">01</span> Validation <span class="rule"></span> Certified engine data</p>
+          <h1 class="section-title">How wrong is it?</h1>
+          <p class="section-sub">
+            Every simulator should be able to answer that. This one is checked against
+            26 real engines whose fuel consumption is a matter of public certification
+            record — from a 1968 Spey to a geared turbofan of 2016. The numbers below
+            are computed live by the same solver the console runs, and every error is
+            shown, including the ones that do not flatter the model.
+          </p>
+        </div>
+
+        <div class="concept-strip" role="note">
+          <div>
+            <span class="concept-eyebrow">CONCEPT · WHAT MAKES THIS VALIDATION AND NOT CURVE-FITTING</span>
+            <div class="concept-body">
+              The ICAO Aircraft Engine Emissions Databank publishes each engine's
+              certified thrust and fuel flow. Their ratio is a fuel consumption figure
+              <b>PropulsionLab had no hand in producing</b>. What the databank does not
+              publish — turbine temperature, component efficiencies — is supplied by
+              <b>one fixed assumption set applied identically to all 26 engines</b>.
+              Nothing is fitted per engine. A model that agrees only after being tuned
+              engine by engine has demonstrated nothing at all, so the disagreement
+              that costs is reported here rather than removed.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="v-stats" id="vStats"></div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Predicted against certified</h2>
+            <span class="case-label">Sea-level static takeoff</span>
+          </div>
+          <div class="v-plot-wrap">
+            <canvas id="vPlot" width="900" height="470"></canvas>
+          </div>
+          <div class="v-legend">
+            <span><i style="background:var(--accent)"></i>One engine</span>
+            <span><i style="background:var(--text-3)"></i>Perfect agreement (1:1)</span>
+          </div>
+          <p class="section-sub" style="margin-top:14px;font-size:13px" id="vPlotNote"></p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Every case</h2>
+            <span class="case-label">Sorted by bypass ratio</span>
+          </div>
+          <div class="v-table-wrap">
+            <table id="vTable">
+              <thead>
+                <tr>
+                  <th class="eng">Engine</th>
+                  <th>BPR</th><th>OPR</th><th>T<sub>t4</sub> assumed</th>
+                  <th>Certified TSFC</th><th>PropulsionLab</th><th>Error</th>
+                </tr>
+              </thead>
+              <tbody id="vBody">
+                <tr><td class="eng v-loading" colspan="7">Running 26 engines through the solver…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="section-sub" style="margin-top:14px;font-size:12.5px">
+            TSFC in lb of fuel per lbf of thrust per hour. Error is signed: positive
+            means PropulsionLab predicts <em>more</em> fuel burn than the engine was
+            certified at. Turbine temperature is assumed, not published — see below.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="panel">
+          <div class="panel-heading"><h2>The shared assumption set</h2></div>
+          <p class="section-sub" style="margin-bottom:16px;font-size:13px">
+            Applied identically to every engine on this page. Turbine inlet temperature
+            is the one exception to being a single constant: it is tied to each engine's
+            <em>published</em> pressure ratio, because a single value across five decades
+            is knowingly unphysical — held at 1500&nbsp;K, three of the modern engines
+            have no solution at all, since a bypass-11 fan cannot be driven by a turbine
+            that cold. The relation is anchored to historical practice and was fixed
+            before any error was computed.
+          </p>
+          <div class="v-assume" id="vAssume"></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="panel">
+          <div class="panel-heading"><h2>What is and is not validated</h2></div>
+          <p class="section-sub" style="font-size:13.5px" id="vScope"></p>
+          <p class="section-sub" style="font-size:13px;margin-top:14px" id="vSource"></p>
+          <p class="section-sub" style="font-size:13px;margin-top:14px">
+            Reference data:
+            <a id="vPrimary" href="https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank"
+               target="_blank" rel="noopener">ICAO Aircraft Engine Emissions Databank</a>,
+            read in machine-readable form via the
+            <a href="https://github.com/TUDelft-CNS-ATM/openap" target="_blank" rel="noopener">OpenAP</a>
+            engine table (TU Delft). Every case keeps its ICAO engine UID so any figure
+            here can be checked against the primary source directly. The report is served
+            live at <a href="/validation/report" target="_blank" rel="noopener"><code>/validation/report</code></a>.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (s) => document.querySelector(s);
+      // kg/(N s) -> lb/(lbf h)
+      const LB = 3600 * 2.20462 / 0.224809;
+      const f3 = (x) => x.toFixed(3);
+
+      const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+      async function boot() {
+        let r;
+        try {
+          r = await (await fetch("/validation/report")).json();
+        } catch (e) {
+          $("#vBody").innerHTML = `<tr><td class="eng v-loading" colspan="7">Could not load the report.</td></tr>`;
+          return;
+        }
+        renderStats(r.summary);
+        renderTable(r.cases);
+        renderAssumptions(r);
+        $("#vScope").textContent = `Validated: ${r.validated_quantity} Not validated: ${r.not_validated}`;
+        $("#vSource").textContent = r.source_note;
+        drawPlot(r.cases);
+        addEventListener("resize", () => drawPlot(r.cases));
+      }
+
+      function renderStats(s) {
+        // The rank correlation is the headline the model earns; the bias is the
+        // headline it does not. Both are shown at the same size on purpose.
+        const cards = [
+          { k: "Engines checked", v: s.count, s: "Bypass ratio 0.64 to 11.6, 1968 to 2016" },
+          { k: "Rank correlation", v: s.rank_correlation.toFixed(2), cls: "good",
+            s: "Orders real engines essentially the way certification does" },
+          { k: "Mean error", v: (s.mean_signed_error_percent > 0 ? "+" : "") +
+              s.mean_signed_error_percent.toFixed(1) + "%", cls: "warn",
+            s: "Every engine over-predicted, none under — a one-sided bias" },
+          { k: "Worst case", v: s.worst_absolute_error_percent.toFixed(1) + "%", cls: "warn",
+            s: "The largest single disagreement in the set" },
+        ];
+        $("#vStats").innerHTML = cards.map((c) =>
+          `<div class="v-stat ${c.cls || ""}"><span class="k">${c.k}</span>
+           <span class="v">${c.v}</span><span class="s">${c.s}</span></div>`).join("");
+      }
+
+      function renderTable(cases) {
+        $("#vBody").innerHTML = cases.map((c) => {
+          const err = c.error_percent;
+          const col = Math.abs(err) < 15 ? "var(--ok)" : Math.abs(err) < 25 ? "var(--warn)" : "var(--err)";
+          return `<tr>
+            <td class="eng"><b>${c.name}</b><span>${c.manufacturer} · <span class="uid">${c.icao_uid}</span></span></td>
+            <td>${c.bypass_ratio.toFixed(2)}</td>
+            <td>${c.overall_pressure_ratio.toFixed(1)}</td>
+            <td>${Math.round(c.turbine_inlet_temperature_K)} K</td>
+            <td>${f3(c.reference_tsfc_kg_per_N_s * LB)}</td>
+            <td>${f3(c.predicted_tsfc_kg_per_N_s * LB)}</td>
+            <td class="err" style="color:${col}">${err > 0 ? "+" : ""}${err.toFixed(1)}%</td>
+          </tr>`;
+        }).join("");
+      }
+
+      function renderAssumptions(r) {
+        const nice = (k) => k.replace(/_/g, " ").replace(/\b\w/, (m) => m.toUpperCase());
+        const rows = Object.entries(r.assumptions).map(([k, v]) => {
+          const val = v >= 1e6 ? (v / 1e6).toFixed(0) + " MJ/kg" : v.toFixed(2);
+          return `<div><span>${nice(k)}</span><b>${val}</b></div>`;
+        });
+        rows.push(`<div><span>Turbine inlet temperature</span><b>1000 + 16 × OPR</b></div>`);
+        $("#vAssume").innerHTML = rows.join("");
+      }
+
+      /* Predicted vs certified, with the 1:1 line. This is the whole story in one
+         picture: points that track the diagonal's *slope* but sit above it mean the
+         model has the physics of the ranking right and a systematic offset on top. */
+      function drawPlot(cases) {
+        const cv = $("#vPlot");
+        const wrapW = cv.parentElement.clientWidth || 900;
+        const dpr = window.devicePixelRatio || 1;
+        const W = wrapW, H = Math.max(320, Math.min(470, wrapW * 0.52));
+        cv.width = W * dpr; cv.height = H * dpr;
+        cv.style.width = W + "px"; cv.style.height = H + "px";
+        const ctx = cv.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+
+        const padL = 62, padR = 16, padT = 14, padB = 44;
+        const pw = W - padL - padR, ph = H - padT - padB;
+
+        const ref = cases.map((c) => c.reference_tsfc_kg_per_N_s * LB);
+        const pred = cases.map((c) => c.predicted_tsfc_kg_per_N_s * LB);
+        const lo = Math.min(...ref, ...pred) * 0.92;
+        const hi = Math.max(...ref, ...pred) * 1.05;
+        const X = (v) => padL + ((v - lo) / (hi - lo)) * pw;
+        const Y = (v) => padT + ph - ((v - lo) / (hi - lo)) * ph;
+
+        // grid
+        ctx.strokeStyle = cssVar("--line") || "rgba(255,255,255,.09)";
+        ctx.fillStyle = cssVar("--text-3") || "#8b9099";
+        ctx.lineWidth = 1;
+        ctx.font = "500 10px ui-monospace, monospace";
+        const ticks = 5;
+        for (let i = 0; i <= ticks; i++) {
+          const v = lo + ((hi - lo) * i) / ticks;
+          ctx.beginPath(); ctx.moveTo(padL, Y(v)); ctx.lineTo(padL + pw, Y(v)); ctx.stroke();
+          ctx.textAlign = "right"; ctx.textBaseline = "middle";
+          ctx.fillText(v.toFixed(2), padL - 8, Y(v));
+          ctx.beginPath(); ctx.moveTo(X(v), padT); ctx.lineTo(X(v), padT + ph); ctx.stroke();
+          ctx.textAlign = "center"; ctx.textBaseline = "top";
+          ctx.fillText(v.toFixed(2), X(v), padT + ph + 7);
+        }
+
+        // 1:1 line — perfect agreement
+        ctx.save();
+        ctx.strokeStyle = cssVar("--text-3") || "#8b9099";
+        ctx.setLineDash([5, 5]); ctx.lineWidth = 1.4; ctx.globalAlpha = 0.85;
+        ctx.beginPath(); ctx.moveTo(X(lo), Y(lo)); ctx.lineTo(X(hi), Y(hi)); ctx.stroke();
+        ctx.restore();
+
+        // points
+        const accent = cssVar("--accent") || "#7ba7eb";
+        cases.forEach((c, i) => {
+          ctx.beginPath();
+          ctx.arc(X(ref[i]), Y(pred[i]), 4.6, 0, Math.PI * 2);
+          ctx.fillStyle = accent; ctx.globalAlpha = 0.85; ctx.fill();
+          ctx.globalAlpha = 1; ctx.lineWidth = 1.2;
+          ctx.strokeStyle = cssVar("--bg") || "#08090b"; ctx.stroke();
+        });
+
+        // axis labels
+        ctx.fillStyle = cssVar("--text-2") || "#b9bec7";
+        ctx.font = "500 11px ui-monospace, monospace";
+        ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.fillText("Certified TSFC  [lb / lbf / h]", padL + pw / 2, H - 4);
+        ctx.save();
+        ctx.translate(13, padT + ph / 2); ctx.rotate(-Math.PI / 2);
+        ctx.textBaseline = "top"; ctx.textAlign = "center";
+        ctx.fillText("PropulsionLab TSFC", 0, 0);
+        ctx.restore();
+
+        $("#vPlotNote").textContent =
+          "Each dot is one certified engine. The dashed line is perfect agreement. " +
+          "The points sit above it and run parallel to it — the solver reproduces how " +
+          "these engines rank against each other, then adds a systematic offset on top. " +
+          "A scattered cloud would mean the physics was wrong; a consistent offset points " +
+          "instead at the component efficiencies the databank never published.";
+      }
+
+      boot();
+    </script>
+  </body>
+</html>
