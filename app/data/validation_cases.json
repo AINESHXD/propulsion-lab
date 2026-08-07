@@ -1,0 +1,339 @@
+{
+  "source_note": "Reference figures are the certified sea-level-static takeoff rating and fuel flow from the ICAO Aircraft Engine Emissions Databank, reached via the OpenAP engine table (TU Delft, LGPL-3.0). Each case keeps its ICAO engine UID so every number here can be checked against the primary source. Bypass ratio and overall pressure ratio are published inputs. Reference TSFC is derived arithmetically as fuel flow divided by rated thrust \u2014 it is not a PropulsionLab output and is not tuned. Nothing in this file is estimated: any quantity the databank does not publish (turbine inlet temperature, component efficiencies, mass flow) is supplied by the validation harness as a single fixed assumption set applied identically to every engine, never fitted per engine.",
+  "primary_source": "ICAO Aircraft Engine Emissions Databank, https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank",
+  "intermediary_source": "OpenAP engine table, https://github.com/TUDelft-CNS-ATM/openap (LGPL-3.0). Used to read the databank in machine-readable form; no OpenAP code or file is redistributed here.",
+  "regenerate_with": "python scripts/build_validation_set.py engines.csv",
+  "units": {
+    "rated_thrust_N": "newtons, sea-level static",
+    "fuel_flow_takeoff_kg_s": "kg/s at 100% rated thrust",
+    "reference_tsfc_kg_per_N_s": "kg per newton-second"
+  },
+  "cases": [
+    {
+      "icao_uid": "8RR043",
+      "name": "SPEY Mk511",
+      "manufacturer": "Rolls-Royce plc",
+      "engine_type": "MTF",
+      "bypass_ratio": 0.64,
+      "overall_pressure_ratio": 19.9,
+      "rated_thrust_N": 50700.0,
+      "fuel_flow_takeoff_kg_s": 0.889,
+      "reference_tsfc_kg_per_N_s": 1.7534516765285997e-05
+    },
+    {
+      "icao_uid": "1PW007",
+      "name": "JT8D-9",
+      "manufacturer": "Pratt & Whitney",
+      "engine_type": "MTF",
+      "bypass_ratio": 1.04,
+      "overall_pressure_ratio": 15.88,
+      "rated_thrust_N": 64500.0,
+      "fuel_flow_takeoff_kg_s": 1.04,
+      "reference_tsfc_kg_per_N_s": 1.612403100775194e-05,
+      "cruise": {
+        "mach": 0.8,
+        "altitude_ft": 30000.0,
+        "reference_tsfc_kg_per_N_s": 2.2700000000000003e-05
+      }
+    },
+    {
+      "icao_uid": "1PW002",
+      "name": "JT3D-7",
+      "manufacturer": "Pratt & Whitney",
+      "engine_type": "TF",
+      "bypass_ratio": 1.4,
+      "overall_pressure_ratio": 13.4,
+      "rated_thrust_N": 84520.0,
+      "fuel_flow_takeoff_kg_s": 1.254,
+      "reference_tsfc_kg_per_N_s": 1.4836725035494558e-05
+    },
+    {
+      "icao_uid": "4PW071",
+      "name": "JT8D-219",
+      "manufacturer": "Pratt & Whitney",
+      "engine_type": "MTF",
+      "bypass_ratio": 1.7,
+      "overall_pressure_ratio": 20.27,
+      "rated_thrust_N": 96520.0,
+      "fuel_flow_takeoff_kg_s": 1.354,
+      "reference_tsfc_kg_per_N_s": 1.4028180687940325e-05,
+      "cruise": {
+        "mach": 0.8,
+        "altitude_ft": 35000.0,
+        "reference_tsfc_kg_per_N_s": 2.09e-05
+      }
+    },
+    {
+      "icao_uid": "1PW038",
+      "name": "JT15D-5C",
+      "manufacturer": "Pratt & Whitney Canada",
+      "engine_type": "TF",
+      "bypass_ratio": 2.1,
+      "overall_pressure_ratio": 13.3,
+      "rated_thrust_N": 14190.0,
+      "fuel_flow_takeoff_kg_s": 0.2151,
+      "reference_tsfc_kg_per_N_s": 1.5158562367864695e-05
+    },
+    {
+      "icao_uid": "1AS002",
+      "name": "TFE731-3",
+      "manufacturer": "Allied Signal",
+      "engine_type": "TF",
+      "bypass_ratio": 2.64,
+      "overall_pressure_ratio": 14.3,
+      "rated_thrust_N": 16500.0,
+      "fuel_flow_takeoff_kg_s": 0.225,
+      "reference_tsfc_kg_per_N_s": 1.3636363636363637e-05,
+      "cruise": {
+        "mach": 0.8,
+        "altitude_ft": 40000.0,
+        "reference_tsfc_kg_per_N_s": 2.3199999999999998e-05
+      }
+    },
+    {
+      "icao_uid": "3RR033",
+      "name": "TAY 651",
+      "manufacturer": "Rolls-Royce plc",
+      "engine_type": "MTF",
+      "bypass_ratio": 3.0,
+      "overall_pressure_ratio": 16.4,
+      "rated_thrust_N": 68500.0,
+      "fuel_flow_takeoff_kg_s": 0.87,
+      "reference_tsfc_kg_per_N_s": 1.2700729927007299e-05
+    },
+    {
+      "icao_uid": "6BR010",
+      "name": "BR700-710C4-11",
+      "manufacturer": "Rolls-Royce Deutschland",
+      "engine_type": "MTF",
+      "bypass_ratio": 4.05,
+      "overall_pressure_ratio": 24.95,
+      "rated_thrust_N": 68770.0,
+      "fuel_flow_takeoff_kg_s": 0.747,
+      "reference_tsfc_kg_per_N_s": 1.0862294605205759e-05
+    },
+    {
+      "icao_uid": "1RR011",
+      "name": "RB211-524H",
+      "manufacturer": "Rolls-Royce plc",
+      "engine_type": "MTF",
+      "bypass_ratio": 4.2,
+      "overall_pressure_ratio": 34.0,
+      "rated_thrust_N": 264400.0,
+      "fuel_flow_takeoff_kg_s": 2.73,
+      "reference_tsfc_kg_per_N_s": 1.0325264750378215e-05
+    },
+    {
+      "icao_uid": "1PW042",
+      "name": "PW4056",
+      "manufacturer": "Pratt & Whitney",
+      "engine_type": "TF",
+      "bypass_ratio": 4.7,
+      "overall_pressure_ratio": 29.3,
+      "rated_thrust_N": 249100.0,
+      "fuel_flow_takeoff_kg_s": 2.342,
+      "reference_tsfc_kg_per_N_s": 9.401846647932557e-06
+    },
+    {
+      "icao_uid": "10AL026",
+      "name": "AE3007A2",
+      "manufacturer": "Rolls-Royce Corporation",
+      "engine_type": "MTF",
+      "bypass_ratio": 4.79,
+      "overall_pressure_ratio": 20.2,
+      "rated_thrust_N": 42230.0,
+      "fuel_flow_takeoff_kg_s": 0.466,
+      "reference_tsfc_kg_per_N_s": 1.1034809377219987e-05
+    },
+    {
+      "icao_uid": "10IA013",
+      "name": "V2527-A5",
+      "manufacturer": "International Aero Engines",
+      "engine_type": "MTF",
+      "bypass_ratio": 4.8,
+      "overall_pressure_ratio": 27.1,
+      "rated_thrust_N": 110300.0,
+      "fuel_flow_takeoff_kg_s": 1.049,
+      "reference_tsfc_kg_per_N_s": 9.510426110607433e-06
+    },
+    {
+      "icao_uid": "1PW030",
+      "name": "JT9D-7R4H1",
+      "manufacturer": "Pratt & Whitney",
+      "engine_type": "TF",
+      "bypass_ratio": 4.8,
+      "overall_pressure_ratio": 26.7,
+      "rated_thrust_N": 249100.0,
+      "fuel_flow_takeoff_kg_s": 2.512,
+      "reference_tsfc_kg_per_N_s": 1.0084303492573263e-05,
+      "cruise": {
+        "mach": 0.85,
+        "altitude_ft": 35000.0,
+        "reference_tsfc_kg_per_N_s": 1.78e-05
+      }
+    },
+    {
+      "icao_uid": "14RR071",
+      "name": "Trent 772",
+      "manufacturer": "Rolls-Royce plc",
+      "engine_type": "MTF",
+      "bypass_ratio": 5.03,
+      "overall_pressure_ratio": 36.3302939575395,
+      "rated_thrust_N": 320300.0,
+      "fuel_flow_takeoff_kg_s": 3.139,
+      "reference_tsfc_kg_per_N_s": 9.800187324383389e-06
+    },
+    {
+      "icao_uid": "1CM005",
+      "name": "CFM56-3B-2",
+      "manufacturer": "CFM International",
+      "engine_type": "TF",
+      "bypass_ratio": 5.1,
+      "overall_pressure_ratio": 24.1,
+      "rated_thrust_N": 98300.0,
+      "fuel_flow_takeoff_kg_s": 1.056,
+      "reference_tsfc_kg_per_N_s": 1.074262461851475e-05
+    },
+    {
+      "icao_uid": "2GE038",
+      "name": "CF6-80C2A3",
+      "manufacturer": "GE Aircraft Engines",
+      "engine_type": "TF",
+      "bypass_ratio": 5.1,
+      "overall_pressure_ratio": 31.09,
+      "rated_thrust_N": 262220.0,
+      "fuel_flow_takeoff_kg_s": 2.516,
+      "reference_tsfc_kg_per_N_s": 9.594996567767524e-06,
+      "cruise": {
+        "mach": 0.8,
+        "altitude_ft": 35000.0,
+        "reference_tsfc_kg_per_N_s": 1.63e-05
+      }
+    },
+    {
+      "icao_uid": "3CM032",
+      "name": "CFM56-7B24",
+      "manufacturer": "CFM International",
+      "engine_type": "TF",
+      "bypass_ratio": 5.2,
+      "overall_pressure_ratio": 25.78,
+      "rated_thrust_N": 107650.0,
+      "fuel_flow_takeoff_kg_s": 1.103,
+      "reference_tsfc_kg_per_N_s": 1.0246168137482583e-05,
+      "cruise": {
+        "mach": 0.8,
+        "altitude_ft": 35000.0,
+        "reference_tsfc_kg_per_N_s": 1.78e-05
+      }
+    },
+    {
+      "icao_uid": "1IA001",
+      "name": "V2500-A1",
+      "manufacturer": "International Aero Engines",
+      "engine_type": "MTF",
+      "bypass_ratio": 5.3,
+      "overall_pressure_ratio": 29.8,
+      "rated_thrust_N": 111200.0,
+      "fuel_flow_takeoff_kg_s": 1.113,
+      "reference_tsfc_kg_per_N_s": 1.0008992805755395e-05
+    },
+    {
+      "icao_uid": "3CM020",
+      "name": "CFM56-5B1/2P",
+      "manufacturer": "CFM International",
+      "engine_type": "TF",
+      "bypass_ratio": 5.7,
+      "overall_pressure_ratio": 30.5,
+      "rated_thrust_N": 133500.0,
+      "fuel_flow_takeoff_kg_s": 1.32,
+      "reference_tsfc_kg_per_N_s": 9.887640449438202e-06
+    },
+    {
+      "icao_uid": "5RR040",
+      "name": "Trent 895",
+      "manufacturer": "Rolls-Royce plc",
+      "engine_type": "TF",
+      "bypass_ratio": 5.7,
+      "overall_pressure_ratio": 41.52,
+      "rated_thrust_N": 413050.0,
+      "fuel_flow_takeoff_kg_s": 4.03,
+      "reference_tsfc_kg_per_N_s": 9.756688052293912e-06
+    },
+    {
+      "icao_uid": "4PW072",
+      "name": "PW2037",
+      "manufacturer": "Pratt & Whitney",
+      "engine_type": "TF",
+      "bypass_ratio": 5.71,
+      "overall_pressure_ratio": 26.7,
+      "rated_thrust_N": 166350.0,
+      "fuel_flow_takeoff_kg_s": 1.571,
+      "reference_tsfc_kg_per_N_s": 9.443943492636008e-06,
+      "cruise": {
+        "mach": 0.85,
+        "altitude_ft": 35000.0,
+        "reference_tsfc_kg_per_N_s": 1.65e-05
+      }
+    },
+    {
+      "icao_uid": "1GE034",
+      "name": "CF34-3A",
+      "manufacturer": "GE Aircraft Engines",
+      "engine_type": "TF",
+      "bypass_ratio": 6.25,
+      "overall_pressure_ratio": 19.7,
+      "rated_thrust_N": 41010.0,
+      "fuel_flow_takeoff_kg_s": 0.407,
+      "reference_tsfc_kg_per_N_s": 9.924408680809558e-06
+    },
+    {
+      "icao_uid": "9GE126",
+      "name": "GE90-85B",
+      "manufacturer": "GE Aircraft Engines",
+      "engine_type": "TF",
+      "bypass_ratio": 8.41,
+      "overall_pressure_ratio": 38.16,
+      "rated_thrust_N": 397210.0,
+      "fuel_flow_takeoff_kg_s": 3.131,
+      "reference_tsfc_kg_per_N_s": 7.88248030009315e-06,
+      "cruise": {
+        "mach": 0.83,
+        "altitude_ft": 35000.0,
+        "reference_tsfc_kg_per_N_s": 1.47e-05
+      }
+    },
+    {
+      "icao_uid": "17GE179",
+      "name": "GEnx-1B76/P2",
+      "manufacturer": "GE Aircraft Engines",
+      "engine_type": "TF",
+      "bypass_ratio": 8.59,
+      "overall_pressure_ratio": 47.5,
+      "rated_thrust_N": 349200.0,
+      "fuel_flow_takeoff_kg_s": 2.79,
+      "reference_tsfc_kg_per_N_s": 7.989690721649484e-06
+    },
+    {
+      "icao_uid": "20CM090",
+      "name": "LEAP-1A35A/33/33B2/32/30",
+      "manufacturer": "CFM International",
+      "engine_type": "TF",
+      "bypass_ratio": 10.5,
+      "overall_pressure_ratio": 38.5,
+      "rated_thrust_N": 143100.0,
+      "fuel_flow_takeoff_kg_s": 1.062,
+      "reference_tsfc_kg_per_N_s": 7.421383647798742e-06
+    },
+    {
+      "icao_uid": "18PW125",
+      "name": "PW1133GA-JM",
+      "manufacturer": "Pratt & Whitney",
+      "engine_type": "TF",
+      "bypass_ratio": 11.58,
+      "overall_pressure_ratio": 38.07,
+      "rated_thrust_N": 147280.0,
+      "fuel_flow_takeoff_kg_s": 1.023,
+      "reference_tsfc_kg_per_N_s": 6.945953286257468e-06
+    }
+  ]
+}
