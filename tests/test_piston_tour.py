@@ -17,6 +17,9 @@ _PISTON = _ROOT / "app" / "static" / "piston"
 _HTML = (_PISTON / "index.html").read_text(encoding="utf-8")
 _TOUR = (_PISTON / "piston-tour.js").read_text(encoding="utf-8")
 _CONSOLE = (_PISTON / "piston.js").read_text(encoding="utf-8")
+# Both tours share a lineage, so a positioning fix belongs in both.
+_PL_TOUR = (_ROOT / "app" / "static" / "tour.js").read_text(encoding="utf-8")
+_BOTH_TOURS = {"piston-tour.js": _TOUR, "tour.js": _PL_TOUR}
 
 
 # --------------------------------------------------------------------------- #
@@ -62,6 +65,44 @@ def test_the_tour_replays_and_remembers() -> None:
 def test_the_tour_wears_pistonlab_orange_not_propulsionlab_blue() -> None:
     assert "#e8923e" in _TOUR
     assert "#7ba7eb" not in _TOUR
+
+
+# --------------------------------------------------------------------------- #
+# ring placement — the reader must be able to SEE what is being pointed at
+# --------------------------------------------------------------------------- #
+def test_both_tours_reserve_room_for_the_header_and_their_own_card() -> None:
+    # Centring in the raw viewport put the lower part of a tall card under the
+    # tooltip, so the tour appeared to point at something off screen.
+    for name, src in _BOTH_TOURS.items():
+        assert "function safeBand(" in src, f"{name} does not measure a usable band"
+        assert "mission-bar" in src, f"{name} ignores the sticky header"
+        assert "els.tip" in src, f"{name} ignores its own card"
+
+
+def test_both_tours_scroll_by_delta_and_remeasure() -> None:
+    # `rect.top + scrollY` is not a stable document coordinate for a sticky
+    # element, so a single absolute destination sends the target off screen.
+    for name, src in _BOTH_TOURS.items():
+        assert "function bringIntoView(" in src, f"{name} still computes one destination"
+        assert "window.scrollY + delta" in src, f"{name} does not correct by delta"
+        assert "for (let pass = 0" in src, f"{name} does not re-measure"
+
+
+def test_both_tours_release_only_over_tall_sticky_ancestors() -> None:
+    # The controls column is sticky and taller than the viewport, which traps
+    # its lower cards. The mission bar is sticky *so that* it stays visible —
+    # releasing that one scrolls the target away instead.
+    for name, src in _BOTH_TOURS.items():
+        assert "function unstick(" in src, f"{name} cannot escape a sticky column"
+        assert "height > window.innerHeight" in src, f"{name} releases short sticky elements too"
+        assert "function restick(" in src, f"{name} never restores the page"
+
+
+def test_both_tours_hand_the_page_back_unchanged() -> None:
+    # A tour that leaves inline styles behind has edited the site.
+    for name, src in _BOTH_TOURS.items():
+        end = src.split("function end(")[1].split("function ")[0]
+        assert "restick()" in end, f"{name} leaves sticky ancestors released on exit"
 
 
 # --------------------------------------------------------------------------- #

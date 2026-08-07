@@ -123,12 +123,71 @@
     return { backdrop, hi, tip };
   }
 
-  // Scroll the window, not an inner container, so nothing swallows the scroll.
-  function centreInView(el) {
-    const r = el.getBoundingClientRect();
-    const absTop = r.top + window.scrollY;
-    const top = absTop - window.innerHeight / 2 + r.height / 2;
-    window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+  /* The viewport is not all usable: the mission bar is sticky at the top and
+   * the tour's own card is pinned to the bottom. Centring in the full viewport
+   * therefore pushes the lower part of a tall card (the diagrams card is over
+   * 500px) underneath the tooltip, which reads as the tour pointing at
+   * something you cannot see. Measure the band that is actually visible. */
+  function safeBand() {
+    const bar = document.querySelector(".mission-bar");
+    const barH = bar ? bar.getBoundingClientRect().height : 0;
+    const tipH = els && els.tip ? els.tip.getBoundingClientRect().height : 150;
+    return { top: barH + 14, bottom: window.innerHeight - (tipH + 44) };
+  }
+
+  /* Scroll the window (never an inner container, which would swallow it) until
+   * the target sits inside the band.
+   *
+   * This corrects by *delta* and re-measures each pass instead of computing one
+   * absolute destination, because `rect.top + scrollY` is not a stable document
+   * coordinate for a `position: sticky` element — and the whole controls column
+   * is sticky above 981px. Computing once sent the geometry card hundreds of
+   * pixels off screen. Re-measuring converges for normal elements and simply
+   * no-ops for stuck ones, which are already in view by definition. */
+  function bringIntoView(el) {
+    for (let pass = 0; pass < 4; pass++) {
+      const band = safeBand();
+      const bandH = Math.max(140, band.bottom - band.top);
+      const r = el.getBoundingClientRect();
+      const fits = r.height <= bandH;
+      // Already placed? Leave it. This is also what stops a sticky element
+      // being chased up the page forever, since it never moves relative to us.
+      const settled = fits
+        ? r.top >= band.top - 2 && r.bottom <= band.bottom + 2
+        : r.top >= band.top - 2 && r.top <= band.top + 60;
+      if (settled) return;
+      // Fits: centre in the band. Taller than the band: pin its top under the
+      // header so you see where it starts, rather than landing mid-card with
+      // both edges off screen.
+      const want = fits ? band.top + (bandH - r.height) / 2 : band.top;
+      const delta = r.top - want;
+      if (Math.abs(delta) < 2) return;
+      window.scrollTo({ top: Math.max(0, window.scrollY + delta), behavior: "auto" });
+    }
+  }
+
+  /* A `position: sticky` ancestor taller than the viewport is a trap: its lower
+   * children can never be scrolled into view, because the stuck column travels
+   * with the viewport. The controls column is exactly that above 981px, which
+   * is why the geometry and operating-point cards were being ringed off screen.
+   * Release any sticky ancestor for the life of the step, then restore it. */
+  let unstuck = [];
+  function unstick(el) {
+    restick();
+    for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+      // Only the *over-tall* ones are the trap. A short sticky element (the
+      // mission bar) is pinned precisely so it stays visible — releasing that
+      // just lets it scroll away, taking the target with it.
+      if (getComputedStyle(n).position === "sticky" &&
+          n.getBoundingClientRect().height > window.innerHeight) {
+        unstuck.push([n, n.style.position]);
+        n.style.position = "static";
+      }
+    }
+  }
+  function restick() {
+    unstuck.forEach(([n, prev]) => { n.style.position = prev; });
+    unstuck = [];
   }
 
   function ring(target) {
@@ -150,14 +209,23 @@
     const target = step.center ? null : document.querySelector(step.sel);
     const r0 = target && target.getBoundingClientRect();
     if (!target || !r0 || (r0.width === 0 && r0.height === 0)) {
+      restick();
       hi.classList.remove("show");
       backdrop.classList.remove("clear");
       return;
     }
-    centreInView(target);
+    unstick(target);
+    bringIntoView(target);
     ring(target);
     backdrop.classList.add("clear");   // the ring's box-shadow does the dimming
     hi.classList.add("show");
+    // Cards are still sizing while the first solve lands and the canvases lay
+    // out, so a ring measured this instant can be stale by a frame. Re-measure
+    // once the browser has settled, guarding against a late timer firing after
+    // the reader has already moved on to another step.
+    const atStep = i;
+    requestAnimationFrame(() => { if (active && i === atStep) ring(target); });
+    setTimeout(() => { if (active && i === atStep) ring(target); }, 280);
   }
 
   function go(n) {
@@ -203,6 +271,7 @@
   function end() {
     if (!active) return;
     active = false;
+    restick();
     removeEventListener("resize", reposition);
     removeEventListener("scroll", reposition, true);
     document.removeEventListener("keydown", onKey, true);

@@ -100,12 +100,66 @@
     return { backdrop, hi, tip };
   }
 
-  // Scroll the *window* (not an inner container) so the target sits centred.
-  function centreInView(el) {
-    const r = el.getBoundingClientRect();
-    const absTop = r.top + window.scrollY;
-    const top = absTop - window.innerHeight / 2 + r.height / 2;
-    window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+  /* The viewport is not all usable: the mission bar is sticky at the top and
+   * this tour's own card is pinned to the bottom. Centring in the full viewport
+   * pushes the lower part of a tall target underneath the tooltip, which reads
+   * as the tour pointing at something you cannot see. */
+  function safeBand() {
+    const bar = document.querySelector(".mission-bar");
+    const barH = bar ? bar.getBoundingClientRect().height : 0;
+    const tipH = els && els.tip ? els.tip.getBoundingClientRect().height : 150;
+    return { top: barH + 14, bottom: window.innerHeight - (tipH + 44) };
+  }
+
+  /* Scroll the *window* (never an inner container) until the target sits in the
+   * band. Corrects by delta and re-measures each pass rather than computing one
+   * absolute destination, because `rect.top + scrollY` is not a stable document
+   * coordinate for a `position: sticky` element. Re-measuring converges for
+   * normal elements and no-ops for stuck ones, which are already in view. */
+  function bringIntoView(el) {
+    for (let pass = 0; pass < 4; pass++) {
+      const band = safeBand();
+      const bandH = Math.max(140, band.bottom - band.top);
+      const r = el.getBoundingClientRect();
+      const fits = r.height <= bandH;
+      const settled = fits
+        ? r.top >= band.top - 2 && r.bottom <= band.bottom + 2
+        : r.top >= band.top - 2 && r.top <= band.top + 60;
+      if (settled) return;
+      const want = fits ? band.top + (bandH - r.height) / 2 : band.top;
+      const delta = r.top - want;
+      if (Math.abs(delta) < 2) return;
+      window.scrollTo({ top: Math.max(0, window.scrollY + delta), behavior: "auto" });
+    }
+  }
+
+  /* A `position: sticky` ancestor taller than the viewport is a trap: its lower
+   * children can never be scrolled into view, because the stuck column travels
+   * with the viewport. Release any sticky ancestor for the life of the step,
+   * then restore it. */
+  let unstuck = [];
+  function unstick(el) {
+    restick();
+    for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+      // Only the *over-tall* ones are the trap. A short sticky element (the
+      // mission bar) is pinned precisely so it stays visible — releasing that
+      // just lets it scroll away, taking the target with it.
+      if (getComputedStyle(n).position === "sticky" &&
+          n.getBoundingClientRect().height > window.innerHeight) {
+        unstuck.push([n, n.style.position]);
+        n.style.position = "static";
+      }
+    }
+  }
+  function restick() {
+    unstuck.forEach(([n, prev]) => { n.style.position = prev; });
+    unstuck = [];
+  }
+
+  function ring(target) {
+    const r = target.getBoundingClientRect(), pad = 6;
+    els.hi.style.top = `${r.top - pad}px`; els.hi.style.left = `${r.left - pad}px`;
+    els.hi.style.width = `${r.width + pad * 2}px`; els.hi.style.height = `${r.height + pad * 2}px`;
   }
 
   function place(step) {
@@ -121,16 +175,22 @@
     const r0 = target && target.getBoundingClientRect();
     // No target, or a hidden/zero-size one, show a centred card, never a corner ring.
     if (!target || !r0 || (r0.width === 0 && r0.height === 0)) {
+      restick();
       hi.classList.remove("show");
       backdrop.classList.remove("clear");
       return;
     }
-    centreInView(target);
-    const r = target.getBoundingClientRect(), pad = 6;
-    hi.style.top = `${r.top - pad}px`; hi.style.left = `${r.left - pad}px`;
-    hi.style.width = `${r.width + pad * 2}px`; hi.style.height = `${r.height + pad * 2}px`;
+    unstick(target);
+    bringIntoView(target);
+    ring(target);
     backdrop.classList.add("clear");                 // ring's box-shadow handles dimming
     hi.classList.add("show");
+    // Tabs and charts can still be laying out, so a ring measured this instant
+    // can be a frame stale. Re-measure once settled, guarding against a late
+    // timer firing after the reader has moved on.
+    const atStep = i;
+    requestAnimationFrame(() => { if (active && i === atStep) ring(target); });
+    setTimeout(() => { if (active && i === atStep) ring(target); }, 280);
   }
 
   function go(n) {
@@ -145,10 +205,7 @@
     const step = STEPS[i];
     if (step.center) return;
     const target = document.querySelector(step.sel);
-    if (!target) return;
-    const r = target.getBoundingClientRect(), pad = 6;
-    els.hi.style.top = `${r.top - pad}px`; els.hi.style.left = `${r.left - pad}px`;
-    els.hi.style.width = `${r.width + pad * 2}px`; els.hi.style.height = `${r.height + pad * 2}px`;
+    if (target) ring(target);
   }
 
   function start() {
@@ -175,6 +232,7 @@
   function end() {
     if (!active) return;
     active = false;
+    restick();
     removeEventListener("resize", reposition);
     removeEventListener("scroll", reposition, true);
     document.removeEventListener("keydown", onKey, true);
