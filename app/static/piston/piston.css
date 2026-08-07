@@ -848,6 +848,8 @@ button:disabled { opacity: 0.42; cursor: not-allowed; }
 
 /* small segmented chart switches (Loops ⟷ Crank angle) */
 .chart-tabs, .dyno-controls { display: flex; gap: 8px; align-items: center; }
+.numerics-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 14px 0 4px; }
+.numerics-actions .hint { flex: 1; min-width: 140px; }
 .chart-tab {
   padding: 5px 11px;
   min-height: 0;

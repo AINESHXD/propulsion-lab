@@ -12,6 +12,9 @@ surface stays isolated until launch.
 
 from __future__ import annotations
 
+import math
+import time
+from dataclasses import replace
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -173,6 +176,25 @@ class PistonSimulateInput(BaseModel):
     variable_specific_heats: bool = True
     two_zone_combustion: bool = True
 
+    # Numerical control
+    #
+    # The crank-angle step is the resolution of the integration itself, not a
+    # physical property of the engine. It was previously fixed at 0.5 deg and
+    # unreachable from the API, which meant a caller had no way to check whether
+    # an answer was converged or an artefact of the step. Exposing it makes that
+    # checkable — see /simulate/piston/convergence.
+    d_theta_deg: float = Field(
+        0.5,
+        gt=0.0,
+        le=5.0,
+        description=(
+            "Crank-angle step for the integration, in degrees. Smaller is more "
+            "accurate and slower; 0.5 deg is converged for most cases. This is a "
+            "numerical setting, not a physical one — changing it should barely "
+            "move the answer, and if it does the answer was not converged."
+        ),
+    )
+
     # Output control
     include_trace: bool = True
 
@@ -197,10 +219,11 @@ class PistonSimulateInput(BaseModel):
         )
 
     def to_cycle_inputs(self) -> PistonCycleInputs:
-        """Build the engine-core inputs (integration window left at defaults)."""
+        """Build the engine-core inputs, including the integration step."""
 
         bore_m, stroke_m = self.resolved_bore_stroke_m()
         return PistonCycleInputs(
+            d_theta_deg=self.d_theta_deg,
             bore_m=bore_m,
             stroke_m=stroke_m,
             compression_ratio=self.compression_ratio,
@@ -461,11 +484,176 @@ class PistonSweepOutput(BaseModel):
     summary: PistonSweepSummary
 
 
+# --------------------------------------------------------------------------- #
+# numerical convergence
+# --------------------------------------------------------------------------- #
+class ConvergenceStepOutput(BaseModel):
+    """One rung of the refinement ladder."""
+
+    d_theta_deg: float = Field(..., description="Crank-angle step used for this run.")
+    steps_per_cycle: int = Field(..., description="Integration steps in one full cycle.")
+    brake_power_W: float
+    imep_Pa: float
+    peak_pressure_Pa: float
+    thermal_efficiency: float
+    solve_ms: float = Field(..., description="Wall-clock time for this run.")
+    power_change_percent: float | None = Field(
+        None,
+        description=(
+            "Change in brake power against the previous, coarser step. This is "
+            "the number that matters: once it stops moving, refining further "
+            "buys nothing."
+        ),
+    )
+
+
+class ConvergenceReportOutput(BaseModel):
+    """Whether the answer is a property of the engine or of the step size."""
+
+    steps: list[ConvergenceStepOutput]
+    converged: bool = Field(
+        ...,
+        description=(
+            "True when halving the step moves brake power by less than the "
+            "tolerance, i.e. the answer is set by the physics rather than by "
+            "the discretisation."
+        ),
+    )
+    tolerance_percent: float
+    recommended_d_theta_deg: float = Field(
+        ...,
+        description="Coarsest step that still meets the tolerance — the cheapest converged answer.",
+    )
+    finest_vs_default_percent: float = Field(
+        ...,
+        description=(
+            "How far the default 0.5 deg step sits from the finest step tried. "
+            "This is the honest size of the discretisation error you accept by "
+            "using the default."
+        ),
+    )
+    observed_order: float | None = Field(
+        None,
+        description=(
+            "Observed order of convergence, from how fast the change shrinks as "
+            "the step halves. A first-order march should give about 1.0. If it "
+            "comes out far below that, the integration is not behaving as its "
+            "scheme says it should — which is worth knowing."
+        ),
+    )
+    verdict: str
+
+
 def run_piston_simulation(payload: PistonSimulateInput) -> PistonSimulateOutput:
     """Run one point, translating solver ValueErrors to the caller."""
 
     result = simulate_piston_cycle(payload.to_cycle_inputs())
     return PistonSimulateOutput.from_result(result, include_trace=payload.include_trace)
+
+
+# Refinement ladder, coarse to fine. Each rung halves the step, so the change
+# between rungs is directly the discretisation error being removed.
+CONVERGENCE_LADDER: tuple[float, ...] = (4.0, 2.0, 1.0, 0.5, 0.25, 0.125)
+CONVERGENCE_TOLERANCE_PERCENT = 0.1
+DEFAULT_D_THETA_DEG = 0.5
+
+
+def run_piston_convergence(
+    payload: PistonSimulateInput,
+    tolerance_percent: float = CONVERGENCE_TOLERANCE_PERCENT,
+) -> ConvergenceReportOutput:
+    """Re-solve one engine down a refinement ladder and report grid independence.
+
+    A number a solver prints is only meaningful if it is a property of the
+    engine rather than of the step size used to integrate it. This runs the same
+    engine at successively halved crank-angle steps and shows how much the
+    answer actually moves, so the caller can see the discretisation error rather
+    than take it on trust.
+    """
+
+    steps: list[ConvergenceStepOutput] = []
+    previous_power: float | None = None
+    for d_theta in CONVERGENCE_LADDER:
+        started = time.perf_counter()
+        result = simulate_piston_cycle(
+            replace(payload.to_cycle_inputs(), d_theta_deg=d_theta)
+        )
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+
+        power = float(result.brake_power_W)
+        change = (
+            None
+            if previous_power is None or previous_power == 0.0
+            else 100.0 * (power - previous_power) / abs(previous_power)
+        )
+        steps.append(
+            ConvergenceStepOutput(
+                d_theta_deg=d_theta,
+                steps_per_cycle=int(round(360.0 * payload.strokes_per_cycle / 2.0 / d_theta)),
+                brake_power_W=power,
+                imep_Pa=float(result.imep_Pa),
+                peak_pressure_Pa=float(result.peak_pressure_Pa),
+                thermal_efficiency=float(result.thermal_efficiency),
+                solve_ms=elapsed_ms,
+                power_change_percent=change,
+            )
+        )
+        previous_power = power
+
+    # Converged when the finest refinement stopped changing the answer.
+    finest_change = steps[-1].power_change_percent
+    converged = finest_change is not None and abs(finest_change) < tolerance_percent
+
+    # Cheapest step whose *next* refinement changed nothing material.
+    recommended = steps[-1].d_theta_deg
+    for index in range(1, len(steps)):
+        change = steps[index].power_change_percent
+        if change is not None and abs(change) < tolerance_percent:
+            recommended = steps[index - 1].d_theta_deg
+            break
+
+    default_power = next(
+        (s.brake_power_W for s in steps if s.d_theta_deg == DEFAULT_D_THETA_DEG),
+        steps[-1].brake_power_W,
+    )
+    finest_power = steps[-1].brake_power_W
+    finest_vs_default = (
+        0.0 if finest_power == 0.0 else 100.0 * (default_power - finest_power) / abs(finest_power)
+    )
+
+    # Observed order: halving the step should shrink the change by 2**p. Read it
+    # off the finest pair available, where the asymptotic behaviour is cleanest.
+    observed_order: float | None = None
+    changes = [abs(s.power_change_percent) for s in steps if s.power_change_percent]
+    if len(changes) >= 2 and changes[-1] > 0.0:
+        ratio = changes[-2] / changes[-1]
+        if ratio > 0.0:
+            observed_order = math.log2(ratio)
+
+    if not converged:
+        verdict = (
+            f"Not converged: halving the step from {steps[-2].d_theta_deg}° to "
+            f"{steps[-1].d_theta_deg}° still moved brake power by "
+            f"{abs(finest_change or 0.0):.2f}%. Treat this operating point as "
+            f"step-dependent and refine further."
+        )
+    else:
+        verdict = (
+            f"Converged. The default {DEFAULT_D_THETA_DEG}° step sits "
+            f"{abs(finest_vs_default):.2f}% from the finest step tried, and "
+            f"{recommended}° already meets the {tolerance_percent}% tolerance — "
+            f"anything finer costs time and buys nothing."
+        )
+
+    return ConvergenceReportOutput(
+        steps=steps,
+        converged=converged,
+        tolerance_percent=tolerance_percent,
+        recommended_d_theta_deg=recommended,
+        finest_vs_default_percent=finest_vs_default,
+        observed_order=observed_order,
+        verdict=verdict,
+    )
 
 
 def run_piston_sweep(payload: PistonSweepInput) -> PistonSweepOutput:

@@ -45,6 +45,17 @@
                       border-bottom: 1px solid var(--line); }
       .v-assume b { font-family: var(--font-mono); font-weight: 500; font-feature-settings: "tnum"; }
       .v-loading { color: var(--text-3); font-size: 13px; padding: 20px 0; }
+
+      /* Two columns, and no 64ch cap: .section-sub's measure is right for a hero
+         paragraph and leaves half a full-width panel empty. */
+      .v-scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 18px 26px; }
+      .v-scope-col { border-left: 2px solid var(--line-strong); padding-left: 15px; }
+      .v-scope-col.ok { border-left-color: var(--ok); }
+      .v-scope-col.warn { border-left-color: var(--warn); }
+      .v-scope-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em;
+                   text-transform: uppercase; color: var(--text-3); display: block; margin-bottom: 8px; }
+      .v-scope-col p { margin: 0; max-width: none; color: var(--text-2); font-size: 13.5px; line-height: 1.6; }
+      .v-scope-col code { font-size: 12px; }
       @media (max-width: 640px) {
         .v-stat .v { font-size: 21px; }
         #vTable th, #vTable td { padding: 7px 8px; }
@@ -165,18 +176,38 @@
       <section class="section">
         <div class="panel">
           <div class="panel-heading"><h2>What is and is not validated</h2></div>
-          <p class="section-sub" style="font-size:13.5px" id="vScope"></p>
-          <p class="section-sub" style="font-size:13px;margin-top:14px" id="vSource"></p>
-          <p class="section-sub" style="font-size:13px;margin-top:14px">
-            Reference data:
-            <a id="vPrimary" href="https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank"
-               target="_blank" rel="noopener">ICAO Aircraft Engine Emissions Databank</a>,
-            read in machine-readable form via the
-            <a href="https://github.com/TUDelft-CNS-ATM/openap" target="_blank" rel="noopener">OpenAP</a>
-            engine table (TU Delft). Every case keeps its ICAO engine UID so any figure
-            here can be checked against the primary source directly. The report is served
-            live at <a href="/validation/report" target="_blank" rel="noopener"><code>/validation/report</code></a>.
-          </p>
+          <div class="v-scope">
+            <div class="v-scope-col ok">
+              <span class="v-scope-k">Validated</span>
+              <p id="vValidated"></p>
+            </div>
+            <div class="v-scope-col warn">
+              <span class="v-scope-k">Not validated</span>
+              <p id="vNotValidated"></p>
+            </div>
+          </div>
+          <div class="v-scope" style="margin-top:20px">
+            <div class="v-scope-col">
+              <span class="v-scope-k">Where the numbers come from</span>
+              <p id="vSource"></p>
+            </div>
+            <div class="v-scope-col">
+              <span class="v-scope-k">Check it yourself</span>
+              <p>
+                Reference data:
+                <a href="https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank"
+                   target="_blank" rel="noopener">ICAO Aircraft Engine Emissions Databank</a>,
+                read in machine-readable form via the
+                <a href="https://github.com/TUDelft-CNS-ATM/openap" target="_blank" rel="noopener">OpenAP</a>
+                engine table (TU&nbsp;Delft). Every row above keeps its ICAO engine UID, so
+                any figure can be looked up against the primary source without going
+                through this site at all. The report itself is served live at
+                <a href="/validation/report" target="_blank" rel="noopener"><code>/validation/report</code></a>,
+                and <code>scripts/build_validation_set.py</code> in the repository
+                regenerates the case file from scratch.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -200,7 +231,8 @@
         renderStats(r.summary);
         renderTable(r.cases);
         renderAssumptions(r);
-        $("#vScope").textContent = `Validated: ${r.validated_quantity} Not validated: ${r.not_validated}`;
+        $("#vValidated").textContent = r.validated_quantity;
+        $("#vNotValidated").textContent = r.not_validated;
         $("#vSource").textContent = r.source_note;
         drawPlot(r.cases);
         addEventListener("resize", () => drawPlot(r.cases));

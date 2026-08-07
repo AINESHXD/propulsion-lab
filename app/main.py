@@ -110,10 +110,12 @@ from app.schemas_validation import (
     ValidationSummaryOutput,
 )
 from app.schemas_piston import (
+    ConvergenceReportOutput,
     PistonSimulateInput,
     PistonSimulateOutput,
     PistonSweepInput,
     PistonSweepOutput,
+    run_piston_convergence,
     run_piston_simulation,
     run_piston_sweep,
 )
@@ -369,6 +371,24 @@ def piston_sweep(payload: PistonSweepInput) -> PistonSweepOutput:
 
     try:
         return run_piston_sweep(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/piston/convergence", response_model=ConvergenceReportOutput, tags=["piston"])
+def piston_convergence(payload: PistonSimulateInput) -> ConvergenceReportOutput:
+    """Re-solve this engine down a refinement ladder and report grid independence.
+
+    A printed number is only meaningful if it belongs to the engine rather than
+    to the step size used to integrate it. This runs the same operating point at
+    successively halved crank-angle steps and reports how far the answer
+    actually moves, the observed order of convergence, and the coarsest step
+    that still meets tolerance — so the discretisation error is visible instead
+    of taken on trust.
+    """
+
+    try:
+        return run_piston_convergence(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Two-zone Wiebe combustion with temperature-dependent specific heats, Woschni wall heat, friction, pumping, valve-limited breathing, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260726-pl24" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20260808-pl29" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -338,6 +338,34 @@
               </div>
             </section>
 
+            <!-- numerics: the step size, and proof it does not change the answer -->
+            <section class="card engineer-only" id="numericsCard">
+              <div class="card-head">
+                <h2>Numerics</h2><span class="hint">Integration, not physics</span>
+              </div>
+              <div class="field">
+                <label>Crank-angle step <small>°CA</small> <b data-readout="d_theta_deg"></b></label>
+                <input type="range" data-key="d_theta_deg" min="0.125" max="4" step="0.125" value="0.5" />
+                <span class="field-foot">
+                  Resolution of the march itself. A smaller step is slower and should
+                  barely move the answer — if it moves it a lot, the answer was not converged.
+                </span>
+              </div>
+              <div class="numerics-actions">
+                <button class="ghost-btn" id="runConvergence" type="button">Check convergence</button>
+                <span class="hint" id="convergenceHint">Re-solves this engine at six step sizes.</span>
+              </div>
+              <div class="state-wrap" id="convergenceWrap" hidden>
+                <table class="state-table" id="convergenceTable">
+                  <thead>
+                    <tr><th class="s-name">Step °CA</th><th>Steps</th><th>Power</th><th>Change</th><th>Time</th></tr>
+                  </thead>
+                  <tbody id="convergenceBody"></tbody>
+                </table>
+              </div>
+              <p class="note" id="convergenceVerdict" hidden></p>
+            </section>
+
             <!-- dyno -->
             <section class="card">
               <div class="card-head">
@@ -425,9 +453,9 @@
     </div>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20260805-pl25";
+      import { startPiston } from "/lab/piston/piston.js?v=20260808-pl29";
       startPiston();
     </script>
-    <script src="/lab/piston/piston-tour.js?v=20260805-pl28" defer></script>
+    <script src="/lab/piston/piston-tour.js?v=20260808-pl29" defer></script>
   </body>
 </html>

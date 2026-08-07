@@ -9,6 +9,7 @@ import { initBuilder, openBuilder } from "/lab/piston/builder.js?v=20260726-pl24
 
 const API_SIM = "/piston/simulate";
 const API_SWEEP = "/piston/sweep";
+const API_CONVERGENCE = "/piston/convergence";
 
 /* Structured builder data — layout, cam and head have no form controls, so they
    live here and ride along with every solve until a different engine is built.
@@ -1113,6 +1114,50 @@ const SWEEP_LABEL = {
 let lastSweep = null;
 let ghostSweep = null;   // the sweep before this one, drawn faintly for comparison
 
+/* Convergence study: re-solve this engine down a refinement ladder so the reader
+ * can see whether the printed number belongs to the engine or to the step size.
+ * The whole point is that the change column should collapse toward zero — a
+ * control that changes nothing is exactly the result you want here. */
+async function runConvergence() {
+  const btn = document.getElementById("runConvergence");
+  const hint = document.getElementById("convergenceHint");
+  btn.disabled = true; btn.textContent = "Solving…";
+  hint.textContent = "Six runs, finest last.";
+  setStatus("Refining", "busy");
+  try {
+    const base = readInputs(); base.include_trace = false;
+    const r = await postJson(API_CONVERGENCE, base);
+
+    document.getElementById("convergenceBody").innerHTML = r.steps.map((s) => {
+      const change = s.power_change_percent == null
+        ? "<span style='color:var(--text-3)'>—</span>"
+        : `${s.power_change_percent > 0 ? "+" : ""}${s.power_change_percent.toFixed(3)}%`;
+      const isDefault = Math.abs(s.d_theta_deg - 0.5) < 1e-9;
+      return `<tr${isDefault ? " style='color:var(--accent)'" : ""}>
+        <td class="s-name">${s.d_theta_deg}${isDefault ? " (default)" : ""}</td>
+        <td>${s.steps_per_cycle}</td>
+        <td>${uval("power", s.brake_power_W, 2)}</td>
+        <td>${change}</td>
+        <td>${s.solve_ms.toFixed(0)} ms</td></tr>`;
+    }).join("");
+    document.getElementById("convergenceWrap").hidden = false;
+
+    const verdict = document.getElementById("convergenceVerdict");
+    verdict.hidden = false;
+    verdict.textContent = r.verdict +
+      (r.observed_order != null
+        ? ` Observed order of convergence ${r.observed_order.toFixed(2)}, against 1.0 for the first-order march this uses.`
+        : "");
+    hint.textContent = r.converged ? "Grid independent." : "Not converged — refine further.";
+    setStatus("Solved", "ok");
+  } catch (err) {
+    hint.textContent = err.message.slice(0, 60);
+    setStatus("Error", "err");
+  } finally {
+    btn.disabled = false; btn.textContent = "Check convergence";
+  }
+}
+
 async function runSweep() {
   const btn = document.getElementById("runSweep");
   const param = document.getElementById("sweepParameter").value;
@@ -1236,6 +1281,8 @@ export function startPiston() {
 
   // sweep
   document.getElementById("runSweep").addEventListener("click", runSweep);
+  const convBtn = document.getElementById("runConvergence");
+  if (convBtn) convBtn.addEventListener("click", runConvergence);
 
   // units
   const unitBtn = document.getElementById("unitToggle");

@@ -63,7 +63,10 @@ def test_the_page_says_what_it_does_not_validate() -> None:
     report = validation_report()
     assert "mass flow" in report.not_validated
     assert "circular" in report.not_validated
-    assert "vScope" in _PAGE, "the page must render the scope statement"
+    # Rendered as its own labelled block, not buried in a run-on paragraph.
+    assert 'id="vNotValidated"' in _PAGE, "the page must render what it cannot validate"
+    assert 'id="vValidated"' in _PAGE
+    assert "Not validated" in _PAGE
 
 
 def test_the_page_states_the_no_tuning_rule() -> None:
