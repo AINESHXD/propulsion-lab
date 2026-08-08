@@ -36,9 +36,9 @@
         padding:calc(env(safe-area-inset-top) + 26px) 22px calc(env(safe-area-inset-bottom) + 26px)}
       a{color:var(--accent);text-decoration:none}
 
-      .brand{display:flex;align-items:center;gap:11px;margin-bottom:auto}
-      .brand svg{width:42px;height:21px;color:var(--text)}
-      .brand span{font-weight:700;letter-spacing:.16em;font-size:12.5px}
+      .brand{display:flex;align-items:center;margin-bottom:auto}
+      .brand img{height:20px;width:auto;display:block}
+      .brand-fallback{font-weight:700;letter-spacing:.16em;font-size:12.5px}
 
       main{padding:34px 0}
       .pill{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);
@@ -65,12 +65,9 @@
   </head>
   <body>
     <div class="brand">
-      <svg viewBox="0 0 96 48" fill="none" aria-hidden="true">
-        <line x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M30 29 L86 8 L52 29 Z" fill="currentColor"/>
-        <path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity=".6"/>
-      </svg>
-      <span>DAS&nbsp;LABS</span>
+      <img src="/lab/assets/das_labs_logo_dark.png?v=20260529-2" alt="DAS LABS"
+           width="822" height="116"
+           onerror="this.outerHTML='&lt;span class=&quot;brand-fallback&quot;&gt;DAS&amp;nbsp;LABS&lt;/span&gt;'" />
     </div>
 
     <main>
