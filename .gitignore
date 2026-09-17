@@ -38,3 +38,9 @@ PLAN_AND_CV.md
 # Local-only project config & notes (kept off the repo).
 CLAUDE.md
 .claude/
+
+# Working notes kept off a public repo. The review pack is an internal
+# reading of this codebase; the briefing pack discusses a third party's
+# unpublished plans. Neither belongs on github.com.
+docs/review/
+docs/briefing/
