@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <meta name="description" content="PropulsionLab methodology and limitations — the reduced-order models behind the cycle analysis, the assumptions they make, and what the results do and do not claim." />
-    <title>PropulsionLab — methodology &amp; limitations</title>
+    <meta name="description" content="PropulsionLab methodology and limitations: the reduced-order models behind the cycle analysis, the assumptions they make, and what the results do and do not claim." />
+    <title>PropulsionLab methodology &amp; limitations</title>
     <link rel="stylesheet" href="/lab/styles.css?v=20260609-cachefix" />
     <link rel="stylesheet" href="/lab/case-study.css?v=20260608-phone2" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
@@ -40,8 +40,8 @@
         pressure. There is no spatial flow field, no blade-row geometry, no swirl.</p>
       <p><strong>Perfect gas with constant specific heats by region.</strong> The working fluid is air,
         then combustion products, each with a fixed cp and gamma (a cold-side and a hot-side value). An
-        optional Cantera-backed real-gas correction recomputes the whole cycle — compressor, turbine and
-        nozzle — with temperature-dependent (variable-cp) properties and reports it side by side with the
+        optional Cantera-backed real-gas correction recomputes the whole cycle (compressor, turbine and
+        nozzle) with temperature-dependent (variable-cp) properties and reports it side by side with the
         constant-cp deck; the default, and the core station table, stay constant-cp.</p>
       <p><strong>Isentropic processes with component efficiencies.</strong> Compression and expansion are
         reversible-adiabatic, scaled by an isentropic efficiency you set; the combustor adds heat with an
@@ -77,7 +77,7 @@
       <p><strong>Off-design matching</strong> reports its iteration count and a work-balance residual on
         every solve, so the convergence quality is visible rather than hidden.</p>
       <p><strong>Bleed and HPT cooling</strong> are modelled as bulk mass-flow fractions taken at the
-        HPC exit and re-introduced at the turbine inlet — not as channel-resolved cooling-network
+        HPC exit and re-introduced at the turbine inlet, not as channel-resolved cooling-network
         geometry. The fractions reduce effective Tt4 by mixing; they do not resolve film cooling.</p>
       <p><strong>Combustion</strong> is by default a constant-pressure energy balance. Two opt-in
         higher-fidelity paths are available: an equilibrium combustor (Cantera, all major species),

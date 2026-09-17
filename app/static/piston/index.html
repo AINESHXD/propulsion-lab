@@ -20,7 +20,7 @@
         } catch (e) {}
       })();
     </script>
-    <meta name="description" content="PistonLab — a crank-angle-resolved reciprocating-engine cycle simulator. Two-zone Wiebe combustion with temperature-dependent specific heats, Woschni wall heat, friction, pumping, valve-limited breathing, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
+    <meta name="description" content="PistonLab: a crank-angle-resolved reciprocating-engine cycle simulator. Two-zone Wiebe combustion with temperature-dependent specific heats, Woschni wall heat, friction, pumping, valve-limited breathing, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
     <link rel="stylesheet" href="/lab/piston/piston.css?v=20260808-pl29" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
@@ -100,7 +100,7 @@
             Wiebe combustion resolved into burned and unburned zones, specific
             heats that follow temperature and composition, Woschni wall heat,
             friction, pumping, valve-limited breathing and real fuel
-            thermochemistry — every loss is modelled and shown.
+            thermochemistry. Every loss is modelled and shown.
           </p>
 
           <div class="hero-stats" aria-label="Capability summary">
@@ -145,9 +145,9 @@
             <div class="concept-body">
               Both squeeze air and burn fuel in it; they differ in what starts the
               fire. A <b>petrol</b> engine premixes fuel and air, compresses
-              modestly, and a <b>spark</b> lights it — so compression is capped by
+              modestly, and a <b>spark</b> lights it, so compression is capped by
               knock. A <b>diesel</b> compresses air alone, hard enough that
-              injected fuel <b>self-ignites</b> — so it runs lean, at high
+              injected fuel <b>self-ignites</b>, so it runs lean, at high
               compression, and trades peak revs for efficiency and torque.
             </div>
           </div>
@@ -158,7 +158,7 @@
           <aside class="controls">
             <button class="primary-button build-cta" type="button" id="openBuilder">
               Build a custom engine
-              <span>Layout, capacity, cam, head and boost — step by step</span>
+              <span>Layout, capacity, cam, head and boost, step by step</span>
             </button>
 
             <div class="engine-type" id="engineType" role="tablist" aria-label="Engine type">
@@ -364,7 +364,7 @@
                 <input type="range" data-key="d_theta_deg" min="0.125" max="4" step="0.125" value="0.5" />
                 <span class="field-foot">
                   Resolution of the march itself. A smaller step is slower and should
-                  barely move the answer — if it moves it a lot, the answer was not converged.
+                  barely move the answer. If it moves it a lot, the answer was not converged.
                 </span>
               </div>
               <div class="numerics-actions">
@@ -417,8 +417,8 @@
                 (fitted to <strong>Cantera</strong>), and combustion is resolved into
                 <strong>burned and unburned zones</strong>, so the end-gas temperature
                 that drives knock is computed rather than estimated. Composition is
-                frozen — dissociation is not modelled, so burned-zone temperatures
-                still read high — and brake numbers remain model estimates with stated
+                frozen, so dissociation is not modelled and burned-zone temperatures
+                still read high. Brake numbers remain model estimates with stated
                 assumptions, not measurements.
               </p>
             </section>
@@ -431,7 +431,7 @@
       <div class="mission-footer-grid">
         <div class="footer-block">
           <strong>DAS LABS</strong>
-          PistonLab — a crank-angle reciprocating-engine cycle simulator.
+          PistonLab, a crank-angle reciprocating-engine cycle simulator.
           Reduced-order, educational physics with every assumption stated.
         </div>
         <div class="footer-block">

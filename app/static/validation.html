@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <meta name="description" content="PropulsionLab checked against 26 certified engines from the ICAO Aircraft Engine Emissions Databank — bypass ratio 0.6 to 11.6, 1968 to 2016. Every error shown, including the ones that do not flatter the model. A DAS LABS project." />
+    <meta name="description" content="PropulsionLab checked against 26 certified engines from the ICAO Aircraft Engine Emissions Databank: bypass ratio 0.6 to 11.6, 1968 to 2016. Every error shown, including the ones that do not flatter the model. A DAS LABS project." />
     <title>Validation · PropulsionLab</title>
     <link rel="stylesheet" href="/lab/styles.css?v=20260609-cachefix" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
@@ -87,7 +87,7 @@
           <p class="section-sub">
             Every simulator should be able to answer that. This one is checked against
             26 real engines whose fuel consumption is a matter of public certification
-            record — from a 1968 Spey to a geared turbofan of 2016. The numbers below
+            record, from a 1968 Spey to a geared turbofan of 2016. The numbers below
             are computed live by the same solver the console runs, and every error is
             shown, including the ones that do not flatter the model.
           </p>
@@ -100,7 +100,7 @@
               The ICAO Aircraft Engine Emissions Databank publishes each engine's
               certified thrust and fuel flow. Their ratio is a fuel consumption figure
               <b>PropulsionLab had no hand in producing</b>. What the databank does not
-              publish — turbine temperature, component efficiencies — is supplied by
+              publish (turbine temperature, component efficiencies) is supplied by
               <b>one fixed assumption set applied identically to all 26 engines</b>.
               Nothing is fitted per engine. A model that agrees only after being tuned
               engine by engine has demonstrated nothing at all, so the disagreement
@@ -152,7 +152,7 @@
           <p class="section-sub" style="margin-top:14px;font-size:12.5px">
             TSFC in lb of fuel per lbf of thrust per hour. Error is signed: positive
             means PropulsionLab predicts <em>more</em> fuel burn than the engine was
-            certified at. Turbine temperature is assumed, not published — see below.
+            certified at. Turbine temperature is assumed, not published (see below).
           </p>
         </div>
       </section>
@@ -164,7 +164,7 @@
             Applied identically to every engine on this page. Turbine inlet temperature
             is the one exception to being a single constant: it is tied to each engine's
             <em>published</em> pressure ratio, because a single value across five decades
-            is knowingly unphysical — held at 1500&nbsp;K, three of the modern engines
+            is knowingly unphysical. Held at 1500&nbsp;K, three of the modern engines
             have no solution at all, since a bypass-11 fan cannot be driven by a turbine
             that cold. The relation is anchored to historical practice and was fixed
             before any error was computed.
@@ -247,7 +247,7 @@
             s: "Orders real engines essentially the way certification does" },
           { k: "Mean error", v: (s.mean_signed_error_percent > 0 ? "+" : "") +
               s.mean_signed_error_percent.toFixed(1) + "%", cls: "warn",
-            s: "Every engine over-predicted, none under — a one-sided bias" },
+            s: "Every engine over-predicted, none under, a one-sided bias" },
           { k: "Worst case", v: s.worst_absolute_error_percent.toFixed(1) + "%", cls: "warn",
             s: "The largest single disagreement in the set" },
         ];
@@ -322,7 +322,7 @@
           ctx.fillText(v.toFixed(2), X(v), padT + ph + 7);
         }
 
-        // 1:1 line — perfect agreement
+        // 1:1 line, perfect agreement
         ctx.save();
         ctx.strokeStyle = cssVar("--text-3") || "#8b9099";
         ctx.setLineDash([5, 5]); ctx.lineWidth = 1.4; ctx.globalAlpha = 0.85;
@@ -352,7 +352,7 @@
 
         $("#vPlotNote").textContent =
           "Each dot is one certified engine. The dashed line is perfect agreement. " +
-          "The points sit above it and run parallel to it — the solver reproduces how " +
+          "The points sit above it and run parallel to it. The solver reproduces how " +
           "these engines rank against each other, then adds a systematic offset on top. " +
           "A scattered cloud would mean the physics was wrong; a consistent offset points " +
           "instead at the component efficiencies the databank never published.";

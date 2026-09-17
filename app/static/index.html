@@ -152,7 +152,7 @@
       <h1>Open the mobile console</h1>
       <p class="mg-body">
         PropulsionLab has a phone-built console. Your browser has JavaScript
-        turned off, so the redirect did not run — tap below to open it.
+        turned off, so the redirect did not run, so tap below to open it.
       </p>
       <span class="mg-pill">Mobile console ready</span>
       <div class="mg-links">
@@ -539,14 +539,14 @@
                       <span>Set every component efficiency at once</span>
                       <select id="efficiencyPreset">
                         <option value="">Custom (leave as set)</option>
-                        <option value="legacy">Legacy — compressor 0.80, turbine 0.83, nozzle 0.94</option>
-                        <option value="mature">Mature — compressor 0.86, turbine 0.88, nozzle 0.95</option>
-                        <option value="modern">Modern — compressor 0.90, turbine 0.91, nozzle 0.97</option>
+                        <option value="legacy">Legacy: compressor 0.80, turbine 0.83, nozzle 0.94</option>
+                        <option value="mature">Mature: compressor 0.86, turbine 0.88, nozzle 0.95</option>
+                        <option value="modern">Modern: compressor 0.90, turbine 0.91, nozzle 0.97</option>
                       </select>
                       <span class="field-hint">
                         Three named points, each writing the values shown straight into the
                         fields below so you can see and override every one. These are
-                        <b>plausible bands, not a fitted historical curve</b> — no engine's
+                        <b>plausible bands, not a fitted historical curve</b>. No engine's
                         real efficiencies are being claimed.
                       </span>
                     </label>
@@ -772,7 +772,7 @@
             </div>
             <p class="report-copy">
               A sweep re-runs the cycle at the <em>same design point</em> but for a list of values
-              of <strong>one</strong> input — everything else stays fixed. That isolates the effect
+              of <strong>one</strong> input, with everything else held fixed. That isolates the effect
               of that single knob. Use it to answer questions like “does another two points of
               compressor PR still buy me thrust at this Tt₄?”, or “where does TSFC stop falling
               as I raise turbine inlet temperature?”. Sensitivity (in the Analyze tab) does this
@@ -941,36 +941,36 @@
                 physical reason: <strong>jet propulsion is most efficient when the engine takes
                 a large mass of air and accelerates it a little</strong>. The same impulse
                 produced by accelerating a small mass a lot wastes energy in the high-velocity
-                jet that the aircraft leaves behind it. This is why the engine family ladder —
-                turbojet&nbsp;→ low-bypass turbofan&nbsp;→ high-bypass turbofan&nbsp;→ turboprop —
+                jet that the aircraft leaves behind it. This is why the engine family ladder
+                (turbojet&nbsp;→ low-bypass turbofan&nbsp;→ high-bypass turbofan&nbsp;→ turboprop)
                 trades top speed for fuel burn, and why ramjets and scramjets sit off that
                 ladder entirely.
               </p>
 
               <details class="manual-block" open>
-                <summary>Turbojet — high thrust, high TSFC</summary>
+                <summary>Turbojet: high thrust, high TSFC</summary>
                 <p>
                   All of the air goes through the core and leaves as a fast, hot jet. Specific
                   thrust (N per kg/s of air) is very high, so the engine is compact and the
-                  thrust-to-weight ratio is excellent — exactly what you want at Mach 2. But the
+                  thrust-to-weight ratio is excellent, exactly what you want at Mach 2. But the
                   exhaust velocity is much higher than the flight velocity, so propulsive
                   efficiency η<sub>p</sub> = 2/(1 + V<sub>jet</sub>/V<sub>0</sub>) is poor, and
                   TSFC is the worst of the gas-turbine family.
                 </p>
                 <p>
                   <strong>Real example.</strong> The J58 on the SR-71 cruised at Mach 3 with
-                  TSFC near 1.9&nbsp;kg/kN·hr — perfectly acceptable because the airframe needed
+                  TSFC near 1.9&nbsp;kg/kN·hr, perfectly acceptable because the airframe needed
                   thrust at that speed at all, and modern fans cannot run there. A pure turbojet
                   earns its keep on military fighters, interceptors and supersonic transports.
                 </p>
               </details>
 
               <details class="manual-block">
-                <summary>Turbofan — the sweet spot for subsonic flight</summary>
+                <summary>Turbofan: the sweet spot for subsonic flight</summary>
                 <p>
                   A fan in front of the core accelerates a large bypass stream to a moderate
                   velocity. Total air mass flow goes up, average jet velocity comes down, and η<sub>p</sub>
-                  rises sharply — so TSFC drops, even though specific thrust (per kg/s of air)
+                  rises sharply, so TSFC drops, even though specific thrust (per kg/s of air)
                   is lower than a turbojet's. The bypass ratio (BPR) is the dial: higher BPR
                   trades specific thrust for lower TSFC.
                 </p>
@@ -979,56 +979,56 @@
                   TSFC ≈ 0.55&nbsp;kg/kN·hr. The Pratt &amp; Whitney GTF (BPR ≈ 12) and the
                   Trent XWB (BPR ≈ 9) push that down to ≈&nbsp;0.49. Every BPR step costs nacelle
                   drag and core size; the airframe sets the ceiling. <em>Try it in PropulsionLab:</em>
-                  open the turbofan tab and sweep bypass ratio 1 → 12 — watch thrust per kg/s of
+                  open the turbofan tab and sweep bypass ratio 1 → 12 and watch thrust per kg/s of
                   air fall and TSFC fall with it.
                 </p>
               </details>
 
               <details class="manual-block">
-                <summary>Turboprop — extreme bypass, extreme efficiency</summary>
+                <summary>Turboprop: extreme bypass, extreme efficiency</summary>
                 <p>
                   Take the bypass logic to its limit: drive a large-diameter propeller, which
                   moves an enormous mass of air at a modest velocity through the propeller disk.
                   TSFC (when expressed against equivalent shaft power) is the best of any
                   airbreathing engine, but the propeller's tip Mach number caps useful airspeed
-                  near M ≈ 0.6–0.7 — beyond that, shock losses on the blade tips erase the
+                  near M ≈ 0.6–0.7. Beyond that, shock losses on the blade tips erase the
                   efficiency gain.
                 </p>
                 <p>
                   <strong>Real examples.</strong> The PW127 on an ATR 72 or the AE2100 on a C-130
                   burn dramatically less fuel per nautical mile than a same-size jet at their
                   operating Mach. <em>Try it:</em> at the same altitude/airspeed, compare the
-                  turboprop and turbofan baselines — thrust will be comparable, but the
+                  turboprop and turbofan baselines. Thrust will be comparable, but the
                   turboprop's fuel flow is lower.
                 </p>
               </details>
 
               <details class="manual-block">
-                <summary>Ramjet — no compressor, no thrust until you are fast</summary>
+                <summary>Ramjet: no compressor, no thrust until you are fast</summary>
                 <p>
                   Above roughly Mach 2.5–3, the inlet's own ram compression is enough to support
                   combustion without a mechanical compressor. The engine is mechanically simple
                   and survives high stagnation temperatures, but it produces <em>no static
                   thrust</em>: at Mach 0 the inlet does no work, so net thrust is zero or
-                  negative. TSFC sits between turbojet and rocket — better than a rocket because
+                  negative. TSFC sits between turbojet and rocket, better than a rocket because
                   oxidiser is free, worse than a turbojet because the inlet pressure recovery
                   drops rapidly with Mach.
                 </p>
                 <p>
                   <strong>Real example.</strong> The D-21 drone and the SR-71's J58 in its
                   "ramjet mode" run on this cycle above Mach 3. <em>Try it:</em> in the ramjet
-                  tab, sweep Mach 1 → 4 — thrust starts negative and rises sharply, but TSFC is
+                  tab, sweep Mach 1 → 4. Thrust starts negative and rises sharply, but TSFC is
                   high until ram compression is meaningful.
                 </p>
               </details>
 
               <details class="manual-block">
-                <summary>Scramjet — supersonic combustion, hypersonic only</summary>
+                <summary>Scramjet: supersonic combustion, hypersonic only</summary>
                 <p>
                   Above ~Mach 5 the inlet cannot decelerate flow to subsonic without enormous
                   total-pressure loss, so combustion has to happen in a supersonic stream. The
                   flame-residence time is milliseconds, and dissociation chemistry above ~2500&nbsp;K
-                  steals a chunk of the released heat — both of which cap practical performance.
+                  steals a chunk of the released heat, both of which cap practical performance.
                   Thrust per unit air is low, TSFC is poor relative to a turbofan, but the engine
                   is the only airbreathing option at Mach 6+.
                 </p>

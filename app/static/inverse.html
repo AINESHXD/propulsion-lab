@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <meta name="description" content="Gas-path analysis in the browser. Enter observable turbojet telemetry — thrust, fuel flow, gas-path temperatures — and solve for the internal component efficiencies you cannot measure, with honest uncertainty and identifiability. A DAS LABS project." />
+    <meta name="description" content="Gas-path analysis in the browser. Enter observable turbojet telemetry (thrust, fuel flow, gas-path temperatures) and solve for the internal component efficiencies you cannot measure, with honest uncertainty and identifiability. A DAS LABS project." />
     <title>Inverse solver · PropulsionLab</title>
     <link rel="stylesheet" href="/lab/styles.css?v=20260609-cachefix" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
@@ -60,7 +60,7 @@
             The console answers "given these efficiencies, what thrust do I get?".
             On a real engine the arrow points the other way: you can measure thrust,
             fuel flow and a few gas-path temperatures, but not the compressor's
-            efficiency — and that is the number that tells you whether the engine is
+            efficiency, and that is the number that tells you whether the engine is
             healthy. This solves the second from the first.
           </p>
         </div>
@@ -72,8 +72,8 @@
               An inverse problem will happily hand back a <b>perfect-looking fit that
               means nothing</b>. Solve for more unknowns than you have measurements and
               infinitely many answers fit exactly. Even with enough measurements, two
-              parameters can act on the observables almost identically — compressor and
-              turbine efficiency both mostly show up as thrust and fuel flow — so the fit
+              parameters can act on the observables almost identically. Compressor and
+              turbine efficiency both mostly show up as thrust and fuel flow, so the fit
               trades one against the other freely. Every result below carries its
               uncertainty and a verdict on whether it is actually pinned down.
             </div>
@@ -221,7 +221,7 @@
           `Telemetry generated from an engine whose real compressor η is <b>0.838</b>. Everything else is ` +
           `set correctly and only compressor η is unknown, starting from a wrong guess of 0.86. ` +
           `Press <b>Solve</b>: it should come back to 0.838. Then try unticking nothing and ticking ` +
-          `turbine η and compressor PR as well — three unknowns on these four measurements is ` +
+          `turbine η and compressor PR as well. Three unknowns on these four measurements is ` +
           `ill-conditioned, and the solver will tell you so instead of pretending.`;
       });
 
