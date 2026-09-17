@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 class ValidationCaseOutput(BaseModel):
     """One certified engine, and how far the solver is from it."""
 
-    icao_uid: str = Field(..., description="ICAO engine UID — check any figure against the databank.")
+    icao_uid: str = Field(..., description="ICAO engine UID. Check any figure against the databank.")
     name: str
     manufacturer: str
     bypass_ratio: float = Field(..., description="Published.")
@@ -39,8 +39,31 @@ class ValidationSummaryOutput(BaseModel):
         ...,
         description=(
             "Spearman rank correlation against certified TSFC. This is the trend "
-            "question — whether the solver orders real engines the way "
-            "certification does — and it survives a systematic offset."
+            "question (whether the solver orders real engines the way "
+            "certification does) and it survives a systematic offset."
+        ),
+    )
+
+    confidence_level: float = Field(
+        ..., description="Coverage of every interval below. 0.95 means a 95% interval."
+    )
+    bootstrap_iterations: int = Field(
+        ..., description="Resamples behind each interval. The seed is fixed, so these figures do not move between runs."
+    )
+    mean_signed_error_percent_interval: tuple[float, float] = Field(
+        ...,
+        description=(
+            "Percentile interval on the bias. An interval clear of zero means the "
+            "offset is a property of the model, not of which engines happen to be "
+            "certified."
+        ),
+    )
+    mean_absolute_error_percent_interval: tuple[float, float]
+    rank_correlation_interval: tuple[float, float] = Field(
+        ...,
+        description=(
+            "Percentile interval on the trend. Wide, because ranking 26 engines is "
+            "a weaker claim than a single correlation figure makes it sound."
         ),
     )
 

@@ -21,6 +21,8 @@ import pytest
 
 from app.engine_core.validation import (
     ASSUMPTIONS,
+    _INTERVAL_KEYS,
+    _spearman,
     fan_pressure_ratio_for,
     load_cases,
     run_all,
@@ -125,3 +127,88 @@ def test_the_known_bias_has_not_silently_moved() -> None:
     # solver and the published figure needs revisiting.
     stats = summarise(run_all())
     assert 5.0 < stats["mean_absolute_error_percent"] < 40.0
+
+
+# --------------------------------------------------------------------------- #
+# every headline figure has to carry its uncertainty
+# --------------------------------------------------------------------------- #
+def test_each_interval_brackets_the_figure_it_belongs_to() -> None:
+    # An interval that does not contain its own point estimate is a bug in the
+    # resampling, not a finding about engines.
+    stats = summarise(run_all())
+    for key in _INTERVAL_KEYS:
+        low, high = stats[f"{key}_interval"]
+        assert low <= stats[key] <= high, f"{key} sits outside its own interval"
+        assert low < high, f"{key} interval collapsed to a point"
+
+
+def test_the_bias_interval_clears_zero() -> None:
+    # This is the substantive reason for computing an interval at all. With 26
+    # engines, "+19%" could in principle be an artefact of which engines happen
+    # to be certified. It is not: the whole interval sits above zero, so the
+    # offset is a property of the assumption set and has to be reported as one.
+    stats = summarise(run_all())
+    low, _ = stats["mean_signed_error_percent_interval"]
+    assert low > 0.0, "the bias is no longer distinguishable from sampling noise"
+
+
+def test_the_published_figures_do_not_move_between_runs() -> None:
+    # The seed is fixed on purpose. A validation report whose numbers change
+    # each time it is requested cannot be cited, and a reader who reloads the
+    # page and sees a different interval has every reason to distrust it.
+    first = summarise(run_all())
+    second = summarise(run_all())
+    assert first == second
+
+
+def test_a_caller_cannot_poison_the_cached_intervals() -> None:
+    # The intervals are memoised, so the report must hand out its own copy
+    # rather than a reference into the cache.
+    stats = summarise(run_all())
+    stats["rank_correlation_interval"][0] = -99.0
+    assert summarise(run_all())["rank_correlation_interval"][0] != -99.0
+
+
+# --------------------------------------------------------------------------- #
+# the rank statistic has to survive resampling
+# --------------------------------------------------------------------------- #
+def test_the_rank_statistic_matches_the_textbook_shortcut_when_nothing_ties() -> None:
+    # summarise() moved from the 1 - 6*sum(d^2)/(n(n^2-1)) shortcut to Pearson
+    # on midranks, because the shortcut is only valid without ties. On the
+    # shipped library nothing ties, so the published figure must be unchanged
+    # to full precision: this is the guard on that refactor.
+    results = run_all()
+    xs = [r.reference_tsfc for r in results]
+    ys = [r.predicted_tsfc for r in results]
+    n = len(results)
+
+    order_x = sorted(range(n), key=lambda i: xs[i])
+    order_y = sorted(range(n), key=lambda i: ys[i])
+    rank_x = [0.0] * n
+    rank_y = [0.0] * n
+    for rank, idx in enumerate(order_x):
+        rank_x[idx] = float(rank)
+    for rank, idx in enumerate(order_y):
+        rank_y[idx] = float(rank)
+    d2 = sum((a - b) ** 2 for a, b in zip(rank_x, rank_y))
+    shortcut = 1.0 - (6.0 * d2) / (n * (n * n - 1))
+
+    assert _spearman(xs, ys) == pytest.approx(shortcut, abs=1e-12)
+
+
+def test_the_rank_statistic_handles_the_ties_resampling_creates() -> None:
+    # Drawing 26 engines with replacement guarantees duplicates, which is
+    # exactly the case the shortcut formula gets wrong. A perfectly ordered
+    # sample with a tied pair must still come back as strongly correlated and
+    # finite, never as a silent nan.
+    xs = [1.0, 2.0, 2.0, 3.0, 4.0]
+    ys = [10.0, 20.0, 20.0, 30.0, 40.0]
+    assert _spearman(xs, ys) == pytest.approx(1.0)
+
+
+def test_a_replicate_with_no_spread_left_is_not_scored() -> None:
+    # If a replicate draws the same engine every time there is no ordering to
+    # judge. That must read as undefined rather than as a perfect correlation.
+    import math
+
+    assert math.isnan(_spearman([5.0, 5.0, 5.0], [1.0, 2.0, 3.0]))

@@ -32,7 +32,11 @@ sixteen-fold range of bypass ratio and a fourfold range of pressure ratio.
 from __future__ import annotations
 
 import json
+import math
+import random
+from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +44,13 @@ from app.engine_core.turbofan import simulate_turbofan_cycle
 from app.schemas import TurbofanInput
 
 _DATA = Path(__file__).resolve().parent.parent / "data" / "validation_cases.json"
+
+# Resampling settings for the interval around every headline figure. The seed is
+# fixed so the published numbers are the same on every run: a validation report
+# whose figures move each time it is requested is not a report.
+_BOOTSTRAP_ITERATIONS = 4000
+_BOOTSTRAP_SEED = 20260315
+_CONFIDENCE_LEVEL = 0.95
 
 # One fixed assumption set, applied to every engine without exception. These are
 # ordinary preliminary-design values, chosen once and left alone; they are not
@@ -160,33 +171,170 @@ def run_all() -> list[CaseResult]:
     return [run_case(c) for c in load_cases()["cases"]]
 
 
-def summarise(results: list[CaseResult]) -> dict[str, float]:
-    """Headline agreement statistics, including the ones that look bad."""
+# The figures worth an interval. Median and worst-case are order statistics of a
+# 26-point sample and resample far too coarsely to quote a range for.
+_INTERVAL_KEYS: tuple[str, ...] = (
+    "mean_signed_error_percent",
+    "mean_absolute_error_percent",
+    "rank_correlation",
+)
 
-    errs = [r.error_fraction for r in results]
-    abs_errs = sorted(abs(e) for e in errs)
-    n = len(errs)
-    mean_signed = sum(errs) / n
-    # Spearman rank correlation: does the solver order the engines the way the
-    # certified data does? This is the trend question, and it survives a
-    # systematic offset that would wreck the absolute error.
-    ref_rank = _ranks([r.reference_tsfc for r in results])
-    pred_rank = _ranks([r.predicted_tsfc for r in results])
-    d2 = sum((a - b) ** 2 for a, b in zip(ref_rank, pred_rank))
-    spearman = 1.0 - (6.0 * d2) / (n * (n * n - 1))
+
+def summarise(results: list[CaseResult]) -> dict[str, Any]:
+    """Headline agreement statistics, including the ones that look bad.
+
+    The three figures that carry an interval carry one because a bare
+    "+19.2%" from 26 engines claims a precision the sample does not support.
+    """
+
+    # Every statistic here depends on the results only through this pair per
+    # engine, which is what makes the interval cacheable below.
+    pairs = tuple((r.reference_tsfc, r.predicted_tsfc) for r in results)
+    stats = _statistics(pairs)
+    intervals = _bootstrap_intervals(pairs)
     return {
-        "count": n,
-        "mean_signed_error_percent": 100.0 * mean_signed,
-        "mean_absolute_error_percent": 100.0 * sum(abs_errs) / n,
-        "median_absolute_error_percent": 100.0 * abs_errs[n // 2],
-        "worst_absolute_error_percent": 100.0 * abs_errs[-1],
-        "rank_correlation": spearman,
+        "count": len(results),
+        "mean_signed_error_percent": stats["mean_signed_error_percent"],
+        "mean_absolute_error_percent": stats["mean_absolute_error_percent"],
+        "median_absolute_error_percent": stats["median_absolute_error_percent"],
+        "worst_absolute_error_percent": stats["worst_absolute_error_percent"],
+        "rank_correlation": stats["rank_correlation"],
+        "confidence_level": _CONFIDENCE_LEVEL,
+        "bootstrap_iterations": _BOOTSTRAP_ITERATIONS,
+        "mean_signed_error_percent_interval": intervals["mean_signed_error_percent"],
+        "mean_absolute_error_percent_interval": intervals["mean_absolute_error_percent"],
+        "rank_correlation_interval": intervals["rank_correlation"],
     }
 
 
+def _statistics(pairs: Sequence[tuple[float, float]]) -> dict[str, float]:
+    """The headline figures for one set of (reference, predicted) TSFC pairs.
+
+    Shared by the report and by every bootstrap replicate, so a resampled
+    statistic is produced by exactly the same code as the published one.
+    """
+
+    errs = [(predicted - reference) / reference for reference, predicted in pairs]
+    abs_errs = sorted(abs(e) for e in errs)
+    n = len(errs)
+    return {
+        "mean_signed_error_percent": 100.0 * sum(errs) / n,
+        "mean_absolute_error_percent": 100.0 * sum(abs_errs) / n,
+        "median_absolute_error_percent": 100.0 * abs_errs[n // 2],
+        "worst_absolute_error_percent": 100.0 * abs_errs[-1],
+        # Does the solver order the engines the way certification does? This is
+        # the trend question, and it survives a systematic offset that would
+        # wreck the absolute error.
+        "rank_correlation": _spearman(
+            [reference for reference, _ in pairs],
+            [predicted for _, predicted in pairs],
+        ),
+    }
+
+
+def _bootstrap_intervals(
+    pairs: tuple[tuple[float, float], ...],
+) -> dict[str, list[float]]:
+    """Fresh, mutable copies of the cached intervals for ``pairs``."""
+
+    return {key: list(value) for key, value in _cached_intervals(pairs).items()}
+
+
+@lru_cache(maxsize=4)
+def _cached_intervals(
+    pairs: tuple[tuple[float, float], ...],
+) -> dict[str, tuple[float, float]]:
+    """Percentile intervals from resampling the engine library with replacement.
+
+    Cached because the result is a pure function of a static library solved
+    with a fixed seed: without this, every visitor to the validation page pays
+    for four thousand resamples to arrive at numbers that never change.
+
+    This treats the 26 certified engines as one sample of the engines the model
+    might be asked about, and answers a single question: how far would these
+    figures move if certification had happened to cover a different 26?
+
+    It does **not** capture error in the fixed assumption set. Every replicate
+    is solved with the same ``ASSUMPTIONS``, so a bias shared by all 26 engines
+    stays invisible here no matter how many iterations are run. The interval is
+    a statement about the sample, not a confidence bound on the physics.
+    """
+
+    n = len(pairs)
+    if n < 2:
+        return {key: (float("nan"), float("nan")) for key in _INTERVAL_KEYS}
+
+    rng = random.Random(_BOOTSTRAP_SEED)
+    draws: dict[str, list[float]] = {key: [] for key in _INTERVAL_KEYS}
+    for _ in range(_BOOTSTRAP_ITERATIONS):
+        sample = [pairs[rng.randrange(n)] for _ in range(n)]
+        stats = _statistics(sample)
+        for key in _INTERVAL_KEYS:
+            value = stats[key]
+            # A replicate that drew one engine repeatedly has no spread left to
+            # rank, so it contributes nothing rather than a fabricated 0 or 1.
+            if not math.isnan(value):
+                draws[key].append(value)
+
+    tail = (1.0 - _CONFIDENCE_LEVEL) / 2.0
+    intervals: dict[str, tuple[float, float]] = {}
+    for key, values in draws.items():
+        values.sort()
+        intervals[key] = (
+            _percentile(values, tail),
+            _percentile(values, 1.0 - tail),
+        )
+    return intervals
+
+
+def _spearman(xs: list[float], ys: list[float]) -> float:
+    """Rank correlation, as Pearson's r on midranks.
+
+    The textbook ``1 - 6*sum(d^2)/(n(n^2-1))`` shortcut is only valid when no
+    value is tied. Resampling with replacement guarantees ties, so the general
+    form is used instead. On the untied library the two agree exactly.
+    """
+
+    rx = _ranks(xs)
+    ry = _ranks(ys)
+    n = len(rx)
+    mx = sum(rx) / n
+    my = sum(ry) / n
+    covariance = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    var_x = sum((a - mx) ** 2 for a in rx)
+    var_y = sum((b - my) ** 2 for b in ry)
+    if var_x <= 0.0 or var_y <= 0.0:
+        return float("nan")
+    return covariance / math.sqrt(var_x * var_y)
+
+
 def _ranks(values: list[float]) -> list[float]:
+    """Ranks from zero, with tied values sharing their average rank."""
+
     order = sorted(range(len(values)), key=lambda i: values[i])
     ranks = [0.0] * len(values)
-    for rank, idx in enumerate(order):
-        ranks[idx] = float(rank)
+    start = 0
+    while start < len(order):
+        end = start
+        while end + 1 < len(order) and values[order[end + 1]] == values[order[start]]:
+            end += 1
+        shared = (start + end) / 2.0
+        for position in range(start, end + 1):
+            ranks[order[position]] = shared
+        start = end + 1
     return ranks
+
+
+def _percentile(sorted_values: list[float], q: float) -> float:
+    """Linear-interpolated quantile of an already sorted list."""
+
+    if not sorted_values:
+        return float("nan")
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+    position = q * (len(sorted_values) - 1)
+    low = math.floor(position)
+    high = math.ceil(position)
+    if low == high:
+        return sorted_values[int(position)]
+    return sorted_values[low] * (high - position) + sorted_values[high] * (position - low)
