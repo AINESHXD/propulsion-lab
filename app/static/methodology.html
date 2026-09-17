@@ -42,7 +42,9 @@
         then combustion products, each with a fixed cp and gamma (a cold-side and a hot-side value). An
         optional Cantera-backed real-gas correction recomputes the whole cycle (compressor, turbine and
         nozzle) with temperature-dependent (variable-cp) properties and reports it side by side with the
-        constant-cp deck; the default, and the core station table, stay constant-cp.</p>
+        constant-cp deck; the default, and the core station table, stay constant-cp. That correction is
+        <strong>turbojet only</strong>. Every other engine here, the turbofan included, is constant-cp
+        throughout and has no real-gas path at all.</p>
       <p><strong>Isentropic processes with component efficiencies.</strong> Compression and expansion are
         reversible-adiabatic, scaled by an isentropic efficiency you set; the combustor adds heat with an
         efficiency and a pressure loss. These are the standard preliminary-design idealisations.</p>
@@ -55,12 +57,14 @@
       <h2>Per-engine notes</h2>
       <p><strong>Turbojet</strong> is the most fully featured model: dry and afterburning,
         choked/unchoked convergent nozzle, full station table, off-design matching, single-spool
-        transient spool dynamics, variable-area nozzle scheduling, and an afterburner flame-stability
-        loop. The optimisation, sensitivity and transient analysis tools all run on it.</p>
+        transient spool dynamics, variable-area nozzle scheduling, an afterburner flame-stability
+        loop, and the optional real-gas recompute described above. The optimisation, sensitivity and
+        transient analysis tools all run on it.</p>
       <p><strong>Turbofan</strong> is separate-flow, two-spool, with a bypass stream and an optional
         third stream; off-design and map matching hold the bypass ratio at its design value. The
         optimisation, sensitivity and transient analysis tools also run on it; turbofan transient
-        is two-spool (light HP core leads, heavy LP fan lags, thrust follows the fan).</p>
+        is two-spool (light HP core leads, heavy LP fan lags, thrust follows the fan). It is
+        constant-cp only: there is no real-gas option on this deck.</p>
       <p><strong>Turboprop</strong> adds a free power turbine and a propeller model; reported power is
         shaft/equivalent-shaft power, and propeller efficiency is a simple model, not a blade-element one.</p>
       <p><strong>Ramjet and scramjet</strong> are high-speed, compressor-less cycles: the ramjet uses
