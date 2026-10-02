@@ -11,6 +11,7 @@ from typing import Annotated, Any
 from fastapi import Body, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, ValidationError
 
 # Optional error monitoring. Active only when SENTRY_DSN is set at runtime *and*
@@ -196,6 +197,14 @@ app = FastAPI(
     ),
 )
 app.mount("/lab", StaticFiles(directory=STATIC_PATH, html=True), name="lab")
+
+# Nothing compressed responses before this: three.module.js alone was leaving
+# the server as 1,272,972 bytes with no content-encoding, and the Fly proxy does
+# not compress on our behalf. Text assets lose roughly three quarters of their
+# size here. 500 bytes is the usual floor, below which the gzip header costs
+# more than the saving; already-compressed replies are skipped by the middleware
+# itself, and it honours the client's Accept-Encoding rather than assuming.
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
 @app.middleware("http")
