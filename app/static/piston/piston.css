@@ -1331,8 +1331,19 @@ canvas { display: block; width: 100%; }
 .build-cta span {
   font-size: 11.5px;
   font-weight: 400;
-  color: rgba(8, 9, 11, 0.62);
+  color: var(--text-3);
   letter-spacing: 0;
+}
+/* Dark like the cards around it rather than the white primary button it
+   started as, which made it the brightest thing on the page. */
+.primary-button.build-cta {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--line);
+}
+.primary-button.build-cta:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: rgba(240, 136, 62, 0.5);
 }
 
 /* =========================================================

@@ -47,10 +47,6 @@
         mix-blend-mode:screen;}   /* silver-on-black wordmark: black bg drops out on the dark card */
       .card.soon .wordmark{opacity:.9}
       .wm-fallback{display:none;font-size:1.3rem;font-weight:650;letter-spacing:-.01em}
-      .badge{position:absolute;top:16px;right:16px;font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;
-        text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line-2)}
-      .badge.ok{color:#37d39a;border-color:rgba(55,211,154,.4)}
-      .badge.dev{color:var(--piston);border-color:rgba(240,136,62,.4)}
       .card h2{font-size:1.3rem;font-weight:650;letter-spacing:-.01em}
       .card p{color:var(--dim);font-size:.86rem;line-height:1.5}
       .enter{margin-top:4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;color:var(--jet)}
@@ -81,7 +77,6 @@
         <!-- PropulsionLab, live -->
         <a class="card live" href="/lab/">
           <span class="glow"></span>
-          <span class="badge ok">● Live</span>
           <img class="wordmark" src="/lab/assets/propulsionlab_wordmark.png?v=1" alt="PropulsionLab"
                onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
           <div class="wm-fallback">PropulsionLab</div>
@@ -92,7 +87,6 @@
         <!-- PistonLab, live -->
         <a class="card live piston" href="/piston/">
           <span class="glow"></span>
-          <span class="badge ok">● Live</span>
           <img class="wordmark" src="/lab/assets/pistonlab_wordmark.png?v=1" alt="PistonLab"
                onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
           <div class="wm-fallback">PistonLab</div>
