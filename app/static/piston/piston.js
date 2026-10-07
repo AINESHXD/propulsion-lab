@@ -243,6 +243,7 @@ async function solve() {
   try {
     const r = await postJson(API_SIM, readInputs());
     lastResult = r;
+    engineDirty = true;
     renderResult(r);
     setStatus("Solved", "ok");
   } catch (err) {
@@ -688,6 +689,12 @@ let animTheta = 0;
 let animPlaying = true;
 let animLast = 0;
 let lastLoopDraw = 0;
+let lastLoopMarker = -1;
+let engineVisible = true;
+// A paused engine only needs repainting when something it draws has changed:
+// a new solve, an edited input, a resize, or coming back into view.
+let engineDirty = true;
+let lastStrokeLabel = "";
 
 const inputVal = (key, fallback) => {
   const el = document.querySelector(`[data-key="${key}"]`);
@@ -829,7 +836,7 @@ function valveLift(a, kind) {
 function drawEngine() {
   const canvas = document.getElementById("engineCanvas");
   if (!canvas || canvas.clientWidth === 0) return;
-  const { ctx, w, h } = scaleCanvas(canvas);
+  const { ctx, w, h } = sizeEngineCanvas(canvas);
   ctx.clearRect(0, 0, w, h);
 
   const cr = inputVal("compression_ratio", 10.5);
@@ -837,19 +844,28 @@ function drawEngine() {
   const stroke = inputVal("stroke_m", 0.086);
   const rodRatio = inputVal("rod_ratio", 3.5);
 
-  // canvas geometry: size the mechanism so the whole thing (cylinder head at
-  // TDC down to the bottom of the crank circle) fits centred, then anchor it.
-  const pad = 18;
+  // --- geometry -------------------------------------------------------------
+  // Everything is sized from the full vertical stack so nothing leaves the
+  // canvas: valve stems above the head, then clearance, half a piston, the rod,
+  // the crank radius, and a crankcase deep enough to hold the counterweight.
+  // The old layout anchored the head at the top pad, which put the valve stems
+  // 7px off the canvas, and stopped the block just below the main journal,
+  // which left half the crank hanging in space.
+  const TOP = 34;                                    // valve stems + plug above the head, plus air
+  const BOT = 8;
   const cx = w * 0.5;
   const visRod = Math.min(rodRatio, 3.2);            // cap rod for composition
   const headGapFactor = 2 / Math.max(1.4, cr - 1);   // clearance / crank radius
-  const crankR = Math.min(60, (h - 2 * pad) / (2 + visRod + 0.45 + headGapFactor));
+  const caseFactor = 1.42;                           // crankcase radius / crank radius
+  const above = 1 + visRod + 0.45 + headGapFactor;   // journal to head, in crank radii
+  const crankR = Math.min(56, (h - TOP - BOT) / (above + caseFactor));
   const strokePx = 2 * crankR;
   const rodLen = crankR * visRod;
   const pistonH = crankR * 0.9;
   const headGap = crankR * headGapFactor;            // clearance shrinks with CR
   const borePx = Math.max(78, Math.min(w * 0.36, strokePx * (bore / stroke)));
-  const cyCrank = pad + (crankR + rodLen) + pistonH * 0.5 + headGap;
+  const stack = TOP + crankR * (above + caseFactor) + BOT;
+  const cyCrank = (h - stack) / 2 + TOP + crankR * above;
 
   const th = animTheta * Math.PI / 180;
   const dist = crankR * Math.cos(th) + Math.sqrt(rodLen * rodLen - crankR * crankR * Math.sin(th) * Math.sin(th));
@@ -860,12 +876,14 @@ function drawEngine() {
   const xL = cx - borePx / 2, xR = cx + borePx / 2;
   const crankPinX = cx + crankR * Math.sin(th);
   const crankPinY = cyCrank - crankR * Math.cos(th);
+  // The liner ends just below the skirt at bottom dead centre; below that is
+  // crankcase, not bore.
+  const linerBot = (cyCrank - rodLen + crankR) + pistonH * 0.5 + 6;
 
-  // --- cylinder block (gives the bore body) ---
-  ctx.fillStyle = "rgba(255,255,255,0.028)";
-  roundRect(ctx, xL - 13, headY - 16, borePx + 26, cyCrank - (headY - 16) + 6, 11); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1;
-  roundRect(ctx, xL - 13, headY - 16, borePx + 26, cyCrank - (headY - 16) + 6, 11); ctx.stroke();
+  // --- block and crankcase: one outline, so the overlap leaves no seam -------
+  const halfW = borePx / 2 + 13;
+  const caseR = Math.max(crankR * caseFactor, halfW);
+  drawHousing(ctx, cx, headY - 16, halfW, cyCrank, caseR);
 
   // --- gas charge ---
   // With a two-zone solve the trace carries the burned volume fraction and both
@@ -898,14 +916,14 @@ function drawEngine() {
     ctx.fillRect(xL, headY, borePx, chamberH);
   }
 
-  // --- cylinder walls: honed-bore look (subtle inner shading + bright liner) ---
+  // --- cylinder walls: honed liner, ending where the crankcase begins ---
   const wallGrad = ctx.createLinearGradient(xL, 0, xR, 0);
   wallGrad.addColorStop(0, "rgba(255,255,255,0.06)"); wallGrad.addColorStop(0.5, "rgba(0,0,0,0)"); wallGrad.addColorStop(1, "rgba(0,0,0,0.10)");
-  ctx.fillStyle = wallGrad; ctx.fillRect(xL, headY, borePx, cyCrank - headY);
+  ctx.fillStyle = wallGrad; ctx.fillRect(xL, headY, borePx, linerBot - headY);
   ctx.strokeStyle = "rgba(255,255,255,0.20)"; ctx.lineWidth = 2; ctx.lineJoin = "round";
   ctx.beginPath();
-  ctx.moveTo(xL, headY - 6); ctx.lineTo(xL, cyCrank);
-  ctx.moveTo(xR, headY - 6); ctx.lineTo(xR, cyCrank);
+  ctx.moveTo(xL, headY - 6); ctx.lineTo(xL, linerBot);
+  ctx.moveTo(xR, headY - 6); ctx.lineTo(xR, linerBot);
   ctx.stroke();
 
   // --- cylinder head (solid block over the bore) ---
@@ -983,29 +1001,123 @@ function drawEngine() {
     }
   }
 
-  // ===== rotating assembly (back to front: counterweight, throw, rod, piston, journals) =====
-  // counterweight: a shaped bob opposite the crank pin
-  const cwAng = th + Math.PI, cwR = crankR * 1.06;
-  ctx.fillStyle = "#23262d";
-  ctx.beginPath();
-  ctx.moveTo(cx, cyCrank);
-  ctx.arc(cx, cyCrank, cwR, cwAng - 0.56 * Math.PI, cwAng + 0.56 * Math.PI);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1; ctx.stroke();
-  // crank throw (web) from main journal to crank pin
-  ctx.strokeStyle = "#3c414b"; ctx.lineWidth = Math.max(8, crankR * 0.36); ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(cx, cyCrank); ctx.lineTo(crankPinX, crankPinY); ctx.stroke();
-  ctx.lineCap = "butt";
+  // ===== rotating assembly (back to front: pin orbit, counterweight, web, rod, piston, journals) =====
+  // the crank pin's path, with a tick at top dead centre: shows where the
+  // stroke comes from without needing a label
+  ctx.save();
+  ctx.setLineDash([2, 4]);
+  ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cyCrank, crankR, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, cyCrank - crankR - 5); ctx.lineTo(cx, cyCrank - crankR + 3); ctx.stroke();
 
+  drawCrank(ctx, cx, cyCrank, th, crankR, crankPinX, crankPinY);
   drawRod(ctx, cx, pinY, crankPinX, crankPinY, borePx);
   drawPiston(ctx, cx, xL, xR, crownY, pistonH, pinY, borePx);
 
   // journals on top
   metalCircle(ctx, crankPinX, crankPinY, Math.max(5, crankR * 0.24), "#565b65", "#2a2d34");
-  ctx.fillStyle = cssVar("--accent"); ctx.beginPath(); ctx.arc(crankPinX, crankPinY, Math.max(2, crankR * 0.08), 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = engineAccent(); ctx.beginPath(); ctx.arc(crankPinX, crankPinY, Math.max(2, crankR * 0.08), 0, Math.PI * 2); ctx.fill();
   metalCircle(ctx, cx, cyCrank, Math.max(6, crankR * 0.32), "#51565f", "#23262d");
   ctx.fillStyle = "#15171b"; ctx.beginPath(); ctx.arc(cx, cyCrank, Math.max(2, crankR * 0.09), 0, Math.PI * 2); ctx.fill();
+
+  // crank-angle readout, bottom left: the number the P-V marker is keyed to
+  ctx.font = `500 11px ${engineMono()}`;
+  ctx.textBaseline = "alphabetic";
+  const deg = `\u03b8 ${String(Math.floor(animTheta)).padStart(3, "\u2007")}\u00b0`;
+  ctx.fillStyle = "rgba(255,255,255,0.42)";
+  ctx.fillText(deg, 12, h - 12);
+  ctx.fillStyle = "rgba(255,255,255,0.20)";
+  ctx.fillText(" / 720\u00b0", 12 + ctx.measureText(deg).width, h - 12);
 }
+
+/* Cylinder block running down into a round crankcase, as one closed outline.
+   Two stacked shapes would paint a translucent fill twice where they overlap
+   and stroke a line straight across the crank. */
+function drawHousing(ctx, cx, top, halfW, cyCrank, caseR) {
+  const r = 11;
+  const yMeet = cyCrank - Math.sqrt(Math.max(0, caseR * caseR - halfW * halfW));
+  const a0 = Math.atan2(yMeet - cyCrank, halfW);         // upper-right meeting point
+  ctx.beginPath();
+  ctx.moveTo(cx - halfW + r, top);
+  ctx.lineTo(cx + halfW - r, top);
+  ctx.arcTo(cx + halfW, top, cx + halfW, top + r, r);
+  ctx.lineTo(cx + halfW, yMeet);
+  ctx.arc(cx, cyCrank, caseR, a0, Math.PI - a0, false);  // clockwise, round the bottom
+  ctx.lineTo(cx - halfW, top + r);
+  ctx.arcTo(cx - halfW, top, cx - halfW + r, top, r);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, top, 0, cyCrank + caseR);
+  g.addColorStop(0, "rgba(255,255,255,0.035)");
+  g.addColorStop(1, "rgba(255,255,255,0.018)");
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1; ctx.stroke();
+}
+
+/* Crank throw with a counterweight opposite the pin. The cheek wraps the main
+   journal and swells away from the pin through concave flanks, the way a real
+   crank cheek is shaped. Straight radial flanks read as a fan blade, and the
+   original 200-degree pie slice read as a clock hand. */
+function drawCrank(ctx, cx, cy, th, crankR, px, py) {
+  const a = th - Math.PI / 2;                 // canvas angle of the pin (0 = right)
+  const cw = a + Math.PI;                     // the counterweight points away from it
+  const cwR = crankR * 1.0, hubR = crankR * 0.48;
+  const P = (ang, r) => [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r];
+  const span = 0.36 * Math.PI;                // half-width of the outer arc
+  const hubSpan = 0.62 * Math.PI;             // where the flanks meet the hub
+  const flankAng = 0.47 * Math.PI, flankR = cwR * 0.56;   // pulls the flank inward
+  ctx.beginPath();
+  ctx.arc(cx, cy, cwR, cw - span, cw + span, false);
+  let [qx, qy] = P(cw + flankAng, flankR), [hx, hy] = P(cw + hubSpan, hubR);
+  ctx.quadraticCurveTo(qx, qy, hx, hy);
+  ctx.arc(cx, cy, hubR, cw + hubSpan, cw + 2 * Math.PI - hubSpan, false);
+  [qx, qy] = P(cw - flankAng, flankR);
+  const [ox, oy] = P(cw - span, cwR);
+  ctx.quadraticCurveTo(qx, qy, ox, oy);
+  ctx.closePath();
+  const g = ctx.createRadialGradient(cx, cy, hubR * 0.4, cx, cy, cwR);
+  g.addColorStop(0, "#30343c"); g.addColorStop(1, "#1d2025");
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1; ctx.stroke();
+
+  // web: tapers from the journal out to the pin
+  const nx = Math.cos(a + Math.PI / 2), ny = Math.sin(a + Math.PI / 2);
+  const w0 = crankR * 0.34, w1 = crankR * 0.22;
+  ctx.beginPath();
+  ctx.moveTo(cx + nx * w0, cy + ny * w0);
+  ctx.lineTo(px + nx * w1, py + ny * w1);
+  ctx.arc(px, py, w1, a + Math.PI / 2, a - Math.PI / 2, true);
+  ctx.lineTo(cx - nx * w0, cy - ny * w0);
+  ctx.closePath();
+  const wg = ctx.createLinearGradient(cx - nx * w0, cy - ny * w0, cx + nx * w0, cy + ny * w0);
+  wg.addColorStop(0, "#2c3037"); wg.addColorStop(0.5, "#4a4f59"); wg.addColorStop(1, "#262931");
+  ctx.fillStyle = wg; ctx.fill();
+}
+
+/* The engine redraws every frame, so its canvas is sized once and only
+   re-allocated when it actually changes size. Assigning canvas.width every
+   frame threw the backing store away and rebuilt it sixty times a second.
+   Pixel ratio is capped at 2: past that the cost rises with no visible gain. */
+let engineCtx = null, engineSizeKey = "";
+function sizeEngineCanvas(canvas) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.clientWidth || 600;
+  const h = canvas.clientHeight || Number(canvas.getAttribute("height")) || 340;
+  const key = `${w}x${h}@${dpr}`;
+  if (key !== engineSizeKey || !engineCtx) {
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    engineCtx = canvas.getContext("2d");
+    engineSizeKey = key;
+  }
+  engineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx: engineCtx, w, h };
+}
+let engineAccentCache = "", engineMonoCache = "";
+const engineAccent = () => engineAccentCache || (engineAccentCache = cssVar("--accent"));
+const engineMono = () => engineMonoCache ||
+  (engineMonoCache = cssVar("--font-mono") || "ui-monospace, monospace");
 
 /* metallic annulus (ring with a dark bore) — rod eyes, pin boss */
 function metalRing(ctx, cx, cy, outerR, innerR) {
@@ -1091,10 +1203,22 @@ function animFrame(ts) {
     animTheta = (animTheta + dt * 720 * cyclesPerSec) % 720;
   }
   markerIdx = engineTraceIndex(animTheta);
-  drawEngine();
-  const label = document.getElementById("strokeLabel");
-  if (label) label.textContent = strokeName(animTheta);
-  if (ts - lastLoopDraw > 38) { drawAllDiagrams(); lastLoopDraw = ts; } // ~26 fps marker
+  // Only draw the engine while it is on screen, and only repaint the loops when
+  // the marker on them has actually moved. Before, every P-V and T-s chart was
+  // repainted 26 times a second even when paused or scrolled out of view.
+  if (engineVisible && (animPlaying || engineDirty)) { drawEngine(); engineDirty = false; }
+  // Written only when the stroke changes. Assigning textContent, even to the
+  // same string, replaces the text node, so doing it every frame forced a
+  // style, layout and paint pass sixty times a second on an idle page.
+  const stroke = strokeName(animTheta);
+  if (stroke !== lastStrokeLabel) {
+    const label = document.getElementById("strokeLabel");
+    if (label) label.textContent = stroke;
+    lastStrokeLabel = stroke;
+  }
+  if (ts - lastLoopDraw > 38 && markerIdx !== lastLoopMarker) {
+    drawAllDiagrams(); lastLoopDraw = ts; lastLoopMarker = markerIdx;
+  }
   requestAnimationFrame(animFrame);
 }
 
@@ -1333,15 +1457,34 @@ export function startPiston() {
 
   // living-engine play / pause
   const playBtn = document.getElementById("enginePlay");
+  // Reduced motion: the engine starts still, late in compression so the frame
+  // shows a loaded charge, and only moves if asked to.
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    animPlaying = false;
+    animTheta = 340;
+    if (playBtn) { playBtn.textContent = "\u25b6"; playBtn.setAttribute("aria-label", "Play"); }
+  }
+  const engineCanvasEl = document.getElementById("engineCanvas");
+  if (engineCanvasEl && "IntersectionObserver" in window) {
+    new IntersectionObserver((entries) => {
+      engineVisible = entries[0].isIntersecting;
+      if (engineVisible) engineDirty = true;
+    }).observe(engineCanvasEl);
+  }
   if (playBtn) playBtn.addEventListener("click", () => {
     animPlaying = !animPlaying;
+    engineDirty = true;
     playBtn.textContent = animPlaying ? "❚❚" : "▶";
     playBtn.setAttribute("aria-label", animPlaying ? "Pause" : "Play");
   });
 
+  // geometry, fuel and timing inputs all change the drawing
+  document.addEventListener("input", () => { engineDirty = true; });
+  document.addEventListener("change", () => { engineDirty = true; });
+
   // redraw charts on resize
   let rt;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawAllDiagrams(); drawDyno(); }, 150); });
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawAllDiagrams(); drawDyno(); engineDirty = true; }, 150); });
 
   setMode(localStorage.getItem(MODE_KEY) || "enthusiast");
   syncEngineType();
