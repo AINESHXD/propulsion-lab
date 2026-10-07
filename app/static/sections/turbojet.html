@@ -21,6 +21,8 @@
       .wrap { max-width:1180px; margin:0 auto; padding:18px 16px 60px; }
       .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:26px; }
       .brand { font-weight:700; letter-spacing:0.14em; font-size:12.5px; text-transform:uppercase; }
+      .brand-link { display:inline-flex; align-items:center; }
+      .brand-img { height: 15px; width: auto; display: block; mix-blend-mode: screen; filter: brightness(1.1); }
       .topbar a { font-size:0.85rem; color:var(--dim); }
       .eyebrow { font-family:var(--mono); font-size:0.66rem; letter-spacing:0.18em; text-transform:uppercase;
         color:var(--dim); margin:0 0 6px; }
@@ -105,7 +107,7 @@
   <body>
     <div class="wrap">
       <div class="topbar">
-        <span class="brand">DAS LABS</span>
+        <a class="brand-link" href="/" aria-label="DAS LABS home"><img class="brand-img" src="/lab/assets/das_labs_logo_dark.png?v=20260529-2" alt="DAS LABS" onerror="this.outerHTML='&lt;span class=&quot;brand&quot;&gt;DAS&amp;nbsp;LABS&lt;/span&gt;'" /></a>
         <a href="/lab/viewer3d.html?engine=turbojet">3D viewer &rarr;</a>
       </div>
 

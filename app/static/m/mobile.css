@@ -99,6 +99,13 @@ button, input, select { font-family: inherit; }
 }
 /* Real PropulsionLab wordmark, treated exactly like the desktop bar (the art is
    mid-grey silver; screen-blend dims it, so lift it back up to full parity). */
+/* The real DAS LABS wordmark, sitting as the quieter line above the product
+   name the way the typeset version did. .m-brand-labs stays for the fallback. */
+.m-brand-labs-img {
+  height: 11px; width: auto; display: block;
+  mix-blend-mode: screen; opacity: 0.72;
+  align-self: flex-start;   /* the column stretches children; this one keeps its ratio */
+}
 .m-brand-product-img {
   height: 15px; width: auto; display: block;
   mix-blend-mode: screen; filter: brightness(1.45) contrast(1.05);

@@ -23,6 +23,9 @@
         align-items:center; padding:14px 22px; pointer-events:none;
         background:linear-gradient(#0a0b0ecc,#0a0b0e00); }
       .topbar .brand { font-weight:700; letter-spacing:0.14em; font-size:12.5px; text-transform:uppercase; }
+      /* The real wordmark, as on every other page; .brand stays for the fallback. */
+      .topbar .brand-link { display:inline-flex; align-items:center; }
+      .topbar .brand-img { height: 15px; width: auto; display: block; mix-blend-mode: screen; filter: brightness(1.1); }
       .topbar a { pointer-events:auto; font-size:0.85rem; color:var(--dim); }
       .topbar a:hover { color:var(--text); }
 
@@ -113,7 +116,7 @@
     <canvas id="scene"></canvas>
 
     <header class="topbar">
-      <span class="brand">DAS&nbsp;LABS</span>
+      <a class="brand-link" href="/" aria-label="DAS LABS home"><img class="brand-img" src="/lab/assets/das_labs_logo_dark.png?v=20260529-2" alt="DAS LABS" onerror="this.outerHTML='&lt;span class=&quot;brand&quot;&gt;DAS&amp;nbsp;LABS&lt;/span&gt;'" /></a>
       <a href="/lab/">← Console</a>
     </header>
 

@@ -21,6 +21,7 @@
       .brand{display:flex;align-items:center;gap:12px}
       .brand svg{width:46px;height:23px;color:var(--text)}
       .brand .word{font-weight:700;letter-spacing:.16em;font-size:13px}
+      .brand .word-img { height: 15px; width: auto; display: block; mix-blend-mode: screen; filter: brightness(1.1); }
       .brand .product{color:var(--dim);font-size:12px}
       .topbar a{color:var(--dim);font-size:.85rem}.topbar a:hover{color:var(--text)}
       .wrap{max-width:1080px;margin:0 auto;padding:26px 22px 60px}
@@ -56,8 +57,7 @@
   <body>
     <header class="topbar">
       <div class="brand">
-        <svg viewBox="0 0 96 48" fill="none"><line x1="2" y1="29" x2="30" y2="29" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M30 29 L86 8 L52 29 Z" fill="currentColor"/><path d="M30 29 L52 29 L44 35 Z" fill="currentColor" opacity=".6"/></svg>
-        <span class="word">DAS&nbsp;LABS</span><span class="product">· CFD</span>
+        <img class="word-img" src="/lab/assets/das_labs_logo_dark.png?v=20260529-2" alt="DAS LABS" onerror="this.outerHTML='&lt;span class=&quot;word&quot;&gt;DAS&amp;nbsp;LABS&lt;/span&gt;'" /><span class="product">· CFD</span>
       </div>
       <a href="/lab/">← Console</a>
     </header>
