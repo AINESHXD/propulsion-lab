@@ -1,4 +1,21 @@
-# PropulsionLab
+# DAS LABS: PropulsionLab and PistonLab
+
+Interactive engine simulators in the browser, live at **[daslabs.uk](https://daslabs.uk)**.
+
+| Lab | What it models | Live |
+|---|---|---|
+| **PropulsionLab** | Airbreathing and gas-turbine propulsion: turbojet, turbofan, turboprop, ramjet, scramjet, station by station | [/lab/](https://daslabs.uk/lab/) |
+| **PistonLab** | Reciprocating engines, crank angle by crank angle: petrol, diesel and ethanol, two-zone combustion, turbocharging, the real P-V loop | [/piston/](https://daslabs.uk/piston/) |
+
+Also on the site: a [validation report](https://daslabs.uk/validation/) against 26 certified
+engines, an [inverse solver](https://daslabs.uk/inverse/) that works backwards from
+measurements, a [3D engine viewer](https://daslabs.uk/lab/viewer3d.html), and a phone
+console at [/m](https://daslabs.uk/m) that phones are routed to automatically.
+
+Both labs are educational, reduced-order models. They are built to get the trends right and
+to be explicit about where the line is; see [the methodology page](app/static/methodology.html).
+
+## PropulsionLab
 
 PropulsionLab is an educational and preliminary-performance gas turbine simulation platform
 for students, lecturers, and early-stage aerospace learners. The long-term goal is to make
@@ -122,15 +139,39 @@ This project draws a deliberate line between two very different claims:
   combustor energy balance, and thrust reconstruction from momentum + pressure terms.
   Residuals come back at machine precision (~1e-14). This proves the code is internally
   consistent with the model it claims to implement.
-- **External-data validation (not claimed).** The model has **not** been matched against
-  manufacturer or flight-test numbers for a named engine. The reference-case table in
-  `validation.py` (`VALIDATION_CASES`) is intentionally left empty rather than populated
-  with numbers that cannot be sourced and cited honestly.
+- **Validation against certified engines (done, for TSFC).** The turbofan solver is run
+  against 26 real engines from the ICAO Aircraft Engine Emissions Databank, from a 1968
+  Spey to a 2016 geared turbofan, bypass ratio 0.64 to 11.58 and overall pressure ratio
+  13.3 to 47.5. Each case keeps its ICAO engine UID so every figure can be checked against
+  the source, and the reference TSFC is plain arithmetic on published takeoff fuel flow and
+  rated thrust, so PropulsionLab had no hand in producing it
+  (`app/engine_core/validation.py`, `app/data/validation_cases.json`).
+
+  The databank does not publish turbine temperature or component efficiencies, so those
+  come from **one fixed assumption set applied identically to all 26 engines**. Nothing is
+  fitted per engine. The result, with 95% bootstrap intervals from resampling the library:
+
+  | Figure | Value | 95% interval |
+  |---|---|---|
+  | Rank correlation with certified TSFC | 0.86 | 0.61 to 0.97 |
+  | Mean signed error | +19.2% | +16.9% to +21.3% |
+
+  The solver orders real engines broadly the way certification does, and it over-predicts
+  fuel burn for every one of the 26, never under. The bias interval clears zero, so that
+  offset is a property of the fixed assumptions, not of which engines happen to be
+  certified. It is reported rather than tuned away. The full table is at
+  [/validation/](https://daslabs.uk/validation/) and as JSON at `/validation/report`.
+
+- **What is still not claimed.** Thrust is not validated: it scales with air mass flow,
+  which the databank does not publish, and back-solving it from rated thrust would make the
+  comparison circular. No engine has been matched to a manufacturer's own performance deck,
+  and the presets remain labelled "-like".
 
 In short: the numbers are physically meaningful and self-consistent for the reduced-order
-model, and every quantity in the UI is either computed or clearly labelled as an estimate.
-They are educational, not certification-grade, and the project never fabricates a reference
-figure to look more validated than it is.
+model, measured against real engines where public data allows it, and every quantity in the
+UI is either computed or clearly labelled as an estimate. They are educational, not
+certification-grade, and the project never fabricates a reference figure to look more
+validated than it is.
 
 Run the checks with `pytest` (the suite includes the conservation cases).
 
@@ -256,8 +297,10 @@ The DAS LABS dashboard is served by FastAPI static files from `app/static/`.
 pytest
 ```
 
-The suite covers each engine solver, off-design matching, mission integration, the
-real-gas path, the cycle diagrams, the Python export, and the conservation-law checks.
+671 tests. The suite covers each engine solver, off-design matching, mission integration,
+the real-gas path, the cycle diagrams, the Python export, the conservation-law checks, the
+certified-engine validation and its intervals, every PistonLab sub-model, the PistonLab
+step-size convergence study, and the routing and accessibility floors of the phone console.
 
 ## Example request
 
@@ -498,8 +541,17 @@ combustor emissions (NOx / CO + ICAO LTO), NSGA-II multi-objective design optimi
 solver, a methodology / limitations page, the reporting/export tooling, and the
 production launch infrastructure (Plausible + Sentry, env-var gated).
 
-The sibling **PistonLab** (reciprocating-engine cycles) is scaffolded and marked
-"coming soon"; it ships dark from the portal at launch.
+The sibling **PistonLab** is live. It solves the closed cycle crank angle by crank angle
+for petrol, diesel and ethanol, with Wiebe heat release, two-zone (burned and unburned)
+combustion with knock warnings, Woschni wall heat transfer, friction, pumping work,
+turbocharging with exhaust back-pressure, residual gas, and a real-gas cycle. It has a
+step-by-step custom engine builder, a dyno sweep, and a live engine animation drawn from
+the solver's own trace. Its integration step is exposed and checked: a convergence study
+halves the step across a ladder and reports the observed order, which comes out at about
+first order, as the march should.
+
+The **phone console** at `/m` is a separate thin client on the same solver, not a squeezed
+desktop page. Phones in either orientation are routed to it; `?nomobile=1` opts out.
 
 A **cloud-CFD control plane** (job state machine, mesh spec, pluggable solver runner
 with a local quasi-1D mock; `app/cfd.py`) is scaffolded but **gated off** — its
