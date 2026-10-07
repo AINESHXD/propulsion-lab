@@ -722,8 +722,8 @@ function engineTraceIndex(a) {
 
 function gasTemperature(a) {
   const intakeT = inputVal("intake_temperature_K", 330);
-  const idx = engineTraceIndex(a);
-  if (idx != null) return lastResult.trace[idx].temperature_K;
+  const t = traceAt(a);
+  if (t) return t.temperature_K;
   // gas-exchange strokes: cool fresh charge on intake, hot residual on exhaust
   const aa = ((a % 720) + 720) % 720;
   const endT = lastResult && lastResult.trace.length ? lastResult.trace[lastResult.trace.length - 1].temperature_K : intakeT * 2;
@@ -732,11 +732,40 @@ function gasTemperature(a) {
 
 const norm = (v, lo, hi) => Math.max(0, Math.min(1, (v - lo) / Math.max(1, hi - lo)));
 
+/** The trace linearly interpolated at crank angle a, or null during gas exchange.
+ *
+ * The marker on the P-V loop wants the nearest real point, but the drawing does
+ * not: snapping the flame to 1.5-degree trace steps made it grow in visible
+ * jumps once the burn was slowed down enough to watch. Binary search, because
+ * this runs several times a frame on a 241-point trace.
+ */
+function traceAt(a) {
+  a = ((a % 720) + 720) % 720;
+  const trace = lastResult && lastResult.trace;
+  if (!trace || trace.length < 2 || a < 180 || a > 540) return null;
+  const tt = a - 360;
+  let lo = 0, hi = trace.length - 1;
+  if (tt <= trace[0].theta_deg) return trace[0];
+  if (tt >= trace[hi].theta_deg) return trace[hi];
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (trace[mid].theta_deg <= tt) lo = mid; else hi = mid;
+  }
+  const p0 = trace[lo], p1 = trace[hi];
+  const f = (tt - p0.theta_deg) / Math.max(1e-9, p1.theta_deg - p0.theta_deg);
+  const mix = (k) => (p0[k] == null || p1[k] == null) ? p0[k] : p0[k] + (p1[k] - p0[k]) * f;
+  return {
+    temperature_K: mix("temperature_K"),
+    burned_volume_fraction: mix("burned_volume_fraction"),
+    unburned_temperature_K: mix("unburned_temperature_K"),
+    burned_temperature_K: mix("burned_temperature_K"),
+  };
+}
+
 /** Zone state at this crank angle, or null when the solve had only one zone. */
 function engineZoneState(a) {
-  const idx = engineTraceIndex(a);
-  if (idx == null || !lastResult || !lastResult.trace) return null;
-  const t = lastResult.trace[idx];
+  if (!lastResult || !lastResult.trace) return null;
+  const t = traceAt(a);
   if (!t || t.burned_volume_fraction == null) return null;
   return {
     burnedVolumeFraction: t.burned_volume_fraction,
@@ -782,22 +811,57 @@ function drawTwoZoneCharge(ctx, o) {
     const ease = Math.max(0, Math.min(1, (f - 0.55) / 0.45));
     const r = Math.min(rKernel, rMax) * (1 - ease) + rMax * ease;
 
-    const flame = ctx.createRadialGradient(cx, headY, 0, cx, headY, r);
-    flame.addColorStop(0, o.burnedTint);
-    flame.addColorStop(0.82, o.burnedTint);
-    flame.addColorStop(1, "rgba(255,214,150,0.35)");
+    // A premixed flame is not a circle. Turbulence wrinkles the front, and the
+    // wrinkling grows as the kernel grows and dies as the flame reaches the
+    // walls. Three drifting harmonics are enough to read as turbulent without
+    // reading as noise.
+    const t = o.now || 0;
+    const wrinkle = 0.075 * smooth(0.01, 0.12, f) * (1 - smooth(0.80, 0.99, f));
+    const frontPath = (scale) => {
+      ctx.beginPath();
+      const N = 72;
+      for (let i = 0; i <= N; i++) {
+        const phi = (i / N) * Math.PI * 2;
+        const n = 0.55 * Math.sin(5 * phi + 1.7 * t)
+                + 0.30 * Math.sin(9 * phi - 2.3 * t + 1.1)
+                + 0.15 * Math.sin(14 * phi + 3.1 * t + 2.3);
+        const rr = r * scale * (1 + wrinkle * n);
+        const x = cx + Math.cos(phi) * rr, y = headY + Math.sin(phi) * rr;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    };
+
+    // preheat: the unburned gas just ahead of the front is already warming
+    if (f < 0.985) {
+      const pre = ctx.createRadialGradient(cx, headY, r * 0.96, cx, headY, r * 1.28);
+      pre.addColorStop(0, "rgba(255,170,96,0.20)");
+      pre.addColorStop(1, "rgba(255,170,96,0)");
+      ctx.fillStyle = pre;
+      ctx.fillRect(o.xL, headY, borePx, chamberH);
+    }
+
+    // burned gas: hottest at the plug where it lit first, brightening again
+    // toward the front where it is still reacting
+    const flame = ctx.createRadialGradient(cx, headY, 0, cx, headY, r * 1.08);
+    flame.addColorStop(0, lighten(o.burnedTint, 0.18));
+    flame.addColorStop(0.55, o.burnedTint);
+    flame.addColorStop(0.86, o.burnedTint);
+    flame.addColorStop(1, lighten(o.burnedTint, 0.35));
     ctx.fillStyle = flame;
-    ctx.beginPath();
-    ctx.arc(cx, headY, r, 0, Math.PI * 2);
+    frontPath(1);
     ctx.fill();
 
-    // The flame boundary itself, only while there is still end-gas to consume.
-    if (f < 0.985) {
-      ctx.strokeStyle = "rgba(255,236,200,0.55)";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(cx, headY, r, 0, Math.PI * 2);
-      ctx.stroke();
+    // the reaction zone: a soft halo and a thin bright line, fading out as the
+    // last of the end-gas is consumed
+    const live = 1 - smooth(0.90, 0.995, f);
+    if (live > 0.01) {
+      ctx.strokeStyle = `rgba(255,226,170,${0.20 * live})`;
+      ctx.lineWidth = 7;
+      frontPath(1); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,244,214,${0.70 * live})`;
+      ctx.lineWidth = 1.2;
+      frontPath(1); ctx.stroke();
     }
   }
 
@@ -814,6 +878,52 @@ function drawTwoZoneCharge(ctx, o) {
   }
 
   ctx.restore();
+}
+
+const smooth = (e0, e1, x) => {
+  const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+/** Mix an rgb() colour toward white by k. */
+function lighten(rgb, k) {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgb);
+  if (!m) return rgb;
+  const c = [1, 2, 3].map((i) => Math.round(+m[i] + (255 - +m[i]) * k));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/** rgb() string mixed between two rgb() strings by k. */
+function mixRgb(a, b, k) {
+  const pa = /(\d+),\s*(\d+),\s*(\d+)/.exec(a), pb = /(\d+),\s*(\d+),\s*(\d+)/.exec(b);
+  if (!pa || !pb) return a;
+  const c = [1, 2, 3].map((i) => Math.round(+pa[i] + (+pb[i] - +pa[i]) * k));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/* Chamber colour through the two gas-exchange strokes, where the solver trace
+ * does not reach.
+ *
+ * The trace covers compression and power only. Outside it the chamber used to
+ * fall back to a flat temperature lookup, so at bottom dead centre the glowing
+ * burned charge snapped to a dark residual in a single frame, and at the start
+ * of intake the residual snapped to cold fresh charge. Now exhaust starts from
+ * exactly the colour the power stroke ended on and fades as the gas leaves, and
+ * intake starts from that residual and cools as fresh charge comes in. Both
+ * ends meet the trace without a seam.
+ */
+const RESIDUAL_TINT = "rgb(62,52,46)";
+function gasExchangeTint(a, Tmin, Tmax) {
+  a = ((a % 720) + 720) % 720;
+  const fresh = gasTint(0);
+  if (a >= 540) {
+    const zone = engineZoneState(540);
+    const endTint = zone
+      ? gasTint(0.55 + 0.45 * norm(zone.burnedT, 1400, zone.peakBurnedT))
+      : gasTint(norm(gasTemperature(540), Tmin, Tmax));
+    return mixRgb(endTint, RESIDUAL_TINT, smooth(540, 700, a));
+  }
+  if (a < 180) return mixRgb(RESIDUAL_TINT, fresh, smooth(0, 110, a));
+  return gasTint(norm(gasTemperature(a), Tmin, Tmax));
 }
 
 function gasTint(tnorm) {
@@ -905,13 +1015,21 @@ function drawEngine() {
       unburnedTint: gasTint(0.55 * norm(zone.unburnedT, Tmin, zone.peakUnburnedT)),
       burnedTint: gasTint(0.55 + 0.45 * norm(zone.burnedT, 1400, zone.peakBurnedT)),
       knock: zone.knock,
+      now: performance.now() / 1000,
     });
   } else {
-    const tnorm = norm(gasTemperature(animTheta), Tmin, Tmax);
-    const tint = gasTint(tnorm);
+    const tint = gasExchangeTint(animTheta, Tmin, Tmax);
+    // The burned charge fills the chamber evenly at bottom dead centre, so the
+    // exhaust fill starts even too and only develops its fade toward the
+    // piston as the gas leaves. Starting with the fade made it appear in one
+    // frame.
+    const aa = ((animTheta % 720) + 720) % 720;
+    const k = aa >= 540 ? smooth(540, 640, aa) : 1;
+    const m = /(\d+),\s*(\d+),\s*(\d+)/.exec(tint) || [0, 20, 16, 14];
+    const bot = [20, 16, 14].map((d, i) => Math.round(+m[i + 1] + (d - +m[i + 1]) * k));
     const grad = ctx.createLinearGradient(0, headY, 0, crownY);
     grad.addColorStop(0, tint);
-    grad.addColorStop(1, `rgba(20,16,14,0.25)`);
+    grad.addColorStop(1, `rgba(${bot[0]},${bot[1]},${bot[2]},${1 - 0.75 * k})`);
     ctx.fillStyle = grad;
     ctx.fillRect(xL, headY, borePx, chamberH);
   }
@@ -955,50 +1073,20 @@ function drawEngine() {
   const fire = 360 + inputVal("combustion_start_deg", compression ? -8 : -15);
   const da = (((animTheta - fire) % 720) + 720) % 720;
 
+  const now = performance.now() / 1000;
   if (compression) {
     // injector nozzle (thin) at the head centre
     ctx.strokeStyle = "rgba(190,196,206,0.8)"; ctx.lineWidth = 3; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(cx, headY - 21); ctx.lineTo(cx, headY - 1); ctx.stroke();
     ctx.lineCap = "butt";
-    // fuel spray cone during injection
-    if (da < 38) {
-      const sf = 1 - da / 38;
-      const reach = Math.min(crownY - headY - 2, (crownY - headY) * (0.4 + 0.5 * (1 - sf)));
-      ctx.strokeStyle = `rgba(170,190,230,${0.55 * sf})`; ctx.lineWidth = 1.2;
-      for (const ang of [-26, -13, 0, 13, 26]) {
-        const a = ang * Math.PI / 180;
-        ctx.beginPath(); ctx.moveTo(cx, headY); ctx.lineTo(cx + Math.sin(a) * reach * 0.6, headY + reach); ctx.stroke();
-      }
-    }
-    // compression-ignition bloom: fiery, organic, no electric spark
-    const bloom = da < 34 ? Math.sin((da / 34) * Math.PI) : 0;
-    if (bloom > 0) {
-      const cyb = headY + Math.min(crownY - headY, 16) + 4;
-      const r = 8 + bloom * Math.min(borePx * 0.55, 42);
-      const g = ctx.createRadialGradient(cx, cyb, 0, cx, cyb, r);
-      g.addColorStop(0, `rgba(255,176,96,${0.82 * bloom})`);
-      g.addColorStop(0.55, `rgba(232,110,50,${0.35 * bloom})`);
-      g.addColorStop(1, "rgba(232,110,50,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cyb, r, 0, Math.PI * 2); ctx.fill();
-    }
+    drawDieselInjection(ctx, { cx, headY, xL, borePx, depth: crownY - headY, da, now });
   } else {
-    // spark plug body + electrode
+    // spark plug body + centre electrode
     ctx.strokeStyle = "rgba(190,196,206,0.85)"; ctx.lineWidth = 4.5; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(cx, headY - 22); ctx.lineTo(cx, headY - 6); ctx.stroke();
     ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, headY - 6); ctx.lineTo(cx, headY + 1); ctx.stroke();
     ctx.lineCap = "butt";
-    // crisp electric spark (blue-white)
-    const spark = da < 24 ? 1 - da / 24 : 0;
-    if (spark > 0) {
-      const r = 5 + spark * 22;
-      const g = ctx.createRadialGradient(cx, headY + 2, 0, cx, headY + 2, r);
-      g.addColorStop(0, `rgba(223,233,255,${0.95 * spark})`);
-      g.addColorStop(0.5, `rgba(160,190,255,${0.4 * spark})`);
-      g.addColorStop(1, "rgba(160,190,255,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, headY + 2, r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = `rgba(240,246,255,${spark})`; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(cx, headY + 1); ctx.lineTo(cx - 3, headY + 6); ctx.lineTo(cx + 2, headY + 9); ctx.stroke();
-    }
+    drawSpark(ctx, cx, headY, da, now);
   }
 
   // ===== rotating assembly (back to front: pin orbit, counterweight, web, rod, piston, journals) =====
@@ -1030,6 +1118,15 @@ function drawEngine() {
   ctx.fillText(deg, 12, h - 12);
   ctx.fillStyle = "rgba(255,255,255,0.20)";
   ctx.fillText(" / 720\u00b0", 12 + ctx.measureText(deg).width, h - 12);
+
+  // The slow-down is a presentation choice, so the canvas owns up to it.
+  const slow = 1 - playbackRate(animTheta);
+  if (animPlaying && slow > 0.12) {
+    ctx.textAlign = "right";
+    ctx.fillStyle = `rgba(232,146,62,${Math.min(0.72, (slow - 0.12) * 1.25)})`;
+    ctx.fillText("slow motion through combustion", w - 12, h - 12);
+    ctx.textAlign = "left";
+  }
 }
 
 /* Cylinder block running down into a round crankcase, as one closed outline.
@@ -1053,6 +1150,98 @@ function drawHousing(ctx, cx, top, halfW, cyCrank, caseR) {
   g.addColorStop(1, "rgba(255,255,255,0.018)");
   ctx.fillStyle = g; ctx.fill();
   ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1; ctx.stroke();
+}
+
+/* Petrol ignition.
+ *
+ * A ground electrode hooks under the centre electrode so the arc has a gap to
+ * jump. The discharge is a fast breakdown followed by an exponential afterglow,
+ * and the arc itself is re-struck about 25 times a second so it flickers like a
+ * real discharge instead of sitting there as a fixed zigzag. Everything is
+ * keyed to degrees after firing, so it stays locked to the cycle at any speed.
+ */
+function drawSpark(ctx, cx, headY, da, now) {
+  const gapY = headY + 7;
+  ctx.strokeStyle = "rgba(176,182,192,0.8)"; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx + 6, headY - 1); ctx.lineTo(cx + 6, gapY); ctx.lineTo(cx + 1.5, gapY); ctx.stroke();
+  ctx.lineCap = "butt";
+  if (da > 36) return;
+
+  const glowI = Math.min(1, da / 1.5) * Math.exp(-Math.max(0, da - 1.5) / 9);
+  const r = 5 + 24 * (1 - Math.exp(-da / 6));
+  const cy = headY + 4;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, `rgba(236,243,255,${0.92 * glowI})`);
+  g.addColorStop(0.35, `rgba(150,180,255,${0.36 * glowI})`);
+  g.addColorStop(1, "rgba(120,150,255,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+  if (da < 16) {
+    const seed = Math.floor(now * 25);
+    const rnd = (k) => { const x = Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
+    const arcI = (1 - da / 16) * (0.7 + 0.3 * rnd(9));
+    ctx.save();
+    ctx.strokeStyle = `rgba(246,249,255,${arcI})`; ctx.lineWidth = 1.3; ctx.lineJoin = "round";
+    ctx.shadowColor = "rgba(170,196,255,0.95)"; ctx.shadowBlur = 7 * arcI;
+    ctx.beginPath(); ctx.moveTo(cx, headY + 1);
+    for (let i = 1; i < 4; i++) {
+      const t = i / 4;
+      ctx.lineTo(cx + 0.4 + (rnd(i) - 0.5) * 4.2, headY + 1 + t * (gapY - headY - 1));
+    }
+    ctx.lineTo(cx + 1.5, gapY);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* Diesel injection and autoignition.
+ *
+ * Fuel leaves the nozzle as plumes that penetrate fast and then slow, angled
+ * out into the bowl. After an ignition delay the plume tips autoignite first,
+ * where the spray has mixed with the hottest air, and those kernels swell and
+ * merge. No spark: compression ignition starts in several places at once.
+ */
+function drawDieselInjection(ctx, o) {
+  const { cx, headY, xL, borePx, depth, da, now } = o;
+  if (da > 70 || depth < 1) return;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(xL, headY, borePx, depth); ctx.clip();
+
+  const inject = 1 - smooth(26, 40, da);
+  const reach = (1 - Math.exp(-da / 6)) * borePx * 0.5;
+  const angles = [-72, -48, 48, 72];
+  const tips = [];
+  for (let i = 0; i < angles.length; i++) {
+    const a = angles[i] * Math.PI / 180;
+    const dx = Math.sin(a), dy = Math.cos(a);
+    const tx = cx + dx * reach, ty = headY + dy * reach;
+    tips.push([tx, ty]);
+    if (inject <= 0.01) continue;
+    const half = (1.2 + reach * 0.16) * (1 + 0.08 * Math.sin(now * 31 + i * 1.7));
+    const px = -dy, py = dx;
+    const grad = ctx.createLinearGradient(cx, headY, tx, ty);
+    grad.addColorStop(0, `rgba(205,218,240,${0.62 * inject})`);
+    grad.addColorStop(1, `rgba(205,218,240,0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(cx, headY + 1);
+    ctx.lineTo(tx + px * half, ty + py * half);
+    ctx.lineTo(tx - px * half, ty - py * half);
+    ctx.closePath(); ctx.fill();
+  }
+
+  const lit = smooth(4, 10, da) * Math.exp(-Math.max(0, da - 14) / 20);
+  if (lit > 0.01) {
+    const kr = 3 + 15 * smooth(4, 26, da);
+    for (const [tx, ty] of tips) {
+      const k = ctx.createRadialGradient(tx, ty, 0, tx, ty, kr);
+      k.addColorStop(0, `rgba(255,198,120,${0.85 * lit})`);
+      k.addColorStop(0.5, `rgba(240,128,56,${0.40 * lit})`);
+      k.addColorStop(1, "rgba(240,128,56,0)");
+      ctx.fillStyle = k; ctx.beginPath(); ctx.arc(tx, ty, kr, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 /* Crank throw with a counterweight opposite the pin. The cheek wraps the main
@@ -1195,12 +1384,32 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/* Playback speed as a fraction of the base rate at crank angle a.
+ *
+ * At a constant crank speed the spark lasted about 90 ms and the whole burn
+ * under 200 ms, so combustion read as a blink. The crank now eases down to a
+ * fifth of its speed from just before the spark through most of the burn and
+ * back up again, on a Gaussian so the change in speed is never visible as a
+ * jolt. It is centred on the user's own timing, so it moves with the spark
+ * advance and stretches with the burn duration. Only playback changes: every
+ * angle-keyed quantity, and the P-V marker, is drawn at the true crank angle.
+ */
+function playbackRate(a) {
+  const start = 360 + inputVal("combustion_start_deg", -15);
+  const dur = inputVal("burn_duration_deg", 50);
+  const centre = start + dur * 0.35;
+  const width = 18 + dur * 0.55;
+  let d = (((a - centre) % 720) + 720) % 720;
+  if (d > 360) d -= 720;
+  return 1 - 0.8 * Math.exp(-0.5 * (d / width) * (d / width));
+}
+
 function animFrame(ts) {
   if (!animLast) animLast = ts;
   const dt = Math.min(0.05, (ts - animLast) / 1000); animLast = ts;
   if (animPlaying) {
-    const cyclesPerSec = 1 / 2.6;            // one full 4-stroke every ~2.6 s
-    animTheta = (animTheta + dt * 720 * cyclesPerSec) % 720;
+    const cyclesPerSec = 1 / 2.4;            // base rate, before the slow-down
+    animTheta = (animTheta + dt * 720 * cyclesPerSec * playbackRate(animTheta)) % 720;
   }
   markerIdx = engineTraceIndex(animTheta);
   // Only draw the engine while it is on screen, and only repaint the loops when
