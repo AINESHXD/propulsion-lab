@@ -84,6 +84,7 @@ button, input, select { font-family: inherit; }
 .m-brand {
   display: flex;
   align-items: center;
+  min-height: 44px;
   gap: 10px;
   text-decoration: none;
   min-width: 0;
@@ -91,7 +92,7 @@ button, input, select { font-family: inherit; }
 .m-brand-text { display: flex; flex-direction: column; gap: 3px; line-height: 1.05; min-width: 0; }
 .m-brand-labs {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.16em;
   color: var(--text-3);
   text-transform: uppercase;
@@ -111,8 +112,8 @@ button, input, select { font-family: inherit; }
 .m-bar-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 
 .m-units {
-  min-width: 42px;
-  height: 34px;
+  min-width: 44px;
+  height: 44px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
@@ -126,7 +127,7 @@ button, input, select { font-family: inherit; }
 .m-units:active { background: var(--surface-3); }
 
 .m-menu-btn {
-  width: 38px; height: 34px;
+  width: 44px; height: 44px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 4px;
@@ -198,7 +199,7 @@ button, input, select { font-family: inherit; }
 }
 .m-engine svg { width: 44px; height: 16px; display: block; color: currentColor; margin-bottom: 9px; }
 .m-engine .m-engine-name { font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
-.m-engine .m-engine-code { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.05em; color: var(--text-3); margin-top: 2px; }
+.m-engine .m-engine-code { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text-3); margin-top: 2px; }
 .m-engine.is-active {
   border-color: var(--accent);
   background: var(--accent-soft);
@@ -223,7 +224,7 @@ button, input, select { font-family: inherit; }
 }
 .m-tab {
   flex: 1;
-  height: 38px;
+  height: 44px;
   border: none;
   background: transparent;
   color: var(--text-2);
@@ -253,7 +254,7 @@ button, input, select { font-family: inherit; }
 }
 .m-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
 .m-card-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-.m-card-hint { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--text-3); text-transform: uppercase; flex: none; }
+.m-card-hint { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; color: var(--text-3); text-transform: uppercase; flex: none; }
 
 /* concept strip */
 .m-concept {
@@ -271,7 +272,7 @@ button, input, select { font-family: inherit; }
 .m-concept .m-concept-eyebrow {
   display: block;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent);
@@ -282,6 +283,9 @@ button, input, select { font-family: inherit; }
 .m-presets { display: flex; flex-wrap: wrap; gap: 8px; }
 .m-preset {
   padding: 9px 13px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: var(--surface-2);
@@ -304,7 +308,7 @@ button, input, select { font-family: inherit; }
 }
 .m-field-label .m-unit {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-3);
   letter-spacing: 0.02em;
 }
@@ -345,7 +349,11 @@ button, input, select { font-family: inherit; }
 }
 .m-check .m-field-label { font-size: 13.5px; color: var(--text); }
 .m-switch { position: relative; width: 44px; height: 26px; flex: none; }
-.m-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.m-switch input {
+  position: absolute; opacity: 0; margin: 0; cursor: pointer;
+  left: 0; width: 100%;
+  top: 50%; height: 44px; transform: translateY(-50%);
+}
 .m-switch .m-track {
   position: absolute; inset: 0;
   background: var(--surface-3);
@@ -424,7 +432,7 @@ button, input, select { font-family: inherit; }
 .m-metric.accent-tsfc   { border-color: rgba(123,167,235,0.30); background: linear-gradient(180deg, var(--accent-soft), var(--surface)); }
 .m-metric-label {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -474,7 +482,7 @@ button, input, select { font-family: inherit; }
 .m-table thead th {
   position: sticky; top: 0;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -509,7 +517,7 @@ button, input, select { font-family: inherit; }
   line-height: 1.45;
   color: #e7c98f;
 }
-.m-warn-item::before { content: "▲"; color: var(--warn); font-size: 10px; line-height: 1.6; flex: none; }
+.m-warn-item::before { content: "▲"; color: var(--warn); font-size: 11px; line-height: 1.6; flex: none; }
 
 /* sweep */
 .m-sweep-blurb { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--text-2); }
@@ -541,7 +549,7 @@ button, input, select { font-family: inherit; }
 .m-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .m-sheet-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; color: var(--text-3); text-transform: uppercase; }
 .m-sheet-close {
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-sm);
   background: var(--surface-2);
@@ -561,7 +569,7 @@ button, input, select { font-family: inherit; }
 .m-sheet-links a span { font-size: 12px; color: var(--text-3); }
 .m-sheet-desktop { margin-top: 8px; border: 1px solid var(--line); }
 .m-sheet-desktop b { color: var(--accent) !important; }
-.m-sheet-foot { margin: 18px 0 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: var(--text-3); text-align: center; }
+.m-sheet-foot { margin: 18px 0 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--text-3); text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

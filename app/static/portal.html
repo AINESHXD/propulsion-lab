@@ -25,7 +25,7 @@
 
       .wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
         padding:48px 22px;text-align:center}
-      .logo{height:54px;width:auto;margin:0 auto 6px;opacity:.97}
+      .logo{height:54px;width:auto;max-width:100%;object-fit:contain;margin:0 auto 6px;opacity:.97}
       .logo-fallback{font-weight:800;letter-spacing:.22em;font-size:30px}
       .eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:.26em;text-transform:uppercase;
         color:var(--dim);margin-top:14px}
@@ -61,6 +61,7 @@
       footer a:hover{color:var(--text)}
       footer .sep{opacity:.4}
       @media(max-width:600px){.grid{grid-template-columns:1fr;max-width:340px}.logo{height:44px}}
+      @media(max-width:360px){.wrap{padding:36px 16px}.logo{height:34px}}
     </style>
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
       <link rel="icon" href="/lab/favicon.ico" sizes="any" />

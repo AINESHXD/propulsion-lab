@@ -25,7 +25,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20260609-cachefix" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20261007-tracks" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
       <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -38,7 +38,12 @@
          never affect the portal or the content pages. -->
     <style>
       #mobileGate { display: none; }
-      @media (max-width: 760px) {
+      /* Width alone missed a phone held sideways: 844x390 is 844 wide, so a
+         landscape handset sailed past a max-width gate and got the desktop
+         console in a 390px-tall window. The second query catches a short
+         viewport on a touch device, which is that case and not a short
+         desktop window. */
+      @media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
         /* Hide the console UI entirely on phones. */
         body > .mission-bar,
         body > .app-shell,

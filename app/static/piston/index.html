@@ -13,7 +13,9 @@
           if (
             location.search.indexOf("nomobile") === -1 &&
             window.matchMedia &&
-            window.matchMedia("(max-width: 760px)").matches
+            window.matchMedia(
+              "(max-width: 760px), (max-height: 500px) and (pointer: coarse)"
+            ).matches
           ) {
             location.replace("/m");
           }

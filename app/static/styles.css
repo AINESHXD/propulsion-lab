@@ -351,6 +351,11 @@ button.unit-toggle:hover { color: var(--text); border-color: var(--line-2); }
   margin: 0 auto;
   padding: 56px 32px 80px;
   display: grid;
+  /* An implicit grid track is auto-sized, and an auto track sizes to the
+     max-content of its items, so the shell's single column grew to 1148px
+     inside its own 834px box and the page scrolled sideways. minmax(0, 1fr)
+     pins the track to the container and lets the content wrap instead. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 56px;
 }
 
@@ -459,10 +464,15 @@ button.unit-toggle:hover { color: var(--text); border-color: var(--line-2); }
 
 .section {
   display: grid;
+  /* Same reason as .app-shell: an implicit auto track sizes to max-content,
+     so a wide child dragged the whole section past the viewport instead of
+     wrapping. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 .section-header {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
 }
 .section-title {
@@ -743,7 +753,7 @@ button.unit-toggle:hover { color: var(--text); border-color: var(--line-2); }
 
 .profile-tools {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(108px, 100%), 1fr));
   gap: 8px;
   align-items: end;
   margin-bottom: 22px;
@@ -1071,7 +1081,7 @@ canvas { display: block; width: 100%; height: auto; }
 
 .nozzle-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
   gap: 0;
   margin-top: 16px;
   border-top: 1px solid var(--line);
@@ -1178,7 +1188,7 @@ th {
 
 .sweep-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 320px) minmax(260px, 1fr);
+  grid-template-columns: minmax(220px, 320px) minmax(min(260px, 100%), 1fr);
   gap: 16px;
   margin-bottom: 18px;
 }
@@ -1597,7 +1607,7 @@ th {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 6px 24px;
   margin: 14px 0 0;
   padding: 14px 16px;
@@ -2361,7 +2371,7 @@ a:focus-visible,
 
 .od-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(min(240px, 100%), 1fr);
   gap: 20px;
   align-items: start;
 }

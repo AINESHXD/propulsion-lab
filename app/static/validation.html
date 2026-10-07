@@ -6,12 +6,12 @@
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="PropulsionLab checked against 26 certified engines from the ICAO Aircraft Engine Emissions Databank: bypass ratio 0.6 to 11.6, 1968 to 2016. Every error shown, including the ones that do not flatter the model. A DAS LABS project." />
     <title>Validation · PropulsionLab</title>
-    <link rel="stylesheet" href="/lab/styles.css?v=20260609-cachefix" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20261007-tracks" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
     <style>
-      .v-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
+      .v-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 14px; margin-bottom: 20px; }
       .v-stat { border: 1px solid var(--line); border-radius: 8px; padding: 15px 17px; background: var(--surface);
                 display: flex; flex-direction: column; }
       .v-stat .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
@@ -46,7 +46,7 @@
       #vTable tbody tr:hover { background: var(--surface-2, rgba(255,255,255,.02)); }
       .uid { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
 
-      .v-assume { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 7px 22px;
+      .v-assume { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(215px, 100%), 1fr)); gap: 7px 22px;
                   font-size: 12.5px; }
       .v-assume div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0;
                       border-bottom: 1px solid var(--line); }
@@ -55,7 +55,7 @@
 
       /* Two columns, and no 64ch cap: .section-sub's measure is right for a hero
          paragraph and leaves half a full-width panel empty. */
-      .v-scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 18px 26px; }
+      .v-scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr)); gap: 18px 26px; }
       .v-scope-col { border-left: 2px solid var(--line-strong); padding-left: 15px; }
       .v-scope-col.ok { border-left-color: var(--ok); }
       .v-scope-col.warn { border-left-color: var(--warn); }
