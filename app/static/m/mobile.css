@@ -167,17 +167,7 @@ button, input, select { font-family: inherit; }
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
-.m-status-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--text-3);
-  flex: none;
-}
-.m-status[data-state="ok"]      .m-status-dot { background: var(--ok); box-shadow: 0 0 8px rgba(132,204,138,0.6); }
-.m-status[data-state="busy"]    .m-status-dot { background: var(--accent); animation: pulse 1s infinite; }
-.m-status[data-state="error"]   .m-status-dot { background: var(--err); }
 .m-status[data-state="error"]   .m-status-text { color: var(--err); }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
 /* =========================================================
    ENGINE PICKER
    ========================================================= */

@@ -343,16 +343,8 @@ button.unit-toggle:hover { color: var(--text); border-color: var(--line-2); }
   letter-spacing: 0;
   text-transform: none;
 }
-.status-pill::before {
-  content: "";
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--text-3);
-}
 .status-pill.ok { color: var(--text); border-color: var(--line-strong); }
-.status-pill.ok::before { background: var(--ok); }
 .status-pill.bad { color: var(--text); border-color: var(--line-strong); }
-.status-pill.bad::before { background: var(--err); }
 
 /* =========================================================
    APP SHELL
@@ -2317,15 +2309,6 @@ a:focus-visible,
 
 /* Pulse the existing ok dot (green, defined above) — no redefinition, just
    the slow telemetry heartbeat layered on. A soft halo ring echoes it. */
-.status-pill.ok::before {
-  animation: telemetryPulse 3.4s ease-in-out infinite;
-  box-shadow: 0 0 0 0 rgba(132, 204, 138, 0.5);
-}
-@keyframes telemetryPulse {
-  0%, 100% { opacity: 0.45; box-shadow: 0 0 0 0 rgba(132, 204, 138, 0.45); }
-  50%      { opacity: 1;    box-shadow: 0 0 0 4px rgba(132, 204, 138, 0); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -2338,7 +2321,6 @@ a:focus-visible,
   .pc-stream path  { stroke-dasharray: none; }
   /* Reveal everything immediately when motion is reduced. */
   .section.reveal  { opacity: 1; transform: none; }
-  .status-pill.ok::before { opacity: 0.9; }
 }
 
 .report-actions { display: flex; gap: 10px; align-items: center; }

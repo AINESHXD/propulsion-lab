@@ -329,19 +329,8 @@ button.unit-toggle:hover { color: var(--text); border-color: var(--line-strong);
   text-transform: none;
   white-space: nowrap;
 }
-.status-pill::before {
-  content: "";
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--text-3);
-}
 .status-pill.ok { color: var(--text); border-color: var(--line-strong); }
-.status-pill.ok::before { background: var(--ok); }
-.status-pill.busy::before { background: var(--accent); animation: pulse 1s infinite; }
 .status-pill.err { color: var(--text); border-color: var(--line-strong); }
-.status-pill.err::before { background: var(--err); }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
 /* Enthusiast / Engineer — a hairline segmented control, not a pill. */
 .mode-toggle {
   display: inline-flex;
