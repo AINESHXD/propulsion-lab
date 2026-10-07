@@ -197,7 +197,6 @@ button, input, select { font-family: inherit; }
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s, color 0.2s;
 }
-.m-engine svg { width: 44px; height: 16px; display: block; color: currentColor; margin-bottom: 9px; }
 .m-engine .m-engine-name { font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
 .m-engine .m-engine-code { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text-3); margin-top: 2px; }
 .m-engine.is-active {

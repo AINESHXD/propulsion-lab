@@ -13,19 +13,6 @@
    *  ENGINE METADATA  (mirrors app.js defaults + field lists)   *
    * ----------------------------------------------------------- */
 
-  const ICONS = {
-    turbojet:
-      '<path d="M2 11 L12 5 L52 5 L60 11 L52 17 L12 17 Z" stroke="currentColor" stroke-width="0.9"/><line x1="22" y1="6" x2="22" y2="16" stroke="currentColor" stroke-width="0.8"/><line x1="32" y1="6" x2="32" y2="16" stroke="currentColor" stroke-width="0.8"/><line x1="42" y1="6" x2="42" y2="16" stroke="currentColor" stroke-width="0.8"/>',
-    turbofan:
-      '<path d="M2 11 L10 3 L52 5 L60 11 L52 17 L10 19 Z" stroke="currentColor" stroke-width="0.9"/><circle cx="10" cy="11" r="5" stroke="currentColor" stroke-width="0.8" fill="none"/><line x1="32" y1="6" x2="32" y2="16" stroke="currentColor" stroke-width="0.8"/><line x1="42" y1="6.5" x2="42" y2="15.5" stroke="currentColor" stroke-width="0.8"/>',
-    turboprop:
-      '<line x1="8" y1="2" x2="8" y2="20" stroke="currentColor" stroke-width="1"/><circle cx="8" cy="11" r="2.2" fill="currentColor"/><path d="M14 11 L20 6 L52 6 L58 11 L52 16 L20 16 Z" stroke="currentColor" stroke-width="0.9"/><line x1="34" y1="7" x2="34" y2="15" stroke="currentColor" stroke-width="0.8"/><line x1="44" y1="7.5" x2="44" y2="14.5" stroke="currentColor" stroke-width="0.8"/>',
-    ramjet:
-      '<path d="M3 5 L24 9 L40 9 L61 4 L61 18 L40 13 L24 13 L3 17 Z" stroke="currentColor" stroke-width="0.9" fill="none"/><path d="M28 8 L36 11 L28 14" stroke="currentColor" stroke-width="0.8" fill="none"/>',
-    scramjet:
-      '<path d="M3 18 L61 6 L61 11 L26 15 Z" stroke="currentColor" stroke-width="0.9" fill="none"/><line x1="3" y1="18" x2="61" y2="13" stroke="currentColor" stroke-width="0.7" opacity="0.7"/>',
-  };
-
   const CONCEPTS = {
     turbojet:
       "Only a turbine to drive the compressor, and all the gas leaves as a fast jet. Simple and light but thirsty, it is the high-speed core every other family is built around.",
@@ -386,7 +373,6 @@
       const btn = el("button", "m-engine" + (key === state.engine ? " is-active" : ""));
       btn.type = "button";
       btn.innerHTML =
-        `<svg viewBox="0 0 64 22" fill="none" aria-hidden="true">${ICONS[key]}</svg>` +
         `<div class="m-engine-name">${cfg.label}</div>` +
         `<div class="m-engine-code">${cfg.code}</div>`;
       btn.addEventListener("click", () => selectEngine(key));

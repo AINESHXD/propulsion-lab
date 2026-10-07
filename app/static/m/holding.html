@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="robots" content="noindex" />
+    <meta name="description" content="The DAS LABS mobile console is being rebuilt. The full desktop consoles for PropulsionLab and PistonLab are live at daslabs.uk." />
+    <title>Mobile console in development · DAS LABS</title>
+
+    <link rel="icon" href="/lab/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
+
+    <!--
+      The holding notice that stood in for the phone console between
+      2026-08-08 and 2026-10-07, kept here rather than deleted so re-gating is
+      a rename: move index.html aside and put this back in its place. The
+      console is live at /lab/m/ again, so nothing currently serves this file.
+
+      Deliberately self-contained: no mobile.css, no mobile.js, no fetch. A
+      holding page that can itself break is worse than no holding page.
+    -->
+    <style>
+      :root{
+        --bg:#08090b; --surface:#111318; --text:#f3f4f6; --dim:#9197a1;
+        --line:rgba(255,255,255,.12); --accent:#7ba7eb; --amber:#e8923e;
+        --mono:"SF Mono",ui-monospace,"Cascadia Code",monospace;
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      html,body{min-height:100%;background:var(--bg);color:var(--text);
+        font:16px/1.55 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;
+        -webkit-font-smoothing:antialiased}
+      body{background:
+        radial-gradient(120% 60% at 80% 0%, rgba(123,167,235,.08), transparent 60%),
+        radial-gradient(100% 50% at 10% 100%, rgba(232,146,62,.05), transparent 55%), var(--bg);
+        display:flex;flex-direction:column;min-height:100vh;
+        padding:calc(env(safe-area-inset-top) + 26px) 22px calc(env(safe-area-inset-bottom) + 26px)}
+      a{color:var(--accent);text-decoration:none}
+
+      .brand{display:flex;align-items:center;margin-bottom:auto}
+      .brand img{height:20px;width:auto;display:block}
+      .brand-fallback{font-weight:700;letter-spacing:.16em;font-size:12.5px}
+
+      main{padding:34px 0}
+      .pill{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);
+        border-radius:999px;padding:7px 14px;font-family:var(--mono);font-size:10.5px;
+        letter-spacing:.16em;text-transform:uppercase;color:var(--text);margin-bottom:22px}
+      .dot{width:7px;height:7px;border-radius:50%;background:var(--amber);
+        box-shadow:0 0 10px var(--amber)}
+      h1{font-size:30px;font-weight:660;letter-spacing:-.02em;line-height:1.12;margin-bottom:14px}
+      h1 .dim{color:var(--dim)}
+      p.lede{color:var(--dim);font-size:15px;max-width:38ch}
+      p.lede + p.lede{margin-top:13px}
+
+      .actions{display:flex;flex-direction:column;gap:10px;margin-top:30px}
+      .btn{display:flex;flex-direction:column;gap:3px;background:var(--surface);
+        border:1px solid var(--line);border-radius:13px;padding:15px 17px;color:var(--text)}
+      .btn b{font-size:15px;font-weight:600}
+      .btn span{color:var(--dim);font-size:12.5px}
+      .btn.primary{border-color:rgba(123,167,235,.4);background:rgba(123,167,235,.09)}
+
+      footer{margin-top:auto;padding-top:30px;color:var(--dim);font-size:11.5px;
+        font-family:var(--mono);letter-spacing:.05em;
+        display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <img src="/lab/assets/das_labs_logo_dark.png?v=20260529-2" alt="DAS LABS"
+           width="822" height="116"
+           onerror="this.outerHTML='&lt;span class=&quot;brand-fallback&quot;&gt;DAS&amp;nbsp;LABS&lt;/span&gt;'" />
+    </div>
+
+    <main>
+      <span class="pill"><span class="dot"></span> In development</span>
+
+      <h1>The phone console<br /><span class="dim">is being rebuilt.</span></h1>
+
+      <p class="lede">
+        PropulsionLab and PistonLab are live and fully working, but the consoles
+        are dense with live plots, station tables and crank-angle animation, and
+        the phone build is not yet good enough to put your name to.
+      </p>
+      <p class="lede">
+        It is actively being worked on. In the meantime the full consoles run
+        properly on a laptop or desktop.
+      </p>
+
+      <div class="actions">
+        <a class="btn primary" href="/">
+          <b>DAS LABS home</b>
+          <span>Both labs, and what each one does</span>
+        </a>
+        <a class="btn" href="/validation/">
+          <b>Validation report</b>
+          <span>Checked against 26 certified engines. Reads fine on a phone.</span>
+        </a>
+        <a class="btn" href="/lab/methodology.html">
+          <b>Methodology and limits</b>
+          <span>What the models assume, and what is not claimed</span>
+        </a>
+        <a class="btn" href="/lab?nomobile=1">
+          <b>PropulsionLab anyway</b>
+          <span>The full console on this phone. Cramped, but nothing is blocked.</span>
+        </a>
+        <a class="btn" href="/piston?nomobile=1">
+          <b>PistonLab anyway</b>
+          <span>Same, for the reciprocating-engine console</span>
+        </a>
+      </div>
+    </main>
+
+    <footer>
+      <span>daslabs.uk</span>
+      <span>PropulsionLab · PistonLab</span>
+    </footer>
+  </body>
+</html>

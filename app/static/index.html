@@ -10,10 +10,19 @@
     <script>
       (function () {
         try {
+          // Marks the document before first paint. The notice below is the
+          // no-JS fallback only: if this line ran, either we are about to
+          // redirect, or the visitor asked for the desktop console with
+          // ?nomobile=1 and must actually get it. A media query cannot read
+          // a query string, so without this the escape hatch was covered by
+          // a notice telling the visitor their JavaScript was off.
+          document.documentElement.classList.add("js");
           if (
             location.search.indexOf("nomobile") === -1 &&
             window.matchMedia &&
-            window.matchMedia("(max-width: 760px)").matches
+            window.matchMedia(
+              "(max-width: 760px), (max-height: 500px) and (pointer: coarse)"
+            ).matches
           ) {
             location.replace("/m");
           }
@@ -25,7 +34,7 @@
          by uncommenting and setting data-domain to your production domain. Left
          inert here so no third-party script loads before you opt in. -->
     <!-- <script defer data-domain="YOUR-DOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
-    <link rel="stylesheet" href="/lab/styles.css?v=20261007-tracks" />
+    <link rel="stylesheet" href="/lab/styles.css?v=20261007-tracks2" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
       <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -44,14 +53,16 @@
          viewport on a touch device, which is that case and not a short
          desktop window. */
       @media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
-        /* Hide the console UI entirely on phones. */
-        body > .mission-bar,
-        body > .app-shell,
-        body > .mission-footer,
-        body > #bootScreen { display: none !important; }
-        html, body { height: 100%; overflow: hidden; }
+        /* Hide the console UI entirely on phones, but only where the
+           redirect could not run. With JS on, a phone is already on /m and a
+           ?nomobile=1 visitor wants the console they asked for. */
+        html:not(.js) body > .mission-bar,
+        html:not(.js) body > .app-shell,
+        html:not(.js) body > .mission-footer,
+        html:not(.js) body > #bootScreen { display: none !important; }
+        html:not(.js), html:not(.js) body { height: 100%; overflow: hidden; }
 
-        #mobileGate {
+        html:not(.js) #mobileGate {
           display: flex;
           position: fixed;
           inset: 0;
