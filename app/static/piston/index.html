@@ -4,27 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <!-- Phones go to the /m notice while the mobile build is gated. This fires
-         before any render or asset load, matching the desktop console. The
-         ?nomobile=1 escape hatch keeps the full console reachable on a phone. -->
-    <script>
-      (function () {
-        try {
-          if (
-            location.search.indexOf("nomobile") === -1 &&
-            window.matchMedia &&
-            window.matchMedia(
-              "(max-width: 760px), (max-height: 500px) and (pointer: coarse)"
-            ).matches
-          ) {
-            location.replace("/m");
-          }
-        } catch (e) {}
-      })();
-    </script>
+    <!-- No phone redirect. While the phone build was gated, both labs sent
+         phones to one holding notice at /m. Once /m became the PropulsionLab
+         phone console, that redirect sent anyone tapping PistonLab on a phone
+         into the wrong lab. There is no separate PistonLab phone build: this
+         page is responsive, and the phone rules in piston.css give it an 11px
+         text floor and 44px touch targets. -->
     <meta name="description" content="PistonLab: a crank-angle-resolved reciprocating-engine cycle simulator. Two-zone Wiebe combustion with temperature-dependent specific heats, Woschni wall heat, friction, pumping, valve-limited breathing, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20261007-nolights" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20261011-touch" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />

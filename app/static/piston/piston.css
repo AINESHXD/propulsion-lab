@@ -1834,17 +1834,12 @@ canvas { display: block; width: 100%; }
   .card-head h2 { font-size: 15px; }
   .section-title { font-size: 1.35rem; }
 
-  /* FORMS — 16px+ stops iOS auto-zoom; >=40px is thumb-friendly. */
+  /* FORMS: 16px+ stops iOS auto-zoom. Touch floors live in the block at the
+     end of this file, which also covers a phone held sideways. */
   input[type="number"], input[type="text"], select, textarea {
     font-size: 16px;
-    min-height: 40px;
     padding: 8px 10px;
   }
-  input[type="range"] { min-height: 0; }
-
-  /* BUTTONS — 44px minimum touch target. */
-  .primary-button, .ghost-btn { min-height: 44px; padding: 11px 18px; }
-  .chart-tab, .mode-opt, .engine-play { min-height: 34px; }
 
   /* keep any wide child from forcing horizontal scroll */
   .workspace, .controls, .results, .card { min-width: 0; }
@@ -1855,4 +1850,55 @@ canvas { display: block; width: 100%; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* =========================================================
+   TOUCH FLOORS
+   Phones get 44px touch targets and an 11px text floor. This is its own
+   block, last in the file, for two reasons: the narrow-width block above
+   misses a phone held sideways (844 wide), and more specific rules elsewhere
+   would otherwise hold some controls under 44px.
+   ========================================================= */
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
+  /* FORMS: 16px+ stops iOS auto-zoom; 44px is the touch-target floor. */
+  input[type="number"], input[type="text"], select, textarea,
+  .select-wrap.small select {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  /* Sliders: on desktop the 2px track is the input itself, which made the
+     touch target 2px tall on a phone. Here the input is a 44px band and the
+     same 2px track is drawn as the runnable track, so it looks identical and
+     the whole band takes a finger. */
+  input[type="range"] {
+    height: 44px;
+    min-height: 44px;
+    background: transparent;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px; border-radius: 999px; background: var(--surface-4);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 2px; border-radius: 999px; background: var(--surface-4);
+  }
+  input[type="range"]::-webkit-slider-thumb { margin-top: -5.5px; }
+
+  /* BUTTONS: 44px minimum touch target. */
+  .primary-button, .ghost-btn { min-height: 44px; padding: 11px 18px; }
+  .chart-tab, .mode-opt, .engine-play, .preset,
+  .mission-bar-right .mode-opt { min-height: 44px; }
+  .brand { min-height: 44px; }
+
+  /* Footer links keep their line of text but take a 44px-tall target: the
+     padding grows the hit area and the equal negative margin cancels it out
+     of the layout. */
+  .mission-footer .footer-block a {
+    display: inline-block; padding: 14px 0; margin: -14px 0;
+  }
+
+  /* No phone text below 11px. Info marks, sub-labels, hints, row group
+     headings, the concept eyebrow and the two engine badges were 9 to 10px. */
+  .info, .etype-sub, .hint, .row-group, .concept-eyebrow,
+  .ignition-badge, .stroke-pill { font-size: 11px; }
 }

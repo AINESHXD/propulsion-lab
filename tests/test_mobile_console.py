@@ -75,15 +75,37 @@ def test_m_versioned_assets_are_immutable() -> None:
 # --------------------------------------------------------------------------- #
 # phones reach the console, and nobody is trapped on it
 # --------------------------------------------------------------------------- #
-def test_both_consoles_redirect_phones_to_m() -> None:
-    # Gating one lab and not the other was an inconsistency when the notice
-    # stood here, and it would be one now: a phone should reach the phone
-    # build from either lab. The ?nomobile escape hatch stops that being a
-    # dead end for anyone who wants the desktop console anyway.
-    for page in ("index.html", "piston/index.html"):
-        html = (_ROOT / "app" / "static" / page).read_text(encoding="utf-8")
-        assert "/m" in html, page
-        assert "nomobile" in html, page
+def test_the_propulsionlab_console_redirects_phones_to_m() -> None:
+    # /m is the PropulsionLab phone console. The ?nomobile escape hatch stops
+    # it being a dead end for anyone who wants the desktop console anyway.
+    html = (_ROOT / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert 'location.replace("/m")' in html
+    assert "nomobile" in html
+
+
+def test_pistonlab_does_not_send_phones_to_propulsionlab() -> None:
+    # Regression guard. While the phone build was gated, both labs sent phones
+    # to one holding notice at /m. After un-gating, /m became the PropulsionLab
+    # console, so tapping PistonLab on a phone opened the wrong lab. PistonLab
+    # has no phone build of its own; it must serve its own responsive page.
+    html = (_ROOT / "app" / "static" / "piston" / "index.html").read_text(encoding="utf-8")
+    markup = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
+    assert 'location.replace("/m")' not in markup
+    assert "location.replace(" not in markup
+
+
+def test_pistonlab_holds_the_phone_floors() -> None:
+    # The page phones now get directly: 44px touch targets including the
+    # sliders, and nothing below 11px, inside the phone media block.
+    css = (_ROOT / "app" / "static" / "piston" / "piston.css").read_text(encoding="utf-8")
+    # The floors are their own block, last in the file, matching phones in
+    # either orientation; a narrow-width-only block missed landscape.
+    phone = css[css.index("TOUCH FLOORS"):]
+    assert "(max-height: 500px) and (pointer: coarse)" in phone
+    assert ".mission-bar-right .mode-opt" in phone and ".select-wrap.small select" in phone
+    assert "min-height: 44px" in phone
+    assert re.search(r'input\[type="range"\]\s*\{[^}]*height: 44px', phone)
+    assert ".stroke-pill { font-size: 11px; }" in phone
 
 
 def test_the_redirect_catches_a_phone_held_sideways() -> None:
@@ -91,10 +113,9 @@ def test_the_redirect_catches_a_phone_held_sideways() -> None:
     # sailed past a max-width gate and got the desktop console in a 390px-tall
     # window. The second query is a short viewport on a touch device, which is
     # a phone on its side and not a short desktop window.
-    for page in ("index.html", "piston/index.html"):
-        html = (_ROOT / "app" / "static" / page).read_text(encoding="utf-8")
-        assert "max-height: 500px" in html, page
-        assert "pointer: coarse" in html, page
+    html = (_ROOT / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "max-height: 500px" in html
+    assert "pointer: coarse" in html
 
 
 def test_the_console_offers_a_way_to_the_desktop_build() -> None:
