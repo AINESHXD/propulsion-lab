@@ -12,11 +12,12 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
-CACHE = "20260530-cs28"
+CACHE = "20261011-hyphen"
 
 _BRAND = (
     '<a class="brand" href="/lab/" aria-label="DAS LABS · PropulsionLab">'
-    '<span class="brand-mark">DAS&nbsp;LABS</span></a>'
+    "<img class=\"brand-mark-img\" src=\"/lab/assets/das_labs_logo_dark.png?v=20260529-2\" alt=\"DAS LABS\""
+    " onerror=\"this.outerHTML='&lt;span class=&quot;brand-mark&quot;&gt;DAS&amp;nbsp;LABS&lt;/span&gt;'\" /></a>"
 )
 OUT_DIR = Path(__file__).resolve().parent / "app" / "static" / "case-studies"
 
@@ -48,7 +49,7 @@ CONTENT: dict[str, dict] = {
             ("Architecture", [
                 "The JT8D is a two-spool low-bypass turbofan derived from the J52 "
                 "turbojet that powered the A-6 Intruder. A two-stage front fan "
-                "pressurises a bypass duct whose bypass ratio sits near unity — so "
+                "pressurises a bypass duct whose bypass ratio sits near unity, so "
                 "unlike a modern high-bypass fan, the hot core jet still produces "
                 "most of the thrust.",
                 "Core and bypass streams are not exhausted separately. They mix in a "
@@ -60,8 +61,8 @@ CONTENT: dict[str, dict] = {
             ("The cycle", [
                 "By the standards of a modern engine the JT8D runs a modest cycle: an "
                 "overall pressure ratio of roughly 16–21 and comparatively cool "
-                "turbine temperatures. That keeps the thermal efficiency — and the "
-                "fuel economy — well below today's engines, and the near-unity bypass "
+                "turbine temperatures. That keeps the thermal efficiency (and the "
+                "fuel economy) well below today's engines, and the near-unity bypass "
                 "ratio means a fast, hot exhaust jet that is inherently loud.",
                 "Those two facts framed the JT8D's later life. The -200 series 'refan' "
                 "raised the bypass ratio to improve fuel burn and noise, and external "
@@ -70,8 +71,8 @@ CONTENT: dict[str, dict] = {
             ]),
             ("Engineering significance", [
                 "The JT8D's importance is sheer volume and durability. More than "
-                "14,000 were built — for a long stretch the most-produced commercial "
-                "turbofan anywhere — and the engine earned a reputation for taking "
+                "14,000 were built, for a long stretch the most-produced commercial "
+                "turbofan anywhere, and the engine earned a reputation for taking "
                 "abuse and staying on-wing. It was the powerplant that turned the jet "
                 "from a long-haul luxury into everyday transport.",
             ]),
@@ -91,14 +92,14 @@ CONTENT: dict[str, dict] = {
         "meta": "The IAE V2500 high-bypass turbofan: a five-nation consortium engine "
                 "and the A320's efficient alternative to the CFM56.",
         "lede": "A clean, efficient high-bypass turbofan built by a five-nation "
-                "consortium — and for three decades the A320 family's other engine "
+                "consortium, and for three decades the A320 family's other engine "
                 "choice alongside the CFM56.",
         "sections": [
             ("Architecture", [
                 "The V2500 is a two-spool high-bypass turbofan from International Aero "
                 "Engines, a consortium of Pratt & Whitney, Rolls-Royce, Japanese Aero "
                 "Engines and German and Italian partners. It pairs a wide-chord fan "
-                "with a high-pressure-ratio high-pressure compressor — the source of "
+                "with a high-pressure-ratio high-pressure compressor, the source of "
                 "much of its efficiency for the thrust class.",
                 "A bypass ratio near 4.6 and an overall pressure ratio around 33 place "
                 "it squarely in the modern single-aisle bracket: most thrust now comes "
@@ -107,7 +108,7 @@ CONTENT: dict[str, dict] = {
             ("The cycle", [
                 "The V2500's calling card was a notably efficient HP core. A high "
                 "compressor pressure ratio raises the thermal efficiency, and the "
-                "engine became known for low cruise fuel burn and long on-wing life — "
+                "engine became known for low cruise fuel burn and long on-wing life: "
                 "the metrics that matter most to a narrowbody operator flying many "
                 "short cycles a day.",
             ]),
@@ -130,7 +131,7 @@ CONTENT: dict[str, dict] = {
         "fan": "≈ 1.55 – 1.73 m",
         "spools": "2-spool",
         "applications": "Airbus A320 family · Boeing 737 Classic / NG",
-        "meta": "The CFM56 — the best-selling jet engine in history. Its two-spool "
+        "meta": "The CFM56, the best-selling jet engine in history. Its two-spool "
                 "architecture, cycle and the GE-Safran partnership behind it.",
         "lede": "The best-selling jet engine in history. The CFM56 powered the "
                 "narrowbody market for three decades and proved the GE-Safran "
@@ -138,7 +139,7 @@ CONTENT: dict[str, dict] = {
         "sections": [
             ("Architecture", [
                 "The CFM56 is a two-spool high-bypass turbofan that grafts GE's F101 "
-                "core — developed for the B-1 bomber — onto a Snecma (now Safran) "
+                "core (developed for the B-1 bomber) onto a Snecma (now Safran) "
                 "low-pressure system. A single fan and booster sit on the LP shaft; a "
                 "nine-stage high-pressure compressor, annular combustor and cooled "
                 "high-pressure turbine make up the core.",
@@ -150,14 +151,14 @@ CONTENT: dict[str, dict] = {
             ("The cycle", [
                 "The CFM56's success was as much about robustness as raw efficiency. A "
                 "conservative, well-understood cycle gave long on-wing life and low "
-                "maintenance cost — exactly what a narrowbody operator values — while "
+                "maintenance cost, exactly what a narrowbody operator values, while "
                 "incremental pressure-ratio and material improvements kept fuel burn "
                 "competitive across a thirty-year production run.",
             ]),
             ("Engineering significance", [
                 "Tens of thousands of CFM56s were built, making it the best-selling "
                 "jet engine ever produced. Just as important, it was the proving "
-                "ground for CFM International — the GE-Safran joint venture — whose "
+                "ground for CFM International (the GE-Safran joint venture), whose "
                 "next engine, the LEAP, would inherit the narrowbody crown.",
             ]),
         ],
@@ -234,7 +235,7 @@ CONTENT: dict[str, dict] = {
                 "The pay-off is a double-digit fuel-burn improvement at entry, plus a "
                 "marked noise reduction from the slow fan tip speed. The engineering "
                 "price is a heavily loaded gearbox that must transmit tens of "
-                "thousands of horsepower and shed significant heat reliably — the "
+                "thousands of horsepower and shed significant heat reliably, the "
                 "focus of much of the programme's early service experience.",
             ]),
             ("Engineering significance", [
@@ -272,7 +273,7 @@ CONTENT: dict[str, dict] = {
                 "air-cooled high-pressure turbine make up the core.",
                 "Across the -6, -50, -80A, -80C2 and -80E1 variants the family grew its "
                 "fan, raised its pressure ratio and climbed in thrust, but the basic "
-                "two-spool widebody layout stayed constant — a textbook example of "
+                "two-spool widebody layout stayed constant: a textbook example of "
                 "stretching one sound architecture across a generation of aircraft.",
             ]),
             ("The cycle", [
@@ -313,7 +314,7 @@ CONTENT: dict[str, dict] = {
         "sections": [
             ("Architecture", [
                 "The PW4000 is a two-spool high-bypass turbofan offered in three fan "
-                "sizes — nominally 94, 100 and 112 inches — each tuned to a different "
+                "sizes (nominally 94, 100 and 112 inches), each tuned to a different "
                 "thrust class. The smallest serves the 767 and A310; the largest, with "
                 "a fan well over two and a half metres across, was developed for the "
                 "Boeing 777.",
@@ -331,7 +332,7 @@ CONTENT: dict[str, dict] = {
             ("Engineering significance", [
                 "The PW4000 kept Pratt & Whitney competitive across the entire widebody "
                 "market through the 1990s and 2000s, and the 112-inch variant put the "
-                "company on the 777 alongside the GE90 and the Trent 800 — a three-way "
+                "company on the 777 alongside the GE90 and the Trent 800, a three-way "
                 "contest that pushed all three manufacturers' large-fan technology "
                 "forward.",
             ]),
@@ -356,7 +357,7 @@ CONTENT: dict[str, dict] = {
         "sections": [
             ("Architecture", [
                 "The GE90 is a two-spool high-bypass turbofan built around an enormous "
-                "fan — over three metres in diameter on the largest variant. Its "
+                "fan, over three metres in diameter on the largest variant. Its "
                 "defining innovation was the fan blade itself: swept, wide-chord and "
                 "made of carbon-fibre composite rather than titanium, a first for a "
                 "commercial engine and the technology that let the fan grow so large "
@@ -369,7 +370,7 @@ CONTENT: dict[str, dict] = {
             ("The cycle", [
                 "A very high bypass ratio gives the GE90 excellent propulsive "
                 "efficiency, while the high overall pressure ratio lifts thermal "
-                "efficiency — the combination behind its strong long-haul fuel economy. "
+                "efficiency: the combination behind its strong long-haul fuel economy. "
                 "The largest member, the GE90-115B, is certified above 110,000 pounds "
                 "of thrust, a level no other turbofan has matched.",
             ]),
@@ -412,8 +413,8 @@ CONTENT: dict[str, dict] = {
                 "engine bleed, so the core is optimised without that off-take.",
             ]),
             ("The cycle", [
-                "A high bypass ratio and a high overall pressure ratio — among the "
-                "highest in service on the 787 variant — combine for a marked fuel-burn "
+                "A high bypass ratio and a high overall pressure ratio (among the "
+                "highest in service on the 787 variant) combine for a marked fuel-burn "
                 "improvement over the previous widebody generation, with lower noise and "
                 "emissions to match.",
             ]),
@@ -443,7 +444,7 @@ CONTENT: dict[str, dict] = {
                 "architecture no other manufacturer uses at this scale.",
         "sections": [
             ("Architecture", [
-                "The Trent XWB is a three-spool high-bypass turbofan — the Rolls-Royce "
+                "The Trent XWB is a three-spool high-bypass turbofan, the Rolls-Royce "
                 "signature. Where GE and Pratt & Whitney use two concentric shafts, "
                 "Rolls splits the compression across three: a fan on the low-pressure "
                 "spool, a separate intermediate-pressure compressor and turbine, and a "
@@ -516,9 +517,14 @@ def render(engine_id: str, c: dict) -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
     <meta name="description" content="{html.escape(c['meta'])}" />
-    <title>{html.escape(c['name'])} — PropulsionLab case study</title>
+    <title>{html.escape(c['name'])} · PropulsionLab case study</title>
     <link rel="stylesheet" href="/lab/styles.css?v={CACHE}" />
     <link rel="stylesheet" href="/lab/case-study.css?v={CACHE}" />
+    <script src="/lab/launch.js?v=20260606-launch" defer></script>
+    <link rel="icon" href="/lab/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/lab/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
   </head>
   <body>
     <header class="cs-page-bar">
@@ -577,10 +583,15 @@ def render_index() -> str:
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <meta name="description" content="Long-form engine case studies — ten landmark jet engines from the JT8D to the Trent XWB, with architecture, cycle and engineering significance." />
-    <title>Engine case studies — PropulsionLab</title>
+    <meta name="description" content="Long-form engine case studies: ten landmark jet engines from the JT8D to the Trent XWB, with architecture, cycle and engineering significance." />
+    <title>Engine case studies · PropulsionLab</title>
     <link rel="stylesheet" href="/lab/styles.css?v={CACHE}" />
     <link rel="stylesheet" href="/lab/case-study.css?v={CACHE}" />
+    <script src="/lab/launch.js?v=20260606-launch" defer></script>
+    <link rel="icon" href="/lab/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/lab/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/lab/apple-touch-icon.png" />
   </head>
   <body>
     <header class="cs-page-bar">
@@ -593,7 +604,7 @@ def render_index() -> str:
       <p class="eyebrow">PropulsionLab · Case studies</p>
       <h1>Ten engines that shaped the jet age</h1>
       <p class="cs-sub">
-        Short, original write-ups of landmark turbofans — the architecture, the
+        Short, original write-ups of landmark turbofans: the architecture, the
         cycle, and why each one mattered. Read in order they trace the arc from
         the loud low-bypass workhorses of the 1960s to today's high-bypass,
         composite-fan, geared and three-spool designs.

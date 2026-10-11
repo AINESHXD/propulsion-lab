@@ -59,7 +59,7 @@
 
   color-scheme: dark;
   font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01", "tnum";
+  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -173,6 +173,10 @@ h1, h2, h3, h4 {
 }
 p { margin: 0; }
 .mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+/* Tabular figures belong on readouts that update in place, not on running text:
+   in Inter, tnum also makes the hyphen digit-width, so "4-cylinder" read as
+   "4 - cylinder". The page-wide rule no longer sets it; these keep it. */
+.hero-stat-value { font-feature-settings: "cv11", "ss01", "tnum"; }
 
 /* =========================================================
    MISSION BAR  (top navigation)

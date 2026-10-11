@@ -5,7 +5,7 @@
    source of truth in app/engine_core/piston; this renders it.
    ============================================================= */
 
-import { initBuilder, openBuilder } from "/lab/piston/builder.js?v=20260726-pl24";
+import { initBuilder, openBuilder } from "/lab/piston/builder.js?v=20261011-hyphen";
 
 const API_SIM = "/piston/simulate";
 const API_SWEEP = "/piston/sweep";
@@ -171,7 +171,7 @@ function syncEngineType() {
   if (badge) { badge.dataset.ign = ign; badge.textContent = ign === "compression" ? "Compression" : "Spark"; }
   const note = document.getElementById("engineNote");
   if (note) note.textContent = ign === "compression"
-    ? "A four-stroke diesel in motion. No spark plug — the injector sprays fuel into air compressed so hard it self-ignites. Charge colour tracks gas temperature; watch the marker trace the loops below."
+    ? "A four-stroke diesel in motion. No spark plug: the injector sprays fuel into air compressed so hard it self-ignites. Charge colour tracks gas temperature; watch the marker trace the loops below."
     : "A four-stroke petrol engine in motion. The spark plug fires on your timing to light the mixture. Charge colour tracks gas temperature; watch the marker trace the loops below.";
 }
 
@@ -257,13 +257,13 @@ const info = (tip) => `<span class="info" data-tip="${tip.replace(/"/g, "&quot;"
 /* metric cards: persistent nodes with eased count-ups + ⓘ tooltips */
 const METRICS = [
   { id: "mPower", label: "Brake power", cls: "primary", kind: "power", get: (r) => r.brake_power_W, dig: () => 1,
-    tip: "Power delivered to the crankshaft after friction and pumping — what a dyno reads." },
+    tip: "Power delivered to the crankshaft after friction and pumping, which is what a dyno reads." },
   { id: "mTorque", label: "Brake torque", cls: "", kind: "torque", get: (r) => r.brake_torque_Nm, dig: () => 0,
     tip: "Turning effort at the crank: power ÷ rpm. Strong low-end torque is what you feel pulling away." },
   { id: "mBmep", label: "BMEP", cls: "", kind: "press", get: (r) => r.bmep_Pa, dig: () => 1,
-    tip: "Brake mean effective pressure — torque normalised by engine size, so a 1L and a 6L compare directly. ~10 bar NA petrol, 20+ bar boosted." },
+    tip: "Brake mean effective pressure: torque normalised by engine size, so a 1L and a 6L compare directly. ~10 bar NA petrol, 20+ bar boosted." },
   { id: "mBsfc", label: "BSFC", cls: "", kind: "bsfc", get: (r) => r.bsfc_g_per_kWh, dig: () => (unit === "US" ? 3 : 0),
-    tip: "Fuel burned per unit of work — lower is more efficient. ~250 g/kWh good petrol, ~200 diesel." },
+    tip: "Fuel burned per unit of work; lower is more efficient. ~250 g/kWh good petrol, ~200 diesel." },
 ];
 const metricLive = {}, metricRAF = {};
 function buildMetricCards() {
@@ -300,7 +300,7 @@ function renderResult(r) {
   // breakdown ladder
   const rows = [];
   const pr = (label, v, cls = "") => rows.push(`<div class="row ${cls}"><span class="rk">${label}</span><span class="rv">${uval("press", v, 2)}</span></div>`);
-  pr("Gross IMEP " + info("Indicated mean effective pressure — the work the gas does on the piston, before any losses are taken out."), r.imep_Pa);
+  pr("Gross IMEP " + info("Indicated mean effective pressure: the work the gas does on the piston, before any losses are taken out."), r.imep_Pa);
   pr("− Pumping (PMEP)", r.pmep_Pa, "sub");
   pr("Net IMEP", r.net_imep_Pa);
   pr("− Friction (FMEP)", r.fmep_Pa, "sub");
@@ -365,7 +365,7 @@ function renderConfig(r) {
   }
   if (r.effective_compression_ratio != null) {
     add("Effective CR", `${fmt(r.effective_compression_ratio, 2)}:1`,
-      "V(IVC)/V_TDC — the ratio the trapped charge actually sees. Below the geometric ratio because the intake closes after BDC.");
+      "V(IVC)/V_TDC, the ratio the trapped charge actually sees. Below the geometric ratio because the intake closes after BDC.");
     add("Expansion ratio", `${fmt(r.effective_expansion_ratio, 2)}:1`,
       "V(EVO)/V_TDC. When this exceeds the effective compression ratio the engine is running an Atkinson-style cycle.");
   }
@@ -384,7 +384,7 @@ function renderConfig(r) {
   }
   if (r.residual_fraction != null) {
     add("Residual gas", `${fmt(r.residual_fraction * 100, 1)} %`,
-      "Burned gas from the last cycle still in the clearance volume when the intake shuts. It is hot, so it warms the charge, and already burned, so it dilutes — this is internal EGR.");
+      "Burned gas from the last cycle still in the clearance volume when the intake shuts. It is hot, so it warms the charge, and already burned, so it dilutes. This is internal EGR.");
     add("Charge temp at IVC", `${fmt(uconv("temp", r.mixed_temperature_K), 0)} ${ulabel("temp")}`,
       "Fresh charge and hot residual after mixing. This, not the manifold temperature, is where compression starts.");
   }
@@ -392,7 +392,7 @@ function renderConfig(r) {
     add("Turbine expansion", `${fmt(r.turbine_pressure_ratio, 3)}×`,
       "Expansion the turbine needs to drive its compressor, solved from the turbo shaft power balance. The exhaust manifold sits this far above whatever is downstream of it.");
     add("Compressor power", uval("power", r.compressor_power_W, 1),
-      "Shaft power the turbo compressor absorbs. A turbo takes it from the exhaust rather than the crank — but pays for it in back-pressure.");
+      "Shaft power the turbo compressor absorbs. A turbo takes it from the exhaust rather than the crank, but pays for it in back-pressure.");
   }
   if (r.exhaust_temperature_K) {
     add("Exhaust temp (EVO)", `${fmt(uconv("temp", r.exhaust_temperature_K), 0)} ${ulabel("temp")}`,
@@ -403,7 +403,7 @@ function renderConfig(r) {
   }
   if (r.peak_burned_temperature_K != null) {
     add("Burned zone peak", `${fmt(uconv("temp", r.peak_burned_temperature_K), 0)} ${ulabel("temp")}`,
-      "Gas temperature behind the flame front, which runs hotter than the cylinder mean. Frozen composition — real dissociation absorbs energy and would cap this nearer 2800–3000 K, so treat it as an over-estimate.");
+      "Gas temperature behind the flame front, which runs hotter than the cylinder mean. Frozen composition: real dissociation absorbs energy and would cap this nearer 2800–3000 K, so treat it as an over-estimate.");
     add("End-gas peak", `${fmt(uconv("temp", r.peak_unburned_temperature_K), 0)} ${ulabel("temp")}`,
       "Unburned charge ahead of the flame, compressed but not yet burned. This is the gas that knocks, and it is what the knock margin is now judged on.");
   }
@@ -440,9 +440,9 @@ function renderAnalysis(r) {
   const add = (label, val, tip) => rows.push(`<div class="row"><span class="rk">${label}${tip ? info(tip) : ""}</span><span class="rv">${val}</span></div>`);
   add("Displacement", `${dispL.toFixed(2)} L`);
   add("Mean piston speed", unit === "US" ? `${fmt(meanPS * 3.280839895, 1)} ft/s` : `${fmt(meanPS, 1)} m/s`,
-    "Average piston speed — the real limit on revs. Production engines top out near 20–25 m/s.");
+    "Average piston speed, the real limit on revs. Production engines top out near 20–25 m/s.");
   add("Specific output", `${fmt(specOut, 1)} kW/L`, "Power per litre, i.e. how hard it's working. ~50 kW/L NA, 100+ boosted.");
-  add("Peak pressure-rise rate", `${fmt(maxdP, 1)} bar/°`, "How violently pressure climbs at combustion — high rates mean combustion noise and knock-like harshness.");
+  add("Peak pressure-rise rate", `${fmt(maxdP, 1)} bar/°`, "How violently pressure climbs at combustion. High rates mean combustion noise and knock-like harshness.");
   add("Air flow", `${fmt(airFlow, 1)} g/s`);
   add("Fuel flow", `${fmt(fuelFlow, 2)} g/s`);
   document.getElementById("analysisRows").innerHTML = rows.join("");
@@ -485,15 +485,15 @@ function renderSummary(r) {
   const lam = r.lambda_air;
   const mix = lam > 1.05 ? "lean" : lam < 0.95 ? "rich" : "stoichiometric";
   const cr = inp.compression_ratio;
-  let line = `A <b>${dispL.toFixed(1)} L ${aspWord} ${typeWord} ${cyl}-cylinder</b> — about <b>${hp} hp</b> and <b>${tq}</b> at ${Math.round(inp.rpm)} rpm. `;
+  let line = `A <b>${dispL.toFixed(1)} L ${aspWord} ${typeWord} ${cyl}-cylinder</b>, about <b>${hp} hp</b> and <b>${tq}</b> at ${Math.round(inp.rpm)} rpm. `;
   line += fuel === "diesel"
-    ? `It squeezes the air to <b>${cr.toFixed(0)}:1</b> until it self-ignites the injected fuel — no spark plug — running ${mix} (λ ${fmt(lam, 2)}, as diesels do). `
+    ? `It squeezes the air to <b>${cr.toFixed(0)}:1</b> until it self-ignites the injected fuel (no spark plug), running ${mix} (λ ${fmt(lam, 2)}, as diesels do). `
     : `A spark plug lights a ${mix} mix (λ ${fmt(lam, 2)}) at <b>${cr.toFixed(1)}:1</b> compression. `;
   const warns = r.operating_warnings || [];
-  if (warns.some((w) => w.kind === "knock")) line += `⚠ It is <b>knocking</b> — too much compression or boost for this fuel. Back it off or run higher octane.`;
-  else if (warns.some((w) => w.kind === "smoke")) line += `⚠ It is over-fuelled into <b>smoke</b> — lean out the fuelling.`;
+  if (warns.some((w) => w.kind === "knock")) line += `⚠ It is <b>knocking</b>: too much compression or boost for this fuel. Back it off or run higher octane.`;
+  else if (warns.some((w) => w.kind === "smoke")) line += `⚠ It is over-fuelled into <b>smoke</b>. Lean out the fuelling.`;
   else if (warns.some((w) => w.kind === "lean_misfire")) line += `⚠ The mixture is too lean to fire cleanly.`;
-  else line += `No knock or smoke flags — a healthy operating point.`;
+  else line += `No knock or smoke flags: a healthy operating point.`;
   el.innerHTML = line;
 }
 
@@ -675,7 +675,7 @@ function drawAllDiagrams() {
     : "Cylinder pressure and temperature versus crank angle. TDC is 0°; the spike just after TDC is combustion.";
   // An unexplained faint line reads as a rendering bug, so say what it is.
   note.textContent = ghostTrace
-    ? `${base} The dashed outline is where you were before this change — both are drawn on the same axes, so the difference is real.`
+    ? `${base} The dashed outline is where you were before this change. Both are drawn on the same axes, so the difference is real.`
     : base;
 }
 
@@ -1481,7 +1481,7 @@ async function runConvergence() {
       (r.observed_order != null
         ? ` Observed order of convergence ${r.observed_order.toFixed(2)}, against 1.0 for the first-order march this uses.`
         : "");
-    hint.textContent = r.converged ? "Grid independent." : "Not converged — refine further.";
+    hint.textContent = r.converged ? "Grid independent." : "Not converged; refine further.";
     setStatus("Solved", "ok");
   } catch (err) {
     hint.textContent = err.message.slice(0, 60);

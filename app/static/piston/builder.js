@@ -71,7 +71,7 @@ const CAM_PRESETS = {
     note: "Only works at speed. Huge overlap scavenges at high rpm and is useless below it." },
   miller: { label: "Miller / Atkinson", sub: "very late intake close",
     ivo: 4, ivc: 100, evo: 45, evc: 8,
-    note: "Deliberately spills charge back out so the engine expands further than it compresses — efficiency over power." },
+    note: "Deliberately spills charge back out so the engine expands further than it compresses: efficiency over power." },
 };
 
 /* Head presets: valve count drives the sizing, because four small valves
@@ -169,14 +169,14 @@ const STEPS = [
     }],
     note: (a) => a.fuel === "gasoline"
       ? "Pump petrol. Knock is the limit on compression and boost."
-      : "High octane and a big charge-cooling effect, so it tolerates far more compression and boost than petrol — but burns much richer, so it needs more fuel flow for the same air.",
+      : "High octane and a big charge-cooling effect, so it tolerates far more compression and boost than petrol, but burns much richer, so it needs more fuel flow for the same air.",
   },
 
   {
     id: "layout",
     eyebrow: "Architecture",
     title: "How are the cylinders arranged?",
-    blurb: "Arrangement does not change the gas cycle — every cylinder runs the same one — but it decides how the engine shakes, how evenly it fires, and how much friction it carries.",
+    blurb: "Arrangement does not change the gas cycle (every cylinder runs the same one), but it decides how the engine shakes, how evenly it fires, and how much friction it carries.",
     controls: [{
       kind: "choice", key: "layout_kind", columns: 3,
       options: [
@@ -233,7 +233,7 @@ const STEPS = [
       const sep = a.bank_angle_deg || 0;
       return even
         ? `<b>Even-fire.</b> ${fmt(sep, 0)}° matches the ideal ${fmt(ideal, 0)}° interval exactly.`
-        : `<b>Odd-fire.</b> Firing alternates ${fmt(sep, 0)}° / ${fmt(2 * ideal - sep, 0)}° against an ideal of ${fmt(ideal, 0)}°. That lopes at idle — you can leave it, or fix it with a split crankpin on the next step. The even-fire angle here is <b>${fmt(ideal, 0)}°</b>.`;
+        : `<b>Odd-fire.</b> Firing alternates ${fmt(sep, 0)}° / ${fmt(2 * ideal - sep, 0)}° against an ideal of ${fmt(ideal, 0)}°. That lopes at idle. You can leave it, or fix it with a split crankpin on the next step. The even-fire angle here is <b>${fmt(ideal, 0)}°</b>.`;
     },
   },
 
@@ -285,10 +285,10 @@ const STEPS = [
       const { bore, stroke } = boreStroke(a);
       const perCyl = (a.displacement_L * 1000) / a.cylinders;
       const meanPS = (2 * stroke * a.rpm) / 60;
-      const shape = a.bore_stroke_ratio > 1.05 ? "oversquare — short stroke, happy to rev"
-        : a.bore_stroke_ratio < 0.95 ? "undersquare — long stroke, torque biased"
+      const shape = a.bore_stroke_ratio > 1.05 ? "oversquare: short stroke, happy to rev"
+        : a.bore_stroke_ratio < 0.95 ? "undersquare: long stroke, torque biased"
           : "square";
-      return `<b>${fmt(bore * 1000, 1)} mm</b> bore × <b>${fmt(stroke * 1000, 1)} mm</b> stroke, ${fmt(perCyl, 0)} cc per cylinder (${shape}).<br />Mean piston speed at ${fmt(a.rpm, 0)} rpm is <b>${fmt(meanPS, 1)} m/s</b>${meanPS > 25 ? " — past what production engines survive." : meanPS > 20 ? " — racing territory." : "."}`;
+      return `<b>${fmt(bore * 1000, 1)} mm</b> bore × <b>${fmt(stroke * 1000, 1)} mm</b> stroke, ${fmt(perCyl, 0)} cc per cylinder (${shape}).<br />Mean piston speed at ${fmt(a.rpm, 0)} rpm is <b>${fmt(meanPS, 1)} m/s</b>${meanPS > 25 ? ", past what production engines survive." : meanPS > 20 ? ", racing territory." : "."}`;
     },
   },
 
@@ -304,8 +304,8 @@ const STEPS = [
     note: (a) => {
       const cr = a.compression_ratio;
       const warn = a.ignition === "spark"
-        ? (cr > 13 ? "Very high for a spark engine — expect the knock flag unless you are on ethanol or methanol." : cr < 8 ? "Low: this is boost territory." : "A normal spark-ignition range.")
-        : (cr < 14 ? "Low for compression ignition — it may not reliably self-ignite." : "A normal diesel range.");
+        ? (cr > 13 ? "Very high for a spark engine. Expect the knock flag unless you are on ethanol or methanol." : cr < 8 ? "Low: this is boost territory." : "A normal spark-ignition range.")
+        : (cr < 14 ? "Low for compression ignition; it may not reliably self-ignite." : "A normal diesel range.");
       return `${warn} A longer rod (higher L/a) reduces the secondary shake: this one runs <b>${fmt(1 / a.rod_ratio, 3)}</b> of the primary.`;
     },
   },
@@ -330,7 +330,7 @@ const STEPS = [
     note: (a) => a.aspiration === "supercharged"
       ? "A supercharger's compression work is taken straight off the crank, so it is debited from brake power here."
       : a.aspiration === "turbocharged"
-        ? "Driven by exhaust energy, so it costs the crank nothing — but the turbine can only make that power by expanding the exhaust across itself, and that back-pressure is solved from the turbo's shaft power balance and charged to the pumping loop."
+        ? "Driven by exhaust energy, so it costs the crank nothing, but the turbine can only make that power by expanding the exhaust across itself, and that back-pressure is solved from the turbo's shaft power balance and charged to the pumping loop."
         : "Manifold pressure sits at ambient; throttling below it costs pumping work.",
   },
 
@@ -381,7 +381,7 @@ const STEPS = [
     note: (a) => {
       const c = CAM_PRESETS[a.cam];
       if (!c) return "";
-      return `${c.note}<br />IVO ${c.ivo}° BTDC · IVC ${c.ivc}° ABDC · EVO ${c.evo}° BBDC · EVC ${c.evc}° ATDC — <b>${c.ivo + c.evc}°</b> overlap.`;
+      return `${c.note}<br />IVO ${c.ivo}° BTDC · IVC ${c.ivc}° ABDC · EVO ${c.evo}° BBDC · EVC ${c.evc}° ATDC, <b>${c.ivo + c.evc}°</b> overlap.`;
     },
   },
 

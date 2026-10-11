@@ -2285,14 +2285,14 @@ function updateRealGasPanel(result) {
     </table>`;
   const src = rg.source === "cantera"
     ? "Variable-cₚ properties from Cantera (frozen burned-gas composition through the hot section)."
-    : "Cantera not installed — values fell back to the constant-cₚ model, so the columns match.";
+    : "Cantera not installed, so values fell back to the constant-cₚ model, so the columns match.";
   const cpMean = rg.compressor_cp_mean_J_per_kg_K;
   const cpTxt = Number.isFinite(cpMean)
     ? ` Mean compressor cₚ ≈ ${numberFormat(cpMean, 0)} J/kg·K.`
     : "";
   if (note) {
     note.textContent =
-      `${src}${cpTxt} The core station table above is unchanged — this is an additive, ` +
+      `${src}${cpTxt} The core station table above is unchanged; this is an additive, ` +
       `side-by-side correction for the same component work and pressure ratios.`;
   }
 }

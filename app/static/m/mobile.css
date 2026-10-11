@@ -52,7 +52,7 @@ body {
   letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "tnum";
+  font-feature-settings: normal;
   overflow-x: hidden;
   padding-bottom: env(safe-area-inset-bottom);
   overscroll-behavior-y: none;

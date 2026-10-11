@@ -34,7 +34,7 @@
     { sel: 'a[href="/lab/viewer3d.html"]', title: "See it in 3D",
       body: "Spin through cutaways of all five engines, with a label on every stage." },
     { sel: 'a[href="/lab/inverse.html"]', title: "Work backwards",
-      body: "Feed in what you can measure on a real engine — thrust, fuel flow, flight condition — and solve for the internal efficiencies you cannot." },
+      body: "Feed in what you can measure on a real engine (thrust, fuel flow, flight condition) and solve for the internal efficiencies you cannot." },
     { sel: "#shareLinkButton", title: "Share and export",
       body: "Your setup lives in the URL. You can also export a Python script or a PDF." },
     { center: true, title: "That's the tour",
