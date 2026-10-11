@@ -12,7 +12,7 @@
          text floor and 44px touch targets. -->
     <meta name="description" content="PistonLab: a crank-angle-resolved reciprocating-engine cycle simulator. Two-zone Wiebe combustion with temperature-dependent specific heats, Woschni wall heat, friction, pumping, valve-limited breathing, aspiration, real fuels and knock/smoke limits, with a live P–V loop and dyno curves. A DAS LABS project." />
     <title>PistonLab · DAS LABS</title>
-    <link rel="stylesheet" href="/lab/piston/piston.css?v=20261011-hyphen" />
+    <link rel="stylesheet" href="/lab/piston/piston.css?v=20261011-feas" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
     <link rel="icon" href="/lab/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/lab/favicon-32.png" />
@@ -301,6 +301,18 @@
               <div class="verdicts" id="configVerdicts"></div>
             </section>
 
+            <!-- feasibility: could this engine be built, and what is the smallest fix -->
+            <section class="card fe-card" id="feasCard">
+              <div class="card-head">
+                <h2>Feasibility</h2>
+                <button class="ghost-btn" id="feasRun" type="button">Analyse feasibility</button>
+              </div>
+              <p class="note">Checks this engine against production design envelopes, finds the smallest change that cures
+                each failure by re-solving it, proves each change with a solver sweep, and costs the engine before and after.
+                Runs automatically when you build an engine.</p>
+              <div id="feasReport" aria-live="polite"></div>
+            </section>
+
             <!-- diagrams: two loops side by side, live -->
             <section class="card" id="diagramsCard">
               <div class="card-head">
@@ -459,7 +471,7 @@
     </div>
 
     <script type="module">
-      import { startPiston } from "/lab/piston/piston.js?v=20261011-hyphen";
+      import { startPiston } from "/lab/piston/piston.js?v=20261011-feas4";
       startPiston();
     </script>
     <script src="/lab/piston/piston-tour.js?v=20261011-nodash" defer></script>

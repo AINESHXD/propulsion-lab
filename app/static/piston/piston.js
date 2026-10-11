@@ -6,6 +6,7 @@
    ============================================================= */
 
 import { initBuilder, openBuilder } from "/lab/piston/builder.js?v=20261011-hyphen";
+import { runFeasibility, markStale } from "/lab/piston/feasibility.js?v=20261011-feas4";
 
 const API_SIM = "/piston/simulate";
 const API_SWEEP = "/piston/sweep";
@@ -89,7 +90,10 @@ function applyBuiltEngine(spec, result) {
   document.querySelectorAll(".preset").forEach((b) => b.classList.remove("is-active"));
   updateReadouts();
   syncEngineType();
-  solve();
+  // A freshly built engine gets its feasibility report straight away, judged on
+  // exactly the inputs the console now holds.
+  solve().then(() => runFeasibility(readInputs(), document.getElementById("feasReport"),
+                                    document.getElementById("feasRun")));
 }
 
 function updateReadouts() {
@@ -1686,6 +1690,14 @@ export function startPiston() {
     playBtn.textContent = animPlaying ? "❚❚" : "▶";
     playBtn.setAttribute("aria-label", animPlaying ? "Pause" : "Play");
   });
+
+  // feasibility: on demand for a hand-tuned engine, and flagged stale on any edit
+  const feasRun = document.getElementById("feasRun");
+  const feasReport = document.getElementById("feasReport");
+  if (feasRun) feasRun.addEventListener("click", () => runFeasibility(readInputs(), feasReport, feasRun));
+  const staleOnEdit = (e) => { if (e.target.closest && e.target.closest("[data-key]")) markStale(feasReport); };
+  document.addEventListener("input", staleOnEdit);
+  document.addEventListener("change", staleOnEdit);
 
   // geometry, fuel and timing inputs all change the drawing
   document.addEventListener("input", () => { engineDirty = true; });

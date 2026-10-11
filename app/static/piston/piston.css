@@ -1857,6 +1857,67 @@ canvas { display: block; width: 100%; }
 }
 
 /* =========================================================
+   FEASIBILITY REPORT
+   ========================================================= */
+.fe-card .card-head { gap: 12px; }
+#feasReport { margin-top: 14px; }
+#feasReport.is-stale > *:not(.fe-stale) { opacity: 0.45; }
+.fe-busy, .fe-error, .fe-stale { font-size: 13px; color: var(--text-2); margin: 6px 0 14px; }
+.fe-error { color: var(--err); }
+.fe-stale { color: var(--warn); border-left: 2px solid var(--warn); padding-left: 10px; }
+
+.fe-verdict { border: 1px solid var(--line-strong, var(--line)); border-left-width: 3px; border-radius: 8px;
+  padding: 14px 16px; background: var(--surface-2); }
+.fe-verdict.v-feasible { border-left-color: var(--ok); }
+.fe-verdict.v-marginal { border-left-color: var(--warn); }
+.fe-verdict.v-not_feasible { border-left-color: var(--err); }
+.fe-verdict-word { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.v-feasible .fe-verdict-word { color: var(--ok); }
+.v-marginal .fe-verdict-word { color: var(--warn); }
+.v-not_feasible .fe-verdict-word { color: var(--err); }
+.fe-headline { margin: 6px 0 6px; font-weight: 600; color: var(--text); }
+.fe-summary { margin: 0; color: var(--text-2); font-size: 13.5px; line-height: 1.6; }
+
+.fe-h { margin: 26px 0 6px; font-size: 14px; font-weight: 600; color: var(--text); }
+.fe-cap { margin: 0 0 12px; color: var(--text-3); font-size: 12.5px; line-height: 1.55; max-width: 80ch; }
+.fe-canvas { display: block; width: 100%; }
+
+.fe-table-wrap { overflow-x: auto; margin: 14px 0 4px; }
+.fe-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.fe-table th { text-align: left; font-weight: 500; color: var(--text-3); font-size: 11px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.fe-table td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--text-2); }
+.fe-table td b { color: var(--text); font-weight: 550; }
+.fe-table .num { text-align: right; white-space: nowrap; font-feature-settings: "tnum"; }
+.fe-table .up { color: var(--warn); }
+.fe-table .down { color: var(--text-2); }
+.fe-basis { display: block; margin-top: 3px; color: var(--text-3); font-size: 11.5px; line-height: 1.5; max-width: 62ch; }
+.fe-compact td { padding: 6px 8px; }
+.fe-pill { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--line); white-space: nowrap; }
+.fe-pill.st-pass { color: var(--ok); border-color: rgba(132,204,138,0.35); }
+.fe-pill.st-caution { color: var(--warn); border-color: rgba(212,161,85,0.4); }
+.fe-pill.st-fail { color: var(--err); border-color: rgba(217,118,112,0.45); }
+.fe-pill.st-na { color: var(--text-3); }
+
+.fe-step { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.fe-step-head { margin: 0 0 4px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.fe-step-head span { font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 0.08em;
+  text-transform: uppercase; }
+.fe-step-head b { color: var(--text); font-weight: 600; }
+.fe-step-head em { font-style: normal; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-2); }
+.fe-step-why { margin: 0 0 10px; color: var(--text-2); font-size: 13px; line-height: 1.55; }
+.fe-open { color: var(--warn); font-size: 13px; }
+
+.fe-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 0; font-size: 11.5px; color: var(--text-3); }
+.fe-legend i { display: inline-block; width: 10px; height: 10px; background: var(--accent); margin-right: 6px;
+  vertical-align: -1px; border-radius: 2px; }
+.fe-details { margin-top: 14px; color: var(--text-2); font-size: 13px; }
+.fe-details summary { cursor: pointer; color: var(--text); padding: 8px 0; }
+.fe-details ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.6; }
+.fe-foot { margin: 14px 0 0; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+/* =========================================================
    TOUCH FLOORS
    Phones get 44px touch targets and an 11px text floor. This is its own
    block, last in the file, for two reasons: the narrow-width block above

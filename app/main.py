@@ -11,6 +11,7 @@ from typing import Annotated, Any
 from fastapi import Body, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from app.piston_feasibility import FeasibilityReport, analyse as analyse_feasibility
 from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, ValidationError
 
@@ -380,6 +381,24 @@ def piston_sweep(payload: PistonSweepInput) -> PistonSweepOutput:
 
     try:
         return run_piston_sweep(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/piston/feasibility", response_model=FeasibilityReport, tags=["piston"])
+def piston_feasibility(payload: PistonSimulateInput) -> FeasibilityReport:
+    """Judge whether this engine could be built, and what the smallest fix is.
+
+    Checks the solved engine against stated design envelopes (piston speed,
+    peak pressure, BMEP, knock, smoke, exhaust temperature, rate of pressure
+    rise, breathing, friction, boost), cures each failure with the smallest
+    change to one design lever found by bisecting the solver, re-solves after
+    each, and returns the proof sweeps and a relative build and fuel cost for
+    the engine before and after.
+    """
+
+    try:
+        return analyse_feasibility(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
