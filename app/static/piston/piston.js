@@ -502,10 +502,17 @@ function renderSummary(r) {
 }
 
 /* ---------- canvas helpers ---------- */
+/* The height attribute is the pixel buffer, overwritten below with height x
+   density, so it is never read back as a size: a hidden canvas would grow on
+   every redraw. The design height is recorded once, before the first draw. */
+function designHeight(canvas, fallback) {
+  if (!canvas.dataset.designH) canvas.dataset.designH = canvas.getAttribute("height") || fallback;
+  return Number(canvas.dataset.designH);
+}
 function scaleCanvas(canvas) {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const w = canvas.clientWidth || 600;
-  const h = canvas.clientHeight || Number(canvas.getAttribute("height")) || 300;
+  const h = canvas.clientHeight || designHeight(canvas, 300);
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   const ctx = canvas.getContext("2d");
@@ -1296,7 +1303,7 @@ let engineCtx = null, engineSizeKey = "";
 function sizeEngineCanvas(canvas) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = canvas.clientWidth || 600;
-  const h = canvas.clientHeight || Number(canvas.getAttribute("height")) || 340;
+  const h = canvas.clientHeight || designHeight(canvas, 340);
   const key = `${w}x${h}@${dpr}`;
   if (key !== engineSizeKey || !engineCtx) {
     canvas.width = Math.round(w * dpr);

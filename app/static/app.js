@@ -402,16 +402,32 @@ function setStatus(text, className) {
   apiStatus.className = `status-pill ${className || ""}`;
 }
 
+/* A canvas's width and height attributes are its pixel buffer, and every draw
+   below overwrites them with size x pixel density. Reading them back as a size
+   therefore multiplied the buffer on every redraw: a chart on a hidden tab grew
+   by the density squared per run, past 2 GB after four runs at density 2, so
+   charts drew "zoomed out" and the tab ran out of memory. The design size is
+   recorded once, before the first draw, and the buffer is never read back. */
+function designSize(canvas, w, h) {
+  if (!canvas.dataset.designW) {
+    canvas.dataset.designW = canvas.getAttribute("width") || w;
+    canvas.dataset.designH = canvas.getAttribute("height") || h;
+  }
+  return [Number(canvas.dataset.designW), Number(canvas.dataset.designH)];
+}
+const MAX_CANVAS_PX = 4096;   // per side; a safety net, never reached by a real layout
+
 function canvasScale(canvas) {
   const ctx = canvas.getContext("2d");
-  const ratio = window.devicePixelRatio || 1;
+  const [designW, designH] = designSize(canvas, 520, 260);
+  const ratio = Math.min(window.devicePixelRatio || 1, 3);
   const rect = canvas.getBoundingClientRect();
-  const fallbackWidth = canvas.parentElement?.clientWidth || Number(canvas.getAttribute("width")) || 520;
-  const fallbackHeight = Number(canvas.getAttribute("height")) || 260;
-  const width = rect.width || fallbackWidth;
-  const height = rect.height || fallbackHeight;
-  canvas.width = Math.max(1, Math.round(width * ratio));
-  canvas.height = Math.max(1, Math.round(height * ratio));
+  // Hidden (on an inactive tab) it measures 0: draw at the design size, and the
+  // tab's own redraw sizes it properly when it is shown.
+  const width = rect.width || canvas.parentElement?.clientWidth || designW;
+  const height = rect.width && rect.height ? rect.height : width * (designH / designW);
+  canvas.width = Math.min(MAX_CANVAS_PX, Math.max(1, Math.round(width * ratio)));
+  canvas.height = Math.min(MAX_CANVAS_PX, Math.max(1, Math.round(height * ratio)));
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   return { context: ctx, width, height };
 }

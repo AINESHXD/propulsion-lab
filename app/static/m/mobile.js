@@ -703,10 +703,14 @@
     dim: "rgba(244,244,245,0.55)",
   };
 
+  /* The height attribute is the pixel buffer, which this function overwrites
+     with height x density; reading it back as the height grew the buffer on
+     every redraw. The design height is recorded once, before the first draw. */
   function scaleCanvas(canvas) {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    if (!canvas.dataset.designH) canvas.dataset.designH = canvas.getAttribute("height") || 240;
     const w = canvas.clientWidth || canvas.parentElement.clientWidth || 320;
-    const h = Number(canvas.getAttribute("height")) || 240;
+    const h = Number(canvas.dataset.designH);
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     const ctx = canvas.getContext("2d");
