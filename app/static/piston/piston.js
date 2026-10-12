@@ -6,7 +6,7 @@
    ============================================================= */
 
 import { initBuilder, openBuilder } from "/lab/piston/builder.js?v=20261011-hyphen";
-import { runFeasibility, markStale } from "/lab/piston/feasibility.js?v=20261011-feas4";
+import { runFeasibility, markStale } from "/lab/piston/feasibility.js?v=20261012-charts3";
 
 const API_SIM = "/piston/simulate";
 const API_SWEEP = "/piston/sweep";

@@ -1908,6 +1908,14 @@ canvas { display: block; width: 100%; }
 .fe-step-head em { font-style: normal; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-2); }
 .fe-step-why { margin: 0 0 10px; color: var(--text-2); font-size: 13px; line-height: 1.55; }
 .fe-open { color: var(--warn); font-size: 13px; }
+/* Each entry is kept on one line; entries wrap as whole units. */
+.fe-key { margin: 6px 0 0; font-size: 11.5px; color: var(--text-3); line-height: 1.8;
+  display: flex; flex-wrap: wrap; gap: 0 16px; }
+.fe-key > span { white-space: nowrap; }
+.fe-key i { display: inline-block; vertical-align: middle; width: 16px; margin-right: 6px; }
+.fe-key .k-line { height: 2px; background: var(--accent); }
+.fe-key .k-dash { border-top: 1.5px dotted var(--text-3); }
+.fe-key .k-x { font-family: var(--font-mono); font-weight: 400; }
 
 .fe-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 0; font-size: 11.5px; color: var(--text-3); }
 .fe-legend i { display: inline-block; width: 10px; height: 10px; background: var(--accent); margin-right: 6px;

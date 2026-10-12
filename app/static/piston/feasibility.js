@@ -39,6 +39,24 @@ function canvasCtx(canvas, height) {
   ctx.font = `11px ${css("--font-mono", "monospace")}`;
   return { ctx, w, h: height };
 }
+/* Text on a small backing in the card's colour, so a grid or reference line
+   passing behind it never runs through the letters. Returns its box. */
+function tag(ctx, text, x, y, colour, align = "left") {
+  const w = ctx.measureText(text).width;
+  const left = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+  ctx.fillStyle = css("--surface", "#0d0e11");
+  ctx.fillRect(left - 3, y - 10, w + 6, 14);
+  ctx.fillStyle = colour; ctx.textAlign = align; ctx.fillText(text, x, y);
+  return { x0: left - 3, x1: left + w + 3, y0: y - 10, y1: y + 4 };
+}
+/* Every tick on an axis gets the same number of decimals, set by the step:
+   "-20, 0, 20" rather than "-20.0, 0.00, 20.0". */
+function tickLabel(t, all) {
+  const step = all.length > 1 ? Math.abs(all[1] - all[0]) : 1;
+  const d = Math.max(0, Math.min(3, -Math.floor(Math.log10(step) + 1e-9)));
+  return n(Math.abs(t) < step * 1e-6 ? 0 : t, d);
+}
+
 function ticks(lo, hi, count = 5) {
   const span = hi - lo || 1;
   const raw = span / count, mag = 10 ** Math.floor(Math.log10(raw));
@@ -79,15 +97,16 @@ function drawEnvelope(canvas, before, after) {
   ctx.setLineDash([]); ctx.strokeStyle = css("--err");
   ctx.beginPath(); ctx.moveTo(X(1), top - 8); ctx.lineTo(X(1), top + rows.length * rowH); ctx.stroke();
   // labels sit either side of their lines so they never run together
-  ctx.fillStyle = css("--warn"); ctx.textAlign = "right"; ctx.fillText("caution", X(0.75) - 4, h - 8);
-  ctx.fillStyle = css("--err"); ctx.textAlign = "left"; ctx.fillText("limit", X(1) + 4, h - 8);
+  tag(ctx, "caution", X(0.75) - 4, h - 8, css("--warn"), "right");
+  tag(ctx, "limit", X(1) + 4, h - 8, css("--err"), "left");
 
   const afterBy = Object.fromEntries((after || []).map((c) => [c.key, c]));
   rows.forEach((c, i) => {
     const y = top + i * rowH;
-    ctx.textAlign = "left"; ctx.fillStyle = css("--text-2");
     const maxChars = stacked ? 48 : 30;
-    ctx.fillText(c.label.length > maxChars ? c.label.slice(0, maxChars - 1) + "…" : c.label, 0, y + (stacked ? 9 : 12));
+    const text = c.label.length > maxChars ? c.label.slice(0, maxChars - 1) + "…" : c.label;
+    if (stacked) tag(ctx, text, 0, y + 9, css("--text-2"));          // the reference lines run behind it
+    else { ctx.textAlign = "left"; ctx.fillStyle = css("--text-2"); ctx.fillText(text, 0, y + 12); }
     const p = position(c);
     ctx.fillStyle = col[c.status] || css("--text-3");
     ctx.fillRect(x0, y + barY, Math.max(2, X(p) - x0), 10);
@@ -114,8 +133,11 @@ function interp(xs, ys, x) {
 }
 
 function drawProof(canvas, pr) {
-  const { ctx, w, h } = canvasCtx(canvas, 230);
-  const L = 56, R = 52, T = 14, B = 34;
+  const narrow = (canvas.clientWidth || 600) < 560;
+  const { ctx, w, h } = canvasCtx(canvas, narrow ? 250 : 230);
+  // On a phone the rotated axis titles cost width the plot needs; the legend
+  // under the chart names both axes instead.
+  const L = narrow ? 40 : 56, R = narrow ? 34 : 52, T = 14, B = narrow ? 22 : 34;
   const xs = pr.x, ys = pr.metric;
   const vals = ys.filter((v) => v != null).concat([pr.limit, pr.caution].filter((v) => v != null));
   let ylo = Math.min(...vals), yhi = Math.max(...vals);
@@ -126,16 +148,20 @@ function drawProof(canvas, pr) {
 
   // grid and axes
   ctx.strokeStyle = css("--line"); ctx.lineWidth = 1; ctx.fillStyle = css("--text-3"); ctx.textAlign = "right";
-  for (const t of ticks(ylo, yhi)) {
+  const yt = ticks(ylo, yhi, narrow ? 4 : 5), xt = ticks(xlo, xhi, 5);
+  for (const t of yt) {
     ctx.beginPath(); ctx.moveTo(L, Y(t)); ctx.lineTo(w - R, Y(t)); ctx.stroke();
-    ctx.fillText(sig(t), L - 6, Y(t) + 4);
+    ctx.fillText(tickLabel(t, yt), L - 6, Y(t) + 4);
   }
   ctx.textAlign = "center";
-  for (const t of ticks(xlo, xhi)) ctx.fillText(sig(t), X(t), h - B + 16);
-  ctx.fillText(`${pr.lever_label}${pr.lever_unit ? ` (${pr.lever_unit})` : ""}`, (L + w - R) / 2, h - 4);
-  ctx.save(); ctx.translate(12, (T + h - B) / 2); ctx.rotate(-Math.PI / 2);
-  ctx.fillText(`${pr.metric_label}${pr.metric_unit ? ` (${pr.metric_unit})` : ""}`.slice(0, 40), 0, 0); ctx.restore();
+  for (const t of xt) ctx.fillText(tickLabel(t, xt), X(t), h - B + 16);
+  if (!narrow) {
+    ctx.fillText(`${pr.lever_label}${pr.lever_unit ? ` (${pr.lever_unit})` : ""}`, (L + w - R) / 2, h - 4);
+    ctx.save(); ctx.translate(12, (T + h - B) / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText(`${pr.metric_label}${pr.metric_unit ? ` (${pr.metric_unit})` : ""}`.slice(0, 40), 0, 0); ctx.restore();
+  }
 
+  const refY = [];
   // the side of the limit that fails, shaded
   if (pr.limit != null) {
     const failsAbove = pr.caution != null ? pr.limit > pr.caution : true;
@@ -144,12 +170,12 @@ function drawProof(canvas, pr) {
     else ctx.fillRect(L, Y(pr.limit), w - L - R, Math.max(0, h - B - Y(pr.limit)));
     ctx.strokeStyle = css("--err"); ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(L, Y(pr.limit)); ctx.lineTo(w - R, Y(pr.limit)); ctx.stroke();
-    ctx.fillStyle = css("--err"); ctx.textAlign = "left"; ctx.fillText("limit", L + 4, Y(pr.limit) - 4);
+    refY.push(Y(pr.limit));
   }
   if (pr.caution != null) {
     ctx.strokeStyle = css("--warn"); ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(L, Y(pr.caution)); ctx.lineTo(w - R, Y(pr.caution)); ctx.stroke();
-    ctx.setLineDash([]); ctx.fillStyle = css("--warn"); ctx.textAlign = "left"; ctx.fillText("caution", L + 4, Y(pr.caution) - 4);
+    ctx.setLineDash([]); refY.push(Y(pr.caution));
   }
 
   // brake power on its own axis, so the cost of the cure is on the same graph
@@ -161,9 +187,12 @@ function drawProof(canvas, pr) {
     xs.forEach((x, i) => { const v = pr.brake_power_kW[i]; if (v == null) return; i ? ctx.lineTo(X(x), P(v)) : ctx.moveTo(X(x), P(v)); });
     ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = css("--text-3"); ctx.textAlign = "left";
-    for (const t of ticks(plo, phi, 4)) ctx.fillText(n(t, 0), w - R + 6, P(t) + 4);
-    ctx.save(); ctx.translate(w - 8, (T + h - B) / 2); ctx.rotate(Math.PI / 2); ctx.textAlign = "center";
-    ctx.fillText("brake power (kW)", 0, 0); ctx.restore();
+    const pt = ticks(plo, phi, narrow ? 3 : 4);
+    for (const t of pt) ctx.fillText(tickLabel(t, pt), w - R + 5, P(t) + 4);
+    if (!narrow) {
+      ctx.save(); ctx.translate(w - 8, (T + h - B) / 2); ctx.rotate(Math.PI / 2); ctx.textAlign = "center";
+      ctx.fillText("brake power (kW)", 0, 0); ctx.restore();
+    }
   }
 
   // the metric itself
@@ -174,16 +203,36 @@ function drawProof(canvas, pr) {
   ctx.fillStyle = css("--accent");
   xs.forEach((x, i) => { if (ys[i] != null) { ctx.beginPath(); ctx.arc(X(x), Y(ys[i]), 2.2, 0, 7); ctx.fill(); } });
 
-  // current and recommended engines
-  for (const [x, colr, label] of [[pr.current_x, css("--err"), "as built"], [pr.recommended_x, css("--ok"), "recommended"]]) {
-    const v = interp(xs, ys, x);
-    if (v == null) continue;
-    ctx.strokeStyle = colr; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
-    ctx.beginPath(); ctx.moveTo(X(x), T); ctx.lineTo(X(x), h - B); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = colr; ctx.beginPath(); ctx.arc(X(x), Y(v), 5, 0, 7); ctx.fill();
+  // current and recommended engines: guides and dots first, labels last
+  const marks = [[pr.current_x, css("--err"), "as built"], [pr.recommended_x, css("--ok"), "recommended"]]
+    .map(([x, colr, label]) => ({ x, colr, label, v: interp(xs, ys, x) })).filter((m) => m.v != null);
+  for (const m of marks) {
+    ctx.strokeStyle = m.colr; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(X(m.x), T); ctx.lineTo(X(m.x), h - B); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = m.colr; ctx.beginPath(); ctx.arc(X(m.x), Y(m.v), 5, 0, 7); ctx.fill();
     ctx.strokeStyle = css("--surface", "#000"); ctx.lineWidth = 2; ctx.stroke();
-    ctx.textAlign = X(x) > w * 0.75 ? "right" : "left";
-    ctx.fillText(label, X(x) + (ctx.textAlign === "right" ? -8 : 8), Y(v) - 8);
+  }
+
+  // Reference-line names sit at the right-hand end of their lines.
+  const boxes = [];
+  if (pr.limit != null) boxes.push(tag(ctx, "limit", w - R - 4, Y(pr.limit) - 4, css("--err"), "right"));
+  if (pr.caution != null) boxes.push(tag(ctx, "caution", w - R - 4, Y(pr.caution) - 4, css("--warn"), "right"));
+
+  // Each marker label tries above-right, above-left, below-right and
+  // below-left of its dot, and takes the first spot that stays inside the plot
+  // and clear of every label and dot already placed.
+  const hit = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+  const dots = marks.map((m) => ({ x0: X(m.x) - 7, x1: X(m.x) + 7, y0: Y(m.v) - 7, y1: Y(m.v) + 7 }));
+  for (const m of marks) {
+    const tw = ctx.measureText(m.label).width, px = X(m.x), py = Y(m.v);
+    const spots = [[px + 9, py - 9], [px - 9 - tw, py - 9], [px + 9, py + 17], [px - 9 - tw, py + 17]];
+    let best = spots[0];
+    for (const [sx, sy] of spots) {
+      const box = { x0: sx - 3, x1: sx + tw + 3, y0: sy - 10, y1: sy + 4 };
+      const inside = box.x0 >= L && box.x1 <= w - R && box.y0 >= T && box.y1 <= h - B;
+      if (inside && ![...boxes, ...dots].some((b) => hit(box, b))) { best = [sx, sy]; break; }
+    }
+    boxes.push(tag(ctx, m.label, best[0], best[1], m.colr, "left"));
   }
 }
 
@@ -287,6 +336,9 @@ function render(root, r) {
         <p class="fe-step-why">${esc(x.rationale)}${x.brake_power_change_percent != null
           ? ` Brake power ${x.brake_power_change_percent >= 0 ? "+" : ""}${n(x.brake_power_change_percent, 1)}% at this step.` : ""}</p>
         <canvas class="fe-canvas" data-proof="${i}"></canvas>
+        <p class="fe-key"><span><i class="k-line"></i>${esc(x.check_label)} (left axis)</span>
+          <span><i class="k-dash"></i>brake power, kW (right axis)</span>
+          <span><b class="k-x">x:</b> ${esc(x.lever_label)}${x.unit ? ` (${esc(x.unit)})` : ""}</span></p>
       </div>`).join("")}
     ${open.map((x) => `<p class="fe-open"><b>${esc(x.check_label || x.check_key)}</b> ${esc(x.rationale)}</p>`).join("")}
 
