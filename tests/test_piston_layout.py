@@ -205,3 +205,70 @@ def test_to_dict_reports_the_full_arrangement() -> None:
     assert payload["description"] == "90 deg V8"
     assert payload["banks"] == 2
     assert payload["cylinders_per_bank"] == 4
+
+
+# --------------------------------------------------------------------------- #
+# who fires when: the per-cylinder assignment the 3D engine draws from
+# --------------------------------------------------------------------------- #
+_EVERY_LAYOUT = [
+    dict(kind="single", cylinders=1),
+    *[dict(kind="inline", cylinders=n) for n in (2, 3, 4, 5, 6, 8)],
+    dict(kind="vee", cylinders=2, bank_angle_deg=90),
+    dict(kind="vee", cylinders=2, bank_angle_deg=45),
+    dict(kind="vee", cylinders=4, bank_angle_deg=90),
+    dict(kind="vee", cylinders=6, bank_angle_deg=60),
+    dict(kind="vee", cylinders=6, bank_angle_deg=90, crankpin_offset_deg=30),
+    dict(kind="vee", cylinders=6, bank_angle_deg=60, crankpin_offset_deg=60),
+    dict(kind="vee", cylinders=8, bank_angle_deg=90, crank_type="cross_plane"),
+    dict(kind="vee", cylinders=8, bank_angle_deg=90),
+    dict(kind="vee", cylinders=10, bank_angle_deg=72),
+    dict(kind="vee", cylinders=12, bank_angle_deg=60),
+    dict(kind="vee", cylinders=16, bank_angle_deg=45),
+    *[dict(kind="flat", cylinders=n, bank_angle_deg=180) for n in (2, 4, 6, 12)],
+]
+
+
+@pytest.mark.parametrize("spec", _EVERY_LAYOUT, ids=lambda s: f"{s['kind']}{s['cylinders']}")
+def test_every_cylinder_fires_at_its_own_tdc(spec) -> None:
+    # A cylinder can only fire with its piston at the top, so each assigned
+    # firing angle must be a TDC of that cylinder's own crank geometry.
+    layout = EngineLayout(**spec)
+    for angle, cyl in zip(layout.cylinder_firing_deg(), layout.cylinder_map()):
+        off = (angle + cyl.phase_deg) % 360.0
+        assert min(off, 360.0 - off) < 0.5, (cyl.index, angle, cyl.phase_deg)
+
+
+@pytest.mark.parametrize("spec", _EVERY_LAYOUT, ids=lambda s: f"{s['kind']}{s['cylinders']}")
+def test_the_assignment_reproduces_the_reported_intervals(spec) -> None:
+    # The drawn engine and the console must agree on how evenly it fires.
+    layout = EngineLayout(**spec)
+    if layout.cylinders == 1:
+        return
+    angles = sorted(layout.cylinder_firing_deg())
+    gaps = sorted(round((b - a) % 720.0, 3) for a, b in zip(angles, angles[1:] + [angles[0] + 720.0]))
+    assert gaps == sorted(round(g, 3) for g in layout.firing_intervals_deg())
+
+
+@pytest.mark.parametrize("spec", _EVERY_LAYOUT, ids=lambda s: f"{s['kind']}{s['cylinders']}")
+def test_the_firing_order_is_a_permutation_starting_at_one(spec) -> None:
+    order = EngineLayout(**spec).firing_order()
+    assert order[0] == 1
+    assert sorted(order) == list(range(1, spec["cylinders"] + 1))
+
+
+def test_a_split_pin_moves_the_pistons_the_same_way_it_moves_the_firing() -> None:
+    # Regression: the cylinder map applied the split-pin offset with the
+    # opposite sign to firing_angles_deg, so a 90 deg V6 with a 30 deg split
+    # was reported even at 120 deg while its pistons, and therefore its
+    # balance, reached TDC 60 and 180 deg apart.
+    v6 = EngineLayout(kind="vee", cylinders=6, bank_angle_deg=90, crankpin_offset_deg=30)
+    tdc = sorted({round((-c.phase_deg) % 360.0, 6) for c in v6.cylinder_map()})
+    gaps = {round((b - a) % 360.0, 6) for a, b in zip(tdc, tdc[1:] + [tdc[0] + 360.0])}
+    assert gaps == {120.0}
+
+
+def test_inline_four_pairs_share_tdc_but_not_firing() -> None:
+    # Cylinders 1 and 4 are at the top together; only one of them is firing.
+    layout = _inline(4)
+    fire = layout.cylinder_firing_deg()
+    assert abs(((fire[0] - fire[3]) % 720.0) - 360.0) < 1e-6

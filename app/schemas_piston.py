@@ -304,6 +304,24 @@ class PistonBalanceOut(BaseModel):
     secondary_force_ratio: float
 
 
+class PistonCylinderOut(BaseModel):
+    """One cylinder's place in the engine, enough to draw it.
+
+    Angles are measured from vertical, positive toward +x, looking from the
+    front. The piston follows ``cos(theta + phase_deg)``; ``firing_deg`` is
+    the crank angle of this cylinder's power stroke, measured from cylinder
+    1's. ``station`` is the position along the crank in bore spacings.
+    """
+
+    number: int
+    bank: int
+    axis_deg: float
+    pin_deg: float
+    phase_deg: float
+    station: float
+    firing_deg: float
+
+
 class PistonLayoutOut(BaseModel):
     """Firing and balance analysis for the chosen arrangement."""
 
@@ -323,6 +341,8 @@ class PistonLayoutOut(BaseModel):
     balance_verdict: str
     friction_scale: float
     description: str
+    firing_order: list[int]
+    cylinder_map: list[PistonCylinderOut]
 
 
 class PistonSimulateOutput(BaseModel):

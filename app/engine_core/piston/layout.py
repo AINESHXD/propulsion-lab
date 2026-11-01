@@ -267,8 +267,14 @@ class EngineLayout:
                     # around, so both pistons of a pair reach TDC together.
                     pin = (pin + 180.0 * b) % 360.0
                 elif shared_pins and b > 0:
-                    # Split-pin offset, applied to the trailing bank(s).
-                    pin = (pin + self.crankpin_offset_deg * b) % 360.0
+                    # Split-pin offset, applied to the trailing bank(s). It is
+                    # subtracted: a cylinder reaches TDC at crank angle
+                    # axis - pin, so pulling the pin back delays that bank's TDC
+                    # by the offset, which is what firing_angles_deg adds. With
+                    # the opposite sign a 30 deg split on a 90 deg V6 was
+                    # reported even-fire at 120 deg while its pistons, and so
+                    # its balance, ran at 60 and 180.
+                    pin = (pin - self.crankpin_offset_deg * b) % 360.0
 
                 axis = axes[b]
                 # Station: cylinders march along the crank, banks sit a little
@@ -339,6 +345,63 @@ class EngineLayout:
             (events[(i + 1) % len(events)] - events[i]) % per_cycle
             for i in range(len(events))
         ]
+
+    def cylinder_firing_deg(self) -> list[float]:
+        """Crank angle at which each cylinder fires, in cylinder-map order.
+
+        ``firing_angles_deg`` lists the events but not who owns them, and a
+        picture of the engine needs the owner: in an inline-4, cylinders 1 and
+        4 reach top dead centre together and only one of them is firing.
+
+        A cylinder can only fire at its own top dead centre, at crank angle
+        ``-phase``, or one revolution later in a four-stroke. The event list
+        is the same pattern up to a constant rotation (it is built relative to
+        the first bank), so this finds the rotation that lets every event be
+        claimed by exactly one cylinder at one of its two TDCs. Every angle is
+        therefore both geometrically a TDC of that cylinder and one of the
+        layout's own events, so the order and the intervals cannot disagree.
+        Angles are absolute crank angles in [0, per_cycle).
+        """
+
+        per_cycle = 360.0 * (self.strokes_per_cycle / 2.0)
+        cyls = self.cylinder_map()
+        tdc = [(-c.phase_deg) % 360.0 for c in cyls]
+        events = self.firing_angles_deg()
+        revs = int(round(per_cycle / 360.0))
+        tol = 0.5
+
+        def close(a: float, b: float) -> bool:
+            d = (a - b) % per_cycle
+            return min(d, per_cycle - d) <= tol
+
+        # Every candidate rotation lines cylinder 0's first TDC up with some event.
+        for e0 in events:
+            shift = (tdc[0] - e0) % per_cycle
+            targets = [(e + shift) % per_cycle for e in events]
+            free = list(range(len(targets)))
+            out: list[float] = []
+            for t in tdc:
+                pick = None
+                for k in free:
+                    if any(close(targets[k], t + 360.0 * r) for r in range(revs)):
+                        pick = k
+                        break
+                if pick is None:
+                    break
+                free.remove(pick)
+                out.append(targets[pick])
+            if len(out) == len(cyls):
+                return [round(a % per_cycle, 6) for a in out]
+        raise ValueError("No firing assignment matches this layout's events.")
+
+    def firing_order(self) -> list[int]:
+        """Cylinders, numbered from 1 in cylinder-map order, in the order they fire."""
+
+        angles = self.cylinder_firing_deg()
+        order = [i + 1 for i in sorted(range(len(angles)), key=lambda i: (angles[i], i))]
+        # A firing order is a cycle; it is written from cylinder 1 by convention.
+        k = order.index(1)
+        return order[k:] + order[:k]
 
     def is_even_fire(self, tolerance_deg: float = 0.5) -> bool:
         ideal = self.ideal_firing_interval_deg
@@ -450,6 +513,19 @@ class EngineLayout:
             "balance_verdict": self.balance_verdict(),
             "friction_scale": round(self.friction_scale(), 4),
             "description": self.describe(),
+            "firing_order": self.firing_order(),
+            "cylinder_map": [
+                {
+                    "number": c.index + 1,
+                    "bank": c.bank,
+                    "axis_deg": round(c.axis_deg, 6),
+                    "pin_deg": round(c.pin_deg, 6),
+                    "phase_deg": round(c.phase_deg, 6),
+                    "station": round(c.station, 6),
+                    "firing_deg": fire,
+                }
+                for c, fire in zip(self.cylinder_map(), self.cylinder_firing_deg())
+            ],
         }
 
     def describe(self) -> str:
