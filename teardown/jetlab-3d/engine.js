@@ -947,13 +947,20 @@ export function buildEngine(J) {
       add(g, ringOf(fg, mat.inconel, 12, 0, keep), 'trf');
       // the nozzle sleeve sits inside the core cowl's trailing edge, so the two never share a surface
       casing(g, 'core-nozzle', N.z0, N.z1 + 0.01 * D, lt.rt + 0.006 * D, N.rOut - 0.004 * D, 0.004 * D, mat.inconel, {flanges: false});
-      const pl = [[lt.rh * 0.99, N.z0 + 0.02 * D]];
-      for (let i = 1; i <= 16; i++) {
-        const u = i / 16;
-        pl.push([lt.rh * (1 - u ** 1.6) * 0.99, N.z0 - u * (N.z0 - N.z1 + 0.35 * D)]);
-      }
-      pl.push([0, N.z1 - 0.35 * D]);
-      add(g, mesh(lc(pl, 96), mat.inconel), 'plug');
+      // the plug: inside the nozzle it eases from the turbine hub to its exit radius, leaving the annulus the solver's
+      // exit area needs; past the lip a conical afterbody (20 degree half-angle) runs on to a small rounded tip
+      const rh = lt.rh * 0.99;
+      const rp = N.plugR;
+      const zA = N.z0 + 0.02 * D;
+      const Lc = rp / Math.tan((20 * Math.PI) / 180);
+      const pl = [];
+      for (let i = 0; i <= 12; i++) pl.push([rp + (rh - rp) * (0.5 + 0.5 * Math.cos((Math.PI * i) / 12)), zA - (i / 12) * (zA - N.z1)]);
+      for (let i = 1; i <= 9; i++) pl.push([rp * (1 - i / 10), N.z1 - (i / 10) * Lc]);
+      pl.push([rp * 0.05, N.z1 - 0.97 * Lc], [0, N.z1 - 0.985 * Lc]);
+      // a thin shell (its inside a wall thickness in), so the cut shows a hollow plug and not a solid cone
+      const tw = 0.012 * D;
+      const inner = pl.filter(([r]) => r > 2 * tw).map(([r, z]) => [r - tw, z]);
+      add(g, mesh(lc([...pl, ...inner.reverse(), pl[0]], 96), mat.inconel), 'plug');
     } else {
       const lt = J.stations.find((s) => s.id === 'lpt-exit');
       if (N.reheat) {
@@ -989,7 +996,6 @@ export function buildEngine(J) {
       const len = 0.28 * D;
       const ang = Math.atan2(rP0 - N.rOut, len);
       const petal = new THREE.BoxGeometry(((TAU * (rP0 + N.rOut)) / 2 / np) * 1.08, 0.006 * D, len).translate(0, 0, -len / 2);
-      const items = [];
       const grpP = new THREE.Group();
       for (let k = 0; k < np; k++) {
         const a = (k / np) * TAU;
@@ -1002,7 +1008,6 @@ export function buildEngine(J) {
         grpP.add(pm);
       }
       g.add(grpP);
-      void items;
       // the exhaust plume with its shock cells, behind the nozzle exit
       const s9 = J.stations.find((x) => x.id === 'nozzle');
       const P = plumeOf(s9.Pt, 2 * N.rOut);
@@ -1360,7 +1365,6 @@ export function buildEngine(J) {
       const aft = u > 0.72 ? 1 - 0.28 * ((u - 0.72) / 0.28) ** 1.4 : 1;
       return S.yU(zN) + 0.012 + 0.38 * Math.min(1, u / 0.45) ** 0.65 * aft;
     };
-    S.halfW = halfW;
     // the half section from the chine round to the top centreline: x in half-widths, y in heights above the underside
     const SEC = [[-1, 0], [-0.98, 0.08], [-0.93, 0.26], [-0.85, 0.5], [-0.74, 0.72], [-0.6, 0.87], [-0.4, 0.96], [-0.2, 0.995], [0, 1]];
     const CH = 3; // the first points are the dark chine band

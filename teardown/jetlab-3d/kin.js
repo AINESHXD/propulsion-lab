@@ -191,9 +191,12 @@ export function makeJet(family, input, out, hw) {
     const A9 = Ac(s9, mh, Math.min(1, s9?.M ?? 1), 1.33);
     const zN = z - 0.12 * D;
     const plug = family === 'turbofan';
-    const rOut9 = plug ? Math.sqrt(A9 / Math.PI + (lptRm1 * 0.35) ** 2) : Math.sqrt(A9 / Math.PI);
-    J.nozzle = {z0: z, z1: zN - (plug ? 0.25 * D : reheat ? 0.25 * D : 0.12 * D), rIn: lptRm1 + h5 / 2, rOut: rOut9, plugR: plug ? lptRm1 * 0.6 : 0, plug, reheat, A9, choked: out.nozzle_choked};
-    pt('nozzle', J.nozzle.z1, plug ? lptRm1 * 0.2 : 0, rOut9, s9, Math.min(1, s9?.M ?? 1), 1.33, 'Core nozzle exit');
+    // a turbofan's centre plug leaves the nozzle at about 72% of the turbine hub radius; the exit is the annulus round
+    // it, sized to the solver's exit area, so the plug and the nozzle lip always leave the gap the gas needs
+    const rPlug9 = plug ? (lptRm1 - h5 / 2) * 0.72 : 0;
+    const rOut9 = Math.sqrt(A9 / Math.PI + rPlug9 ** 2);
+    J.nozzle = {z0: z, z1: zN - (plug ? 0.25 * D : reheat ? 0.25 * D : 0.12 * D), rIn: lptRm1 + h5 / 2, rOut: rOut9, plugR: rPlug9, plug, reheat, A9, choked: out.nozzle_choked};
+    pt('nozzle', J.nozzle.z1, rPlug9, rOut9, s9, Math.min(1, s9?.M ?? 1), 1.33, 'Core nozzle exit');
     // bypass duct and its nozzle
     if (fan) {
       const A19 = area(s19, mByp, Math.min(1, s19?.M ?? 0.9)) * k;
