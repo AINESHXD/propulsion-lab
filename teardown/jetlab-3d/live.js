@@ -445,7 +445,7 @@ export function runLive() {
     labelsOn = !labelsOn;
     press('b-labels', labelsOn);
   };
-  const LABEL_IDS = ['fan', 'spinner', 'ogv', 'booster', 'ipc', 'hpc', 'compressor', 'impeller', 'combustor', 'fuel-nozzle', 'hpt', 'ipt', 'lpt', 'pt', 'plug', 'core-nozzle', 'nacelle', 'agb', 'fadec', 'fan-gearbox', 'propeller', 'rgb', 'afterburner', 'nozzle-petals', 'spike', 'cowl', 'flameholder', 'burner-case', 'nozzle-shroud', 'fuel-manifold', 'igniter', 'mount', 'forebody', 'strut', 'shock', 'vsv', 'nose-tip', 'cowl-door', 'nozzle-ramp', 'h2-tank', 'wing', 'fin', 'silane'];
+  const LABEL_IDS = ['fan', 'spinner', 'ogv', 'booster', 'ipc', 'hpc', 'compressor', 'impeller', 'combustor', 'fuel-nozzle', 'hpt', 'ipt', 'lpt', 'pt', 'plug', 'core-nozzle', 'nacelle', 'agb', 'fadec', 'fan-gearbox', 'propeller', 'rgb', 'afterburner', 'nozzle-petals', 'spike', 'cowl', 'flameholder', 'burner-case', 'nozzle-shroud', 'fuel-manifold', 'igniter', 'mount', 'forebody', 'strut', 'shock', 'vsv', 'nose-tip', 'cowl-door', 'nozzle-ramp', 'h2-tank', 'wing', 'fin', 'silane', 'exhaust'];
   let anchors = [];
   const collectAnchors = () => {
     anchors = [];

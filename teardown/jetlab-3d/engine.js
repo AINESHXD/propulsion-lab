@@ -1338,6 +1338,10 @@ export function buildEngine(J) {
     const gI = grp('dress', 'scramInt', new V3(0, 0.12, 0));
     const skin = cut(alloy('paintWhite', {repeat: [10, 30]}));
     const carbon = cut(alloy('cfrp', {repeat: [4, 12]}));
+    Object.assign(carbon, {clearcoat: 0.25, roughness: 0.58, envMapIntensity: 0.55});
+    // the inside of the skin is primed dark, so the cut reads as a wall with an inside rather than a shell seen through
+    const primer = cut(phys({color: '#3c433f', metalness: 0.15, roughness: 0.75}));
+    const cutFace = phys({color: '#b4b8bc', metalness: 0.1, roughness: 0.85, side: THREE.DoubleSide});
     const zN = J.zInlet;
     const zE = S.zN1;
     const Ltot = zN - zE;
@@ -1463,7 +1467,7 @@ export function buildEngine(J) {
     }
 
     // ---- the section face, hollow between the bulkheads
-    const tW = 0.035;
+    const tW = 0.05;
     const BH = [zN - 0.5, zN - 1.0, zN - 1.8, S.zC0 + 0.45, S.zC1 + 0.1, zE + 0.9, zE + 0.06];
     if (KEEP) {
       const prof = new THREE.Shape();
@@ -1480,7 +1484,10 @@ export function buildEngine(J) {
         for (const z of zz.slice().reverse()) hole.lineTo(z, yTop(z) - tW);
         prof.holes.push(hole);
       }
-      add(gB, mesh(new THREE.ShapeGeometry(prof, 2).rotateY(-Math.PI / 2), mat.liner), 'airframe');
+      add(gB, mesh(new THREE.ShapeGeometry(prof, 2).rotateY(-Math.PI / 2), cutFace), 'airframe');
+      // the skin's inner face, a wall thickness in from the outside, over the hollow bays
+      const inner = (z) => [[0, S.yU(z) + tW], ...secAt(z, SEC, tW)];
+      add(gB, mesh(loft(BH[0], BH[BH.length - 1], inner), primer), 'airframe');
     }
 
     // ---- the cowl: a sharp lip, a wall thickening behind it, a cavity flameholder in its inner face, a tapered end.
@@ -1540,6 +1547,45 @@ export function buildEngine(J) {
       const geo = new THREE.ExtrudeGeometry(polyShape(pts), {depth: 0.024, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2});
       geo.rotateY(-Math.PI / 2).translate(sd > 0 ? -W / 2 - 0.009 : W / 2 + 0.033, 0, 0);
       add(gC, mesh(geo, mat.hotCase), 'sidewall');
+    }
+
+    // nozzle fences: short walls either side of the expansion ramp, from the cowl's end to the base, framing the exit
+    for (const sd of sides) {
+      const pts = [];
+      for (const z of [zEnd, ...zs.filter((z) => z < zEnd && z > zE), zE]) pts.push([z, S.yU(z) + 0.01]);
+      pts.push([zE, S.yU(zE) - 0.07], [zEnd, yO(zEnd) - 0.004]);
+      const geo = new THREE.ExtrudeGeometry(polyShape(pts), {depth: 0.024, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2});
+      geo.rotateY(-Math.PI / 2).translate(sd > 0 ? -W / 2 - 0.009 : W / 2 + 0.033, 0, 0);
+      add(gB, mesh(geo, mat.inconel), 'nozzle-fence');
+    }
+    // the exhaust: still supersonic as it leaves the cowl, expanding against the ramp above and the outside air below,
+    // then spreading as a plume past the base
+    {
+      const zx0 = zEnd + 0.05;
+      const zx1 = zE - 1.1;
+      const Tx = (J.stations.find((x) => x.id === 'comb-exit')?.Tt ?? S.T) * 0.8;
+      const fm = flameMat((u) => Tx * (1 - 0.5 * u), zx0, zx1, J.at(S.zN1).V, 0.3);
+      const t10 = Math.tan((10 * Math.PI) / 180);
+      const t6 = Math.tan((6 * Math.PI) / 180);
+      const pos = [];
+      const idx = [];
+      const zz = lin(zx0, zx1, 70);
+      for (const z of zz) {
+        const yt = z >= zE ? S.yU(z) - 0.012 : S.yU(zE) - 0.012 + (zE - z) * t10 * 0.3;
+        const yb = S.yL(zEnd) + 0.01 - (zEnd - z) * t6;
+        const hw = W / 2 - 0.02 + Math.max(0, zE - z) * 0.08;
+        pos.push(-hw, yb, z, hw, yb, z, -hw, yt, z, hw, yt, z);
+      }
+      for (let i = 1; i < zz.length; i++) {
+        const a = (i - 1) * 4;
+        const b = i * 4;
+        idx.push(a, b, b + 1, a, b + 1, a + 1, a + 2, b + 3, b + 2, a + 2, a + 3, b + 3, a, a + 2, b + 2, a, b + 2, b, a + 1, b + 1, b + 3, a + 1, b + 3, a + 3);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      addFlame(grp('flow', 'exhaust'), geo, fm, 'exhaust');
     }
 
     // regeneratively cooled panels on the combustor walls: fuel runs through channels in the wall before it is burned,
@@ -1618,30 +1664,43 @@ export function buildEngine(J) {
 
     // ---- inside, seen through the cut
     if (KEEP) {
-      // bulkheads, each with a lightening hole (or the hole the hydrogen bottle passes through)
+      // frames: rings following the skin, open in the middle (the hydrogen bottle passes through them), and stringers
+      // running along the skin between them
       const xT = -0.34;
-      const rT = 0.14;
+      const rT = 0.13;
       const yT = 0.0;
+      const fd = 0.06;
       for (const z of BH.slice(0, -1)) {
-        const pts = secAt(z, SEC, tW);
-        pts.push([0, S.yU(z) + tW]);
-        const sh = polyShape(pts);
-        const w = halfW(z) - tW;
-        const h = yTop(z) - S.yU(z) - 2 * tW;
-        const hole = new THREE.Path();
-        if (Math.abs(z - (S.zC0 + 0.45)) < 1e-6) hole.absarc(xT, yT, rT + 0.025, 0, TAU, true);
-        else hole.absellipse(-0.45 * w, S.yU(z) + tW + 0.48 * h, 0.22 * w, 0.26 * h, 0, TAU, true);
-        sh.holes.push(hole);
-        add(gI, mesh(new THREE.ExtrudeGeometry(sh, {depth: 0.02, bevelEnabled: false}).translate(0, 0, z - 0.01), mat.aluminium), 'bulkhead');
+        const out = [[0, S.yU(z) + tW], ...secAt(z, SEC, tW)];
+        const inn = [[0, S.yU(z) + tW + fd], ...secAt(z, SEC, tW + fd)];
+        add(gI, mesh(new THREE.ExtrudeGeometry(polyShape([...out, ...inn.reverse()]), {depth: 0.022, bevelEnabled: false}).translate(0, 0, z - 0.011), mat.aluminium), 'bulkhead');
+      }
+      for (const p of [[-0.5, 0], SEC[2], SEC[4], SEC[6], [0, 1]]) {
+        const pts = [];
+        for (let z = BH[0] - 0.02; z > BH[BH.length - 1]; z -= 0.15) {
+          const [x, y] = secAt(z, [p], tW + 0.012)[0];
+          pts.push(new V3(Math.min(x, -0.012), y, z));
+        }
+        add(gI, mesh(tube(pts, 0.011, false, 96), mat.aluminium), 'bulkhead');
       }
       // nose ballast: dense metal that puts the centre of mass far enough forward for stability
       const zb = (BH[0] + BH[1]) / 2;
+      const slope = (z) => (S.yU(z + 0.01) - S.yU(z - 0.01)) / 0.02;
       const bal = add(gI, mesh(roundedBox(0.17, 0.09, 0.36, 0.012), M.steel), 'ballast');
       bal.position.set(-0.1, S.yU(zb) + tW + 0.045, zb);
-      // avionics: flight computer, inertial unit, battery, on the bay floor, with their harness running aft
-      for (const [w, h, d, x, z] of [[0.2, 0.12, 0.22, -0.13, BH[1] - 0.18], [0.3, 0.12, 0.3, -0.2, BH[1] - 0.55], [0.15, 0.1, 0.15, -0.12, BH[2] + 0.1]]) {
+      bal.rotation.x = -Math.atan(slope(zb));
+      // avionics: flight computer, battery and inertial unit on a level shelf across the bay (the floor slopes with the
+      // ramp), with their harness running aft
+      const zs0 = BH[1] - 0.03;
+      const zs1 = BH[2] + 0.03;
+      const yS = S.yU(zs0) + tW + 0.03;
+      {
+        const sh = polyShape([[0, zs0], [-(halfW(zs0) - tW - 0.05), zs0], [-(halfW(zs1) - tW - 0.05), zs1], [0, zs1]]);
+        add(gI, mesh(new THREE.ExtrudeGeometry(sh, {depth: 0.012, bevelEnabled: false}).rotateX(Math.PI / 2).translate(0, yS, 0), mat.aluminium), 'avionics');
+      }
+      for (const [w, h, d, x, z] of [[0.18, 0.11, 0.2, -0.12, BH[1] - 0.17], [0.26, 0.12, 0.3, -0.19, BH[1] - 0.52], [0.15, 0.1, 0.15, -0.12, BH[2] + 0.12]]) {
         const b = add(gI, mesh(roundedBox(w, h, d, 0.01), mat.box), 'avionics');
-        b.position.set(x, S.yU(z) + tW + h / 2, z);
+        b.position.set(x, yS + h / 2, z);
         for (let j = 0; j < 4; j++) {
           const fin = mesh(new THREE.BoxGeometry(w * 0.9, 0.008, 0.003), mat.box);
           fin.position.set(0, h / 2 + 0.004, -d * 0.35 + (j * d * 0.7) / 3);
@@ -1659,9 +1718,14 @@ export function buildEngine(J) {
       for (let i = 0; i <= 10; i++) cap.push([Math.max(0.001, rT * Math.cos((i / 10) * (Math.PI / 2))), za - rT * Math.sin((i / 10) * (Math.PI / 2))]);
       const tank = add(gI, mesh(revolve(cap, 48), mat.composite), 'h2-tank');
       tank.position.set(xT, yT, 0);
+      // two straps, each on a cradle down to the floor
       for (const z of [zf - 0.25, za + 0.25]) {
-        const s = add(gI, mesh(new THREE.TorusGeometry(rT + 0.006, 0.008, 8, 48), mat.aluminium), 'h2-tank');
+        const s = add(gI, mesh(new THREE.TorusGeometry(rT + 0.006, 0.009, 8, 48), mat.aluminium), 'h2-tank');
         s.position.set(xT, yT, z);
+        const yF = S.yU(z) + tW;
+        const h = yT - rT - yF + 0.02;
+        const c = add(gI, mesh(roundedBox(0.2, h, 0.05, 0.01), mat.aluminium), 'h2-tank');
+        c.position.set(xT, yF + h / 2, z);
       }
       const boss = add(gI, mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 16).rotateX(Math.PI / 2), M.steel), 'h2-tank');
       boss.position.set(xT, yT, za - rT - 0.02);
@@ -1670,6 +1734,11 @@ export function buildEngine(J) {
       const zs2 = (BH[4] + BH[5]) / 2;
       const sil = add(gI, mesh(new THREE.SphereGeometry(0.1, 32, 20), mat.composite), 'silane');
       sil.position.set(-0.32, S.yU(zs2) + tW + 0.13, zs2);
+      {
+        const h = 0.13 - 0.07;
+        const c = add(gI, mesh(new THREE.CylinderGeometry(0.06, 0.08, h, 24), mat.aluminium), 'silane');
+        c.position.set(-0.32, S.yU(zs2) + tW + h / 2, zs2);
+      }
       // the fuel feed: bottle to a valve and regulator, down to a manifold above the combustor roof that feeds each strut
       const yM = S.yU(S.zC0) + 0.06;
       const zM = S.zC0 + 0.02;
@@ -1690,11 +1759,19 @@ export function buildEngine(J) {
       }
       // tail actuators: one turning each wing's torque shaft, one each fin's rudder
       const zA = (BH[5] + BH[6]) / 2;
-      for (const [x, y, len] of [[-0.48, S.yU(zA) + tW + 0.06, 0.42], [-0.3, yAt(-0.3, zA) - tW - 0.07, 0.36]]) {
-        const a = add(gI, mesh(new THREE.CylinderGeometry(0.035, 0.035, len, 20).rotateX(Math.PI / 2), mat.aluminium), 'actuator');
-        a.position.set(x, y, zA);
-        const rod = add(gI, mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.18, 12).rotateX(Math.PI / 2), M.steel), 'actuator');
-        rod.position.set(x, y, zA - len / 2 - 0.08);
+      for (const [x, y, len, pitch] of [[-0.48, S.yU(zA) + tW + 0.06, 0.42, -Math.atan(slope(zA))], [-0.3, yAt(-0.3, zA) - tW - 0.07, 0.36, 0]]) {
+        const ag = new THREE.Group();
+        ag.position.set(x, y, zA);
+        ag.rotation.x = pitch;
+        ag.add(part(mesh(new THREE.CylinderGeometry(0.035, 0.035, len, 20).rotateX(Math.PI / 2), mat.aluminium), 'actuator'));
+        const rod = part(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.18, 12).rotateX(Math.PI / 2), M.steel), 'actuator');
+        rod.position.z = -len / 2 - 0.08;
+        ag.add(rod);
+        // a clevis bracket to the structure at the front end
+        const br = part(mesh(roundedBox(0.06, 0.05, 0.04, 0.008), mat.aluminium), 'actuator');
+        br.position.set(0, y > 0.1 ? 0.04 : -0.04, len / 2 + 0.02);
+        ag.add(br);
+        gI.add(ag);
       }
       const zW = zE + 0.95 - 0.75 * 0.45;
       const ts = add(gI, mesh(new THREE.CylinderGeometry(0.018, 0.018, halfW(zW) - 0.4, 12).rotateZ(Math.PI / 2), M.steel), 'actuator');
