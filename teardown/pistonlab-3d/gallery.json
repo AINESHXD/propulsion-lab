@@ -1,0 +1,283 @@
+[
+ {
+  "id": "k20a",
+  "name": "Honda K20A",
+  "car": "Civic Type R (EP3)",
+  "published_capacity_cc": 1998,
+  "rod_ratio_published": true,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "naturally_aspirated",
+   "intake_pressure_Pa": 100000,
+   "equivalence_ratio": 1,
+   "bore_m": 0.086,
+   "stroke_m": 0.086,
+   "compression_ratio": 11,
+   "rod_ratio": 3.2326,
+   "cylinders": 4,
+   "rpm": 7400,
+   "layout": {
+    "kind": "inline"
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "dohc",
+   "oil": "wet",
+   "balance_shafts": 0,
+   "note": "Drawn with bucket followers; the K20A uses roller finger followers with VTEC."
+  }
+ },
+ {
+  "id": "2jz",
+  "name": "Toyota 2JZ-GTE",
+  "car": "Supra (A80)",
+  "published_capacity_cc": 2997,
+  "rod_ratio_published": true,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "turbocharged",
+   "intake_pressure_Pa": 175000,
+   "intake_temperature_K": 320,
+   "equivalence_ratio": 1,
+   "bore_m": 0.086,
+   "stroke_m": 0.086,
+   "compression_ratio": 8.5,
+   "rod_ratio": 3.3023,
+   "cylinders": 6,
+   "rpm": 5600,
+   "layout": {
+    "kind": "inline"
+   }
+  },
+  "hardware": {
+   "block": "iron",
+   "valvetrain": "dohc",
+   "oil": "wet",
+   "balance_shafts": 0,
+   "note": "Drawn with one turbocharger; the stock 2JZ-GTE runs two in sequence."
+  }
+ },
+ {
+  "id": "daza",
+  "name": "Audi 2.5 TFSI",
+  "car": "RS3 (8V)",
+  "published_capacity_cc": 2480,
+  "rod_ratio_published": false,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "turbocharged",
+   "intake_pressure_Pa": 230000,
+   "intake_temperature_K": 320,
+   "equivalence_ratio": 1,
+   "bore_m": 0.0825,
+   "stroke_m": 0.0928,
+   "compression_ratio": 10,
+   "cylinders": 5,
+   "rpm": 5850,
+   "layout": {
+    "kind": "inline"
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "dohc",
+   "oil": "wet",
+   "balance_shafts": 0,
+   "note": "Drawn with bucket followers; the engine uses roller finger followers."
+  }
+ },
+ {
+  "id": "ls3",
+  "name": "GM LS3",
+  "car": "Corvette (C6)",
+  "published_capacity_cc": 6162,
+  "rod_ratio_published": true,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "naturally_aspirated",
+   "intake_pressure_Pa": 100000,
+   "equivalence_ratio": 1,
+   "bore_m": 0.10325,
+   "stroke_m": 0.092,
+   "compression_ratio": 10.7,
+   "rod_ratio": 3.3674,
+   "cylinders": 8,
+   "rpm": 5900,
+   "layout": {
+    "kind": "vee",
+    "bank_angle_deg": 90,
+    "crank_type": "cross_plane"
+   },
+   "valve_geometry": {
+    "intake_valves_per_cylinder": 1,
+    "exhaust_valves_per_cylinder": 1,
+    "intake_valve_diameter_ratio": 0.5327,
+    "exhaust_valve_diameter_ratio": 0.3913
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "ohv",
+   "rocker_ratio": 1.7,
+   "oil": "wet",
+   "balance_shafts": 0,
+   "note": "Pushrod engine: one camshaft in the block, 1.7:1 rockers."
+  }
+ },
+ {
+  "id": "f136",
+  "name": "Ferrari F136 FB",
+  "car": "458 Italia",
+  "published_capacity_cc": 4497,
+  "rod_ratio_published": false,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "naturally_aspirated",
+   "intake_pressure_Pa": 100000,
+   "equivalence_ratio": 1,
+   "bore_m": 0.094,
+   "stroke_m": 0.081,
+   "compression_ratio": 12.5,
+   "cylinders": 8,
+   "rpm": 9000,
+   "layout": {
+    "kind": "vee",
+    "bank_angle_deg": 90,
+    "crank_type": "flat_plane"
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "dohc",
+   "oil": "dry",
+   "balance_shafts": 0,
+   "note": "Dry sump with a separate oil tank."
+  }
+ },
+ {
+  "id": "ej257",
+  "name": "Subaru EJ257",
+  "car": "Impreza WRX STI",
+  "published_capacity_cc": 2457,
+  "rod_ratio_published": true,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "turbocharged",
+   "intake_pressure_Pa": 200000,
+   "intake_temperature_K": 320,
+   "equivalence_ratio": 1,
+   "bore_m": 0.0995,
+   "stroke_m": 0.079,
+   "compression_ratio": 8.2,
+   "rod_ratio": 3.3038,
+   "cylinders": 4,
+   "rpm": 6000,
+   "layout": {
+    "kind": "flat",
+    "bank_angle_deg": 180
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "dohc",
+   "oil": "wet",
+   "balance_shafts": 0,
+   "note": "Drawn with bucket followers."
+  }
+ },
+ {
+  "id": "9a1",
+  "name": "Porsche 9A1 3.8",
+  "car": "911 Carrera S (997.2)",
+  "published_capacity_cc": 3800,
+  "rod_ratio_published": false,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "naturally_aspirated",
+   "intake_pressure_Pa": 100000,
+   "equivalence_ratio": 1,
+   "bore_m": 0.102,
+   "stroke_m": 0.0775,
+   "compression_ratio": 12.5,
+   "cylinders": 6,
+   "rpm": 6500,
+   "layout": {
+    "kind": "flat",
+    "bank_angle_deg": 180
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "dohc",
+   "oil": "dry",
+   "balance_shafts": 0,
+   "note": "The 9A1 integrates its dry sump in the crankcase; drawn with an external tank for clarity."
+  }
+ },
+ {
+  "id": "alh",
+  "name": "VW 1.9 TDI (ALH)",
+  "car": "Golf IV",
+  "published_capacity_cc": 1896,
+  "rod_ratio_published": true,
+  "body": {
+   "fuel": "diesel",
+   "aspiration": "turbocharged",
+   "intake_pressure_Pa": 190000,
+   "intake_temperature_K": 320,
+   "equivalence_ratio": 0.65,
+   "combustion_start_deg": -8,
+   "bore_m": 0.0795,
+   "stroke_m": 0.0955,
+   "compression_ratio": 19.5,
+   "rod_ratio": 3.0157,
+   "cylinders": 4,
+   "rpm": 3750,
+   "layout": {
+    "kind": "inline"
+   },
+   "valve_geometry": {
+    "intake_valves_per_cylinder": 1,
+    "exhaust_valves_per_cylinder": 1,
+    "intake_valve_diameter_ratio": 0.45,
+    "exhaust_valve_diameter_ratio": 0.39
+   }
+  },
+  "hardware": {
+   "block": "iron",
+   "valvetrain": "sohc",
+   "oil": "wet",
+   "balance_shafts": 0,
+   "note": "Single overhead cam over two inline valves per cylinder, bucket tappets."
+  }
+ },
+ {
+  "id": "crf450",
+  "name": "Honda CRF450R",
+  "car": "motocross single",
+  "published_capacity_cc": 449,
+  "rod_ratio_published": false,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "naturally_aspirated",
+   "intake_pressure_Pa": 100000,
+   "equivalence_ratio": 1,
+   "bore_m": 0.096,
+   "stroke_m": 0.0621,
+   "compression_ratio": 13.5,
+   "cylinders": 1,
+   "rpm": 9000,
+   "layout": {
+    "kind": "single"
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "dohc",
+   "oil": "wet",
+   "balance_shafts": 1,
+   "note": "Drawn as DOHC; the real engine uses Honda's Unicam single cam with an exhaust rocker. One primary balance shaft."
+  }
+ }
+]

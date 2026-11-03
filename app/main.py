@@ -226,7 +226,9 @@ async def cache_control(request, call_next):
     response = await call_next(request)
     path = request.url.path
     if path.endswith(".html") or path in ("/", "/lab", "/lab/", "/pro", "/pro/",
-                                          "/piston", "/piston/", "/m", "/m/",
+                                          "/piston", "/piston/", "/piston/3d", "/piston/3d/",
+                                          "/jet/3d", "/jet/3d/",
+                                          "/m", "/m/",
                                           "/privacy", "/privacy/",
                                           "/inverse", "/inverse/",
                                           "/validation", "/validation/"):
@@ -359,6 +361,22 @@ def piston_lab() -> FileResponse:
     """
 
     return FileResponse(STATIC_PATH / "piston" / "index.html")
+
+
+@app.get("/piston/3d", include_in_schema=False)
+@app.get("/piston/3d/", include_in_schema=False)
+def piston_3d() -> FileResponse:
+    """Serve the PistonLab 3D engine page (built from teardown/pistonlab-3d)."""
+
+    return FileResponse(STATIC_PATH / "piston" / "3d" / "index.html")
+
+
+@app.get("/jet/3d", include_in_schema=False)
+@app.get("/jet/3d/", include_in_schema=False)
+def jet_3d() -> FileResponse:
+    """Serve the JetLab 3D engine page (built from teardown/jetlab-3d)."""
+
+    return FileResponse(STATIC_PATH / "jet" / "3d" / "index.html")
 
 
 @app.post("/piston/simulate", response_model=PistonSimulateOutput, tags=["piston"])

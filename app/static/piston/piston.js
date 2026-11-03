@@ -1592,8 +1592,18 @@ function drawDyno() {
 }
 
 /* ---------- boot ---------- */
+/** Open the engine the console holds in the 3D page. The inputs ride in the URL hash, so the link can be shared. */
+function open3d() {
+  const body = readInputs();
+  delete body.include_trace;
+  const json = JSON.stringify(body);
+  const b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  window.location.href = `/piston/3d/#e=${b64}`;
+}
+
 export function startPiston() {
   buildMetricCards();
+  document.getElementById("open3d")?.addEventListener("click", open3d);
   // presets
   const row = document.getElementById("presetRow");
   row.innerHTML = Object.keys(PRESETS).map((n) => `<button class="preset" data-preset="${n}">${n}</button>`).join("");
