@@ -103,7 +103,7 @@ export function runLive() {
     <div id="pane-eng"></div>
     <div id="pane-bom" hidden></div>
     <div id="pane-cyc" hidden>
-      <p class="cycnote">Move an input and the engine is solved again: the charge's pressure and temperature, the flame front's growth, the header glow and the crank speed all follow.</p>
+      <p class="cycnote">Move an input and the engine is solved again: the charge's pressure and temperature, the flame front's growth, the exhaust wall temperature and the crank speed all follow.</p>
       <div id="cyc"></div>
       <div class="cycstat mono" id="cyc-stat"></div>
       <button id="cyc-reset">Back to the published point</button>

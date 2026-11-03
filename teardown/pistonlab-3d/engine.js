@@ -1253,15 +1253,10 @@ export function buildEngine(E) {
     const Tport = (E.out.exhaust_temperature_K || 900) * Math.pow(Math.min(1, E.pEx / pEVO), (g - 1) / g);
     E.portTemp = Tport;
     const Tw = Tport - 150;
-    const k = glowIntensity(Tw, 1200);
-    // The headers always carry a deep red heat shade (a look choice: a cooler-running engine would read as plain
-    // steel, a hotter one orange). The hue is held in the dull-red band, 850 to 950 K on the black-body locus; how
-    // strongly it glows still follows the estimated wall temperature.
-    blackbody(Math.min(950, Math.max(Tw, 850)), M.header.emissive);
-    M.header.emissive.lerp(new THREE.Color('#b0140a'), 0.55);
-    // the steel under it is darkened to a heat-oxidised tone, so the red reads deep rather than pink over bright metal
-    M.header.color.set('#6a3a30');
-    M.header.emissiveIntensity = Math.min(0.35, Math.max(0.1, 0.3 * k));
+    // the headers are drawn as bare stainless steel with no glow (a look choice); the wall temperature still sets the
+    // heat tint of their service state below
+    M.header.emissive.set('#000000');
+    M.header.emissiveIntensity = 0;
     E.wallTemp = Tw;
     // service-state inputs: headers and turbine tint by their wall temperature; the exhaust valves carry carbon
     M.header.userData.T = Tw;
