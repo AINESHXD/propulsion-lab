@@ -1411,6 +1411,29 @@ export function buildEngine(J) {
       return geo;
     };
     const mirror = (sd) => (pts) => pts.map(([x, y]) => [sd * x, y]);
+    // a rectangular duct of gas through slices z, each [half-width, bottom, top]: the flame and the exhaust
+    const duct = (zz, at) => {
+      const pos = [];
+      const idx = [];
+      zz.forEach((z, i) => {
+        const [hw, yb, yt] = at(z);
+        pos.push(-hw, yb, z, hw, yb, z, -hw, yt, z, hw, yt, z);
+        if (!i) return;
+        const a = (i - 1) * 4;
+        const b = i * 4;
+        idx.push(a, b, b + 1, a, b + 1, a + 1, a + 2, b + 3, b + 2, a + 2, a + 3, b + 3, a, a + 2, b + 2, a, b + 2, b, a + 1, b + 1, b + 3, a + 1, b + 3, a + 3);
+      });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      return geo;
+    };
+    // a side plate in the z-y profile pts, against the flow path's side (sd 1 the far side, -1 the near)
+    const sidePlate = (pts, sd) =>
+      new THREE.ExtrudeGeometry(polyShape(pts), {depth: 0.024, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2})
+        .rotateY(-Math.PI / 2)
+        .translate(sd > 0 ? -W / 2 - 0.009 : W / 2 + 0.033, 0, 0);
     const polyShape = (pts) => {
       const sh = new THREE.Shape();
       sh.moveTo(...pts[0]);
@@ -1544,9 +1567,7 @@ export function buildEngine(J) {
       for (const z of [zSW, ...zs.filter((z) => z < zSW && z > zEnd), zEnd]) pts.push([z, S.yU(z) + 0.01]);
       for (const z of [zEnd, ...zs.filter((z) => z < 0 && z > zEnd)].reverse()) pts.push([z, yO(z) - 0.004]);
       pts.push([0, yO(0) - 0.004]);
-      const geo = new THREE.ExtrudeGeometry(polyShape(pts), {depth: 0.024, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2});
-      geo.rotateY(-Math.PI / 2).translate(sd > 0 ? -W / 2 - 0.009 : W / 2 + 0.033, 0, 0);
-      add(gC, mesh(geo, mat.hotCase), 'sidewall');
+      add(gC, mesh(sidePlate(pts, sd), mat.hotCase), 'sidewall');
     }
 
     // nozzle fences: short walls either side of the expansion ramp, from the cowl's end to the base, framing the exit
@@ -1554,37 +1575,24 @@ export function buildEngine(J) {
       const pts = [];
       for (const z of [zEnd, ...zs.filter((z) => z < zEnd && z > zE), zE]) pts.push([z, S.yU(z) + 0.01]);
       pts.push([zE, S.yU(zE) - 0.07], [zEnd, yO(zEnd) - 0.004]);
-      const geo = new THREE.ExtrudeGeometry(polyShape(pts), {depth: 0.024, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2});
-      geo.rotateY(-Math.PI / 2).translate(sd > 0 ? -W / 2 - 0.009 : W / 2 + 0.033, 0, 0);
-      add(gB, mesh(geo, mat.inconel), 'nozzle-fence');
+      add(gB, mesh(sidePlate(pts, sd), mat.inconel), 'nozzle-fence');
     }
     // the exhaust: still supersonic as it leaves the cowl, expanding against the ramp above and the outside air below,
     // then spreading as a plume past the base
     {
       const zx0 = zEnd + 0.05;
-      const zx1 = zE - 1.1;
+      const zx1 = zE - 0.7;
       const Tx = (J.stations.find((x) => x.id === 'comb-exit')?.Tt ?? S.T) * 0.8;
-      const fm = flameMat((u) => Tx * (1 - 0.5 * u), zx0, zx1, J.at(S.zN1).V, 0.3);
+      const fm = flameMat((u) => Tx * (1 - 0.7 * u), zx0, zx1, J.at(S.zN1).V, 0.3);
       const t10 = Math.tan((10 * Math.PI) / 180);
-      const t6 = Math.tan((6 * Math.PI) / 180);
-      const pos = [];
-      const idx = [];
-      const zz = lin(zx0, zx1, 70);
-      for (const z of zz) {
-        const yt = z >= zE ? S.yU(z) - 0.012 : S.yU(zE) - 0.012 + (zE - z) * t10 * 0.3;
-        const yb = S.yL(zEnd) + 0.01 - (zEnd - z) * t6;
+      const t6 = Math.tan((3 * Math.PI) / 180);
+      // an elliptical tube, so the flame shader's edge-on fade softens its outline into gas
+      const geo = loft(zx0, zx1, (z) => {
         const hw = W / 2 - 0.02 + Math.max(0, zE - z) * 0.08;
-        pos.push(-hw, yb, z, hw, yb, z, -hw, yt, z, hw, yt, z);
-      }
-      for (let i = 1; i < zz.length; i++) {
-        const a = (i - 1) * 4;
-        const b = i * 4;
-        idx.push(a, b, b + 1, a, b + 1, a + 1, a + 2, b + 3, b + 2, a + 2, a + 3, b + 3, a, a + 2, b + 2, a, b + 2, b, a + 1, b + 1, b + 3, a + 1, b + 3, a + 3);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      geo.setIndex(idx);
-      geo.computeVertexNormals();
+        const yb = S.yL(zEnd) + 0.01 - (zEnd - z) * t6;
+        const yt = z >= zE ? S.yU(z) - 0.012 : S.yU(zE) - 0.012 + (zE - z) * t10 * 0.3;
+        return Array.from({length: 25}, (_, k) => [hw * Math.cos((k / 24) * TAU), (yb + yt) / 2 + ((yt - yb) / 2) * Math.sin((k / 24) * TAU)]);
+      });
       addFlame(grp('flow', 'exhaust'), geo, fm, 'exhaust');
     }
 
@@ -1701,11 +1709,6 @@ export function buildEngine(J) {
       for (const [w, h, d, x, z] of [[0.18, 0.11, 0.2, -0.12, BH[1] - 0.17], [0.26, 0.12, 0.3, -0.19, BH[1] - 0.52], [0.15, 0.1, 0.15, -0.12, BH[2] + 0.12]]) {
         const b = add(gI, mesh(roundedBox(w, h, d, 0.01), mat.box), 'avionics');
         b.position.set(x, yS + h / 2, z);
-        for (let j = 0; j < 4; j++) {
-          const fin = mesh(new THREE.BoxGeometry(w * 0.9, 0.008, 0.003), mat.box);
-          fin.position.set(0, h / 2 + 0.004, -d * 0.35 + (j * d * 0.7) / 3);
-          b.add(fin);
-        }
       }
       const harness = [];
       for (let z = BH[1] - 0.2; z > zE + 0.3; z -= 0.25) harness.push(new V3(-0.1, yAt(-0.1, z) - tW - 0.03, z));
@@ -1748,8 +1751,7 @@ export function buildEngine(J) {
       add(gI, mesh(tube(sline, 0.008, false, 48), mat.pipe), 'h2-line');
       const valve = add(gI, mesh(roundedBox(0.07, 0.07, 0.09, 0.012), mat.box), 'h2-line');
       valve.position.copy(feed[1]).lerp(feed[2], 0.45);
-      const reg = add(gI, mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.07, 20), mat.aluminium), 'h2-line');
-      reg.position.copy(valve.position).add(new V3(0, 0.07, 0));
+      add(gI, mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.07, 20).translate(0, 0.07, 0), mat.aluminium), 'h2-line').position.copy(valve.position);
       const man = add(gI, mesh(new THREE.CylinderGeometry(0.018, 0.018, W / 2 + 0.04, 16).rotateZ(Math.PI / 2), mat.pipe), 'h2-manifold');
       man.position.set(-W / 4 + 0.02, yM, zM);
       for (const x of strutX) {
@@ -1780,23 +1782,10 @@ export function buildEngine(J) {
     const Ts = J.stations.find((x) => x.id === 'comb-in').T;
     const fm = flameMat((u) => Ts + (S.T * 0.85 - Ts) * Math.min(1, u / 0.45) ** 0.6, S.zC0 - 0.1, S.zC1 - 0.8, J.at(S.zC1).V, 0.8);
     const fz = zs.filter((z) => z <= S.zC0 - 0.1 && z >= S.zC1 - 0.8);
-    const fpos = [];
-    const fidx = [];
-    for (const z of fz) {
+    const fg = duct(fz, (z) => {
       const u = (S.zC0 - z) / (S.zC0 - S.zC1);
-      const yl = S.yL(z) + 0.02;
-      const yu = S.yU(z) - 0.02 - (1 - Math.min(1, u * 2)) * 0.5 * (S.yU(z) - S.yL(z));
-      fpos.push(-W / 2 + 0.02, yl, z, W / 2 - 0.02, yl, z, -W / 2 + 0.02, yu, z, W / 2 - 0.02, yu, z);
-    }
-    for (let i = 1; i < fz.length; i++) {
-      const a = (i - 1) * 4;
-      const b = i * 4;
-      fidx.push(a, b, b + 1, a, b + 1, a + 1, a + 2, b + 3, b + 2, a + 2, a + 3, b + 3, a, a + 2, b + 2, a, b + 2, b, a + 1, b + 1, b + 3, a + 1, b + 3, a + 3);
-    }
-    const fg = new THREE.BufferGeometry();
-    fg.setAttribute('position', new THREE.Float32BufferAttribute(fpos, 3));
-    fg.setIndex(fidx);
-    fg.computeVertexNormals();
+      return [W / 2 - 0.02, S.yL(z) + 0.02, S.yU(z) - 0.02 - (1 - Math.min(1, u * 2)) * 0.5 * (S.yU(z) - S.yL(z))];
+    });
     addFlame(grp('combustor', 'scram'), fg, fm);
     // ramp shocks: planes from each ramp corner at the oblique-shock angle
     const corners = [J.zInlet, J.zInlet / 2];

@@ -1062,10 +1062,7 @@ export function runLive() {
   renderEngines();
   load(current).then(startTour);
   requestAnimationFrame(loop);
-  window.LIVE = {rebuild: () => rebuild(), view: (v) => {
-    takeOver();
-    Object.assign(camTo, v);
-  }, setTier: (n) => {
+  window.LIVE = {rebuild: () => rebuild(), setTier: (n) => {
     tier = n;
     applyTier();
   }, photo: () => photo, refreshBOM: () => refreshBOM(), setPlay: (i) => {
