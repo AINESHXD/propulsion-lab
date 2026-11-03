@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import types
 from pathlib import Path
 
@@ -127,3 +128,15 @@ def test_label_tags_are_picked_on_press() -> None:
     for v in ("jetlab-3d", "pistonlab-3d"):
         live = (Path(__file__).resolve().parents[1] / "teardown" / v / "live.js").read_text(encoding="utf-8")
         assert "addEventListener('pointerdown'" in live and "ovLast" in live
+
+
+def test_scramjet_parts_all_have_cards() -> None:
+    # every part id the scramjet's geometry tags has a card of its own (an untagged id shows as a bare name)
+    root = Path(__file__).resolve().parents[1] / "teardown" / "jetlab-3d"
+    engine = (root / "engine.js").read_text(encoding="utf-8")
+    block = engine[engine.index("if (fam === 'scramjet') {") : engine.index("// ------------------------------------------------------------ accessory gearbox")]
+    info = (root / "info.js").read_text(encoding="utf-8")
+    ids = set(re.findall(r"'([a-z0-9-]+)'\)(?:,|;|\))", block)) - {"casing", "dress", "combustor", "shock", "flow", "scram"}
+    assert {"airframe", "cowl-door", "h2-tank", "nozzle-ramp", "wing"} <= ids
+    for pid in ids:
+        assert f"\n    {pid}: [" in info or f"\n    '{pid}': [" in info, pid

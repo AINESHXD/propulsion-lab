@@ -372,3 +372,22 @@ The ramjet was rebuilt in the classic axisymmetric layout, against a reference d
   lugs, pitot-static boom, thermocouple and pressure bosses, boundary-layer bleed slots on the spike.
 
 Representative, not a specific engine; the plug contour and burner proportions are drawn, not designed.
+
+## Scramjet redesign (2026-11-03)
+
+The scramjet is rebuilt as a lifting body in the X-43 family, on the same solver-driven flow path (ramps, cowl lip,
+isolator, combustor and expansion ramp from kin.js are unchanged).
+
+- Airframe: a flat-topped, chined body lofted from a sharp nose, carbon-carbon nose cap and chine bands, painted
+  upper skin with panel seams, a blunt carbon base. The underside is the engine: ceramic forebody ramps with a row of
+  boundary-layer trips, the isolator and combustor roof, an Inconel expansion ramp.
+- Cowl: sharp lip thickening behind it, the cavity flameholder cut into its inner face, a tapered end; the front is a
+  door hinged at its rear (hinge pin, knuckles, actuator fairing). Sidewalls with swept leading edges.
+- Tail: twin outboard-canted fins with hinged rudders, all-moving wings on shafts at the chines.
+- Inside, through the cut: bulkheads with lightening holes, nose ballast, avionics bay with harness, a
+  composite-overwrapped hydrogen bottle on straps, a silane bottle for ignition, the feed through a valve and
+  regulator to a manifold over the combustor that feeds each injector strut, tail actuators and the wing torque shaft.
+- A display plinth with four columns to pads under the body, outboard of the flow path and exhaust, replaces the
+  floor rails.
+
+Representative, not the X-43A itself; proportions inside the body and the straight expansion ramp are drawn.

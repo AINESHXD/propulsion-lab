@@ -445,7 +445,7 @@ export function runLive() {
     labelsOn = !labelsOn;
     press('b-labels', labelsOn);
   };
-  const LABEL_IDS = ['fan', 'spinner', 'ogv', 'booster', 'ipc', 'hpc', 'compressor', 'impeller', 'combustor', 'fuel-nozzle', 'hpt', 'ipt', 'lpt', 'pt', 'plug', 'core-nozzle', 'nacelle', 'agb', 'fadec', 'fan-gearbox', 'propeller', 'rgb', 'afterburner', 'nozzle-petals', 'spike', 'cowl', 'flameholder', 'burner-case', 'nozzle-shroud', 'fuel-manifold', 'igniter', 'mount', 'forebody', 'strut', 'shock', 'vsv'];
+  const LABEL_IDS = ['fan', 'spinner', 'ogv', 'booster', 'ipc', 'hpc', 'compressor', 'impeller', 'combustor', 'fuel-nozzle', 'hpt', 'ipt', 'lpt', 'pt', 'plug', 'core-nozzle', 'nacelle', 'agb', 'fadec', 'fan-gearbox', 'propeller', 'rgb', 'afterburner', 'nozzle-petals', 'spike', 'cowl', 'flameholder', 'burner-case', 'nozzle-shroud', 'fuel-manifold', 'igniter', 'mount', 'forebody', 'strut', 'shock', 'vsv', 'nose-tip', 'cowl-door', 'nozzle-ramp', 'h2-tank', 'wing', 'fin', 'silane'];
   let anchors = [];
   const collectAnchors = () => {
     anchors = [];
@@ -548,6 +548,8 @@ export function runLive() {
     eng.setExplode(explode);
     applyOverlays();
     collectAnchors();
+    // an open parts list follows the model (a new engine, cut or detail level)
+    if (!$('pane-bom').hidden) refreshBOM();
   };
   // ------------------------------------------------------------ the cycle and physics overlays
   let overrides = {};
@@ -1060,7 +1062,10 @@ export function runLive() {
   renderEngines();
   load(current).then(startTour);
   requestAnimationFrame(loop);
-  window.LIVE = {rebuild: () => rebuild(), setTier: (n) => {
+  window.LIVE = {rebuild: () => rebuild(), view: (v) => {
+    takeOver();
+    Object.assign(camTo, v);
+  }, setTier: (n) => {
     tier = n;
     applyTier();
   }, photo: () => photo, refreshBOM: () => refreshBOM(), setPlay: (i) => {
