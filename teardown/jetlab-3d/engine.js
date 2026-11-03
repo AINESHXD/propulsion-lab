@@ -572,12 +572,24 @@ export function buildEngine(J) {
       }
       const sa = m.stages[0];
       const sb = m.stages[m.vsv - 1];
-      const a0 = 0.6;
-      const p0 = new V3((sa.rt + 0.07 * D) * Math.cos(a0), (sa.rt + 0.07 * D) * Math.sin(a0), sa.zs + 0.05 * D);
-      const p1 = new V3((sb.rt + 0.07 * D) * Math.cos(a0), (sb.rt + 0.07 * D) * Math.sin(a0), sb.zs - 0.02 * D);
-      const act = add(gC, mesh(new THREE.CylinderGeometry(0.012 * D, 0.012 * D, p0.distanceTo(p1), 16), mat.pipe), 'vsv-actuator');
-      act.position.copy(p0).lerp(p1, 0.5);
-      act.quaternion.setFromUnitVectors(new V3(0, 1, 0), p1.clone().sub(p0).normalize());
+      // the actuator, on the side of the case that the cut keeps: a hydraulic ram on a bracket off the case, driving a
+      // rod that runs just above the unison rings with a crank arm down to each
+      const a0 = keep(0.6) ? 0.6 : Math.PI - 0.6;
+      const at = (r, z) => new V3(r * Math.cos(a0), r * Math.sin(a0), z);
+      const strut = (p, q, w) => {
+        const o = add(gC, mesh(new THREE.CylinderGeometry(w, w, p.distanceTo(q), 12), mat.pipe), 'vsv-actuator');
+        o.position.copy(p).lerp(q, 0.5);
+        o.quaternion.setFromUnitVectors(new V3(0, 1, 0), q.clone().sub(p).normalize());
+        return o;
+      };
+      const p0 = at(sa.rt + 0.05 * D, sa.zs + 0.02 * D);
+      const p1 = at(sb.rt + 0.05 * D, sb.zs - 0.03 * D);
+      strut(p0, p1, 0.007 * D);
+      for (const s of m.stages.slice(0, m.vsv)) strut(at(s.rt + 0.03 * D, s.zs), at(s.rt + 0.05 * D, s.zs), 0.005 * D);
+      strut(p1, at(sb.rt + 0.05 * D, sb.zs - 0.15 * D), 0.018 * D);
+      const br = add(gC, mesh(roundedBox(0.03 * D, 0.05 * D, 0.03 * D, 0.006 * D), mat.coldCase), 'vsv-actuator');
+      br.position.copy(at(sb.rt + 0.03 * D, sb.zs - 0.12 * D));
+      br.rotation.z = a0 - Math.PI / 2;
     }
   }
 
@@ -1143,7 +1155,7 @@ export function buildEngine(J) {
       add(gB, mesh(revolve(sp, segs(128)), mat.titanium), 'spike');
       // the centre body proper, with panel joints, through the diffuser and burner
       add(gB, mesh(revolve([[0, cbz0], [rHub, cbz0], [rHub, N.zPlug0], [0, N.zPlug0]], segs(96)), mat.hotDrum), 'centre-body');
-      for (const z of [cbz0, -0.66 * D, N.zPlug0 + 0.02 * D]) add(gB, mesh(new THREE.TorusGeometry(rHub * 1.004, 0.004 * D, 8, segs(96)).translate(0, 0, z), mat.pipe), 'centre-body');
+      for (const z of [cbz0, -0.66 * D, N.zPlug0 + 0.02 * D]) add(gB, mesh(torusC(rHub * 1.004, 0.004 * D, 8, segs(96)).translate(0, 0, z), mat.pipe), 'centre-body');
       // boundary-layer bleed: a band of slots on the second cone, just ahead of the shoulder
       const zs = (S.zKnee + S.zShoulder) / 2 - 0.02 * D;
       const slot = roundedBox(0.012 * D, 0.004 * D, 0.05 * D, 0.002 * D).translate(0, J.spikeR(zs) + 0.0005 * D, zs);
@@ -1159,7 +1171,7 @@ export function buildEngine(J) {
       }
       pl.push([0, N.z1 - 0.004 * D]);
       add(gN, mesh(revolve(pl, segs(128)), mat.hotDrum), 'plug');
-      add(gN, mesh(new THREE.TorusGeometry(rHub * 1.006, 0.006 * D, 8, segs(96)).translate(0, 0, N.zPlug0), mat.pipe), 'plug');
+      add(gN, mesh(torusC(rHub * 1.006, 0.006 * D, 8, segs(96)).translate(0, 0, N.zPlug0), mat.pipe), 'plug');
     }
 
     // ---- struts: four airfoil struts hold the centre body in the diffuser
@@ -1175,6 +1187,15 @@ export function buildEngine(J) {
     const zDif = -0.62 * D;
     const zBur1 = Cb.z1 - 0.02 * D;
     const bulgeR = (u) => rCase + 0.065 * D * Math.sin(u * Math.PI) ** 0.6;
+    // the outside radius along the engine (cowl, bulged burner casing, then the case), for what mounts on it
+    const outerR = (z) => {
+      if (z > zDif) {
+        const u = Math.min(1, (S.zCowl - z) / (S.zCowl - zDif));
+        return S.rLip + 0.004 * D + (rCase - S.rLip - 0.004 * D) * Math.sin((Math.min(1, u * 2.2) * Math.PI) / 2);
+      }
+      return z > zBur1 ? bulgeR((zDif - z) / (zDif - zBur1)) : rCase;
+    };
+    J.outerR = outerR;
     {
       const inner = [];
       const outer = [];
@@ -1247,7 +1268,7 @@ export function buildEngine(J) {
       const plug = add(gX, mesh(new THREE.CylinderGeometry(0.014 * D, 0.014 * D, 0.09 * D, 6), M.steel), 'igniter');
       plug.position.copy(cI).multiplyScalar(rI + 0.05 * D).setZ(zI);
       plug.quaternion.copy(boss.quaternion);
-      const lead = [cI.clone().multiplyScalar(rI + 0.095 * D).setZ(zI), cI.clone().multiplyScalar(rI + 0.13 * D).setZ(zI + 0.06 * D), new V3(-0.12 * D, R * 1.25, zI + 0.3 * D)];
+      const lead = [cI.clone().multiplyScalar(rI + 0.095 * D).setZ(zI), cI.clone().multiplyScalar(rI + 0.13 * D).setZ(zI + 0.06 * D), new V3(-0.03 * D, R * 1.25, zI + 0.3 * D)];
       add(gX, mesh(tube(lead, 0.008 * D, false, 32), mat.braid), 'igniter');
     }
 
@@ -1274,8 +1295,10 @@ export function buildEngine(J) {
         const lug = add(gX, mesh(new THREE.TorusGeometry(0.03 * D, 0.012 * D, 10, 24), M.steel), 'mount');
         lug.position.set(0, py + 0.12 * D, z);
         lug.rotation.y = Math.PI / 2;
-        const foot = add(gX, mesh(roundedBox(0.1 * D, 0.03 * D, 0.1 * D, 0.01 * D), mat.stand), 'mount');
-        foot.position.set(0, py - 0.045 * D, z);
+        // each foot reaches from the beam down onto the cowl or casing beneath it
+        const h = py - 0.02 * D - outerR(z);
+        const foot = add(gX, mesh(roundedBox(0.07 * D, h, 0.1 * D, 0.01 * D), mat.stand), 'mount');
+        foot.position.set(0, outerR(z) + h / 2 - 0.004 * D, z);
       }
       // thermocouple and static-pressure bosses along the visible side
       for (const [a, z, id] of [[1.05 * Math.PI, Cb.z0 - 0.35 * D, 'thermocouple'], [1.05 * Math.PI, Cb.z0 - 0.75 * D, 'thermocouple'], [1.2 * Math.PI, zDif + 0.25 * D, 'pressure-tap']]) {
@@ -1285,7 +1308,7 @@ export function buildEngine(J) {
         const b = add(gX, mesh(new THREE.CylinderGeometry(0.012 * D, 0.016 * D, 0.03 * D, 12), M.steel), id);
         b.position.copy(c).multiplyScalar(r).setZ(z);
         b.quaternion.setFromUnitVectors(new V3(0, 1, 0), c);
-        add(gX, mesh(tube([b.position.clone().addScaledVector(c, 0.015 * D), b.position.clone().addScaledVector(c, 0.06 * D).setZ(z + 0.05 * D), new V3(c.x * R * 0.4, R * 1.3, z + 0.12 * D)], 0.004 * D, false, 24), mat.harness), id);
+        add(gX, mesh(tube([b.position.clone().addScaledVector(c, 0.015 * D), b.position.clone().addScaledVector(c, 0.06 * D).setZ(z + 0.05 * D), new V3(-0.03 * D, R * 1.3, z + 0.12 * D)], 0.004 * D, false, 24), mat.harness), id);
       }
     }
 
@@ -1968,7 +1991,8 @@ export function buildEngine(J) {
     // sized on the casings: the propeller and the gas reach far past them
     for (const id of ['casing', 'nacelle']) box.expandByObject(layer[id]);
     const yB = box.min.y - 0.12 * D;
-    const z0 = box.max.z - 0.15 * (box.max.z - box.min.z);
+    // the ramjet's spike runs far ahead of the cowl; its front cradle goes under the cowl, where there is something to hold
+    const z0 = J.outerR ? J.spike.zCowl - 0.3 * D : box.max.z - 0.15 * (box.max.z - box.min.z);
     const z1 = box.min.z + 0.2 * (box.max.z - box.min.z);
     const wid = Math.max(0.6 * D, 0.5 * (box.max.x - box.min.x));
     const tubeT = 0.045 * D;
@@ -2011,6 +2035,7 @@ export function buildEngine(J) {
         const st = J.at(z, J.coreStations);
         let r = st.rt * 1.06 + 0.02 * D;
         if (J.bypass && z > J.bypass.z1) r = R * 1.1;
+        if (J.outerR) r = J.outerR(z) + 0.012 * D;
         return r;
       };
       for (const z of [z0 - 0.05 * D, z1 + 0.05 * D]) {
@@ -2300,6 +2325,21 @@ export function buildEngine(J) {
     }
   };
   const setLayer = (id, on) => (layer[id].visible = on);
+  // In a cut view, a part placed on its own round the outside (an actuator, a duct, a unit, a probe) that falls in the
+  // removed sector would hang in the air with the casing it mounts on cut away, so it is left out. Lathed and ring
+  // parts are already built over the kept arc; rotating parts stay whole, as in a museum cutaway.
+  if (KEEP && fam !== 'scramjet') {
+    const c = new V3();
+    const drop = [];
+    root.updateMatrixWorld(true);
+    for (const id of ['dress', 'casing', 'combustor', 'nacelle', 'stator']) layer[id].traverse((o) => {
+      if (!o.isMesh || o.isInstancedMesh || o.userData.spark) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      o.geometry.boundingBox.getCenter(c).applyMatrix4(o.matrixWorld);
+      if (Math.hypot(c.x, c.y) > 0.12 * R && !keep(Math.atan2(c.y, c.x))) drop.push(o);
+    });
+    for (const o of drop) o.removeFromParent();
+  }
   // shadows: the solid parts cast and receive; small parts and the gas do not
   root.traverse((o) => {
     if (!o.isMesh) return;
