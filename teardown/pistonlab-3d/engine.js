@@ -1254,9 +1254,13 @@ export function buildEngine(E) {
     E.portTemp = Tport;
     const Tw = Tport - 150;
     const k = glowIntensity(Tw, 1200);
-    // The headers always carry a dull red heat shade (a look choice: a cooler-running engine would read as plain
-    // steel); hotter walls still glow brighter and more orange from the black-body colour of the estimated wall.
-    blackbody(Math.max(Tw, 1050), M.header.emissive);
+    // The headers always carry a deep red heat shade (a look choice: a cooler-running engine would read as plain
+    // steel, a hotter one orange). The hue is held in the dull-red band, 850 to 950 K on the black-body locus; how
+    // strongly it glows still follows the estimated wall temperature.
+    blackbody(Math.min(950, Math.max(Tw, 850)), M.header.emissive);
+    M.header.emissive.lerp(new THREE.Color('#b0140a'), 0.55);
+    // the steel under it is darkened to a heat-oxidised tone, so the red reads deep rather than pink over bright metal
+    M.header.color.set('#6a3a30');
     M.header.emissiveIntensity = Math.min(0.35, Math.max(0.1, 0.3 * k));
     E.wallTemp = Tw;
     // service-state inputs: headers and turbine tint by their wall temperature; the exhaust valves carry carbon
@@ -1405,6 +1409,9 @@ export function buildEngine(E) {
   // ------------------------------------------------------------ ignition: plugs and coils, or diesel injectors
   for (const bk of banks) {
     const g = bankGroup('ignition', bk, 3.2 * B);
+    // what burns stays in the cylinder: the spark, the flame front and the sprays sit in a group that does not move
+    // when the engine explodes, while the plugs, coils and injectors lift away with the rest of the ignition layer
+    const gc = bankGroup('ignition', bk, 0);
     const coilsAt = [];
     for (const c of bk.cs) {
       const k = C.find((x) => x.c === c);
@@ -1439,7 +1446,7 @@ export function buildEngine(E) {
       const spark = new THREE.Mesh(new THREE.SphereGeometry(0.07 * B, 12, 8), pm);
       spark.userData.spark = true;
       spark.position.set(p0, E.deck - 0.03 * B, c.z);
-      g.add(spark);
+      gc.add(spark);
       // The flame front: a hemisphere growing down from the plug (or, in a diesel, from the injector) whose volume is
       // the burned gas's share of the cylinder at this crank angle. Burned gas is about four times less dense than
       // the unburned charge, so a mass fraction burned xb fills a volume fraction 4xb / (1 + 3xb).
@@ -1451,7 +1458,7 @@ export function buildEngine(E) {
       // built at unit radius and scaled each frame; kept tiny when idle so the engine's bounds (which count hidden
       // objects) are not sized around a one-metre sphere
       front.scale.setScalar(1e-4);
-      g.add(front);
+      gc.add(front);
       k.front = front;
       k.fmat = fmat;
       // a diesel's six injection plumes, fanning down and out from the nozzle into the bowl
@@ -1466,7 +1473,7 @@ export function buildEngine(E) {
           sg.add(m);
         }
         sg.position.copy(spark.position);
-        g.add(part(sg, 'spray', {cyl: c.n}));
+        gc.add(part(sg, 'spray', {cyl: c.n}));
         k.spray = smat;
       }
       if (!hw.diesel) {
