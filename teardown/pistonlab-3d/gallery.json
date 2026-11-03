@@ -156,6 +156,38 @@
   }
  },
  {
+  "id": "f1v6",
+  "name": "F1 1.6 V6 turbo hybrid",
+  "car": "Formula 1 power unit, 2014 to 2025",
+  "published_capacity_cc": 1600,
+  "rod_ratio_published": false,
+  "body": {
+   "fuel": "gasoline",
+   "aspiration": "turbocharged",
+   "intake_pressure_Pa": 350000,
+   "intake_temperature_K": 330,
+   "equivalence_ratio": 0.75,
+   "bore_m": 0.08,
+   "stroke_m": 0.053,
+   "compression_ratio": 15,
+   "cylinders": 6,
+   "rpm": 10500,
+   "layout": {
+    "kind": "vee",
+    "bank_angle_deg": 90,
+    "crankpin_offset_deg": 30
+   }
+  },
+  "hardware": {
+   "block": "aluminium",
+   "valvetrain": "dohc",
+   "oil": "dry",
+   "balance_shafts": 0,
+   "power_unit": "f1",
+   "note": "The 2014 to 2025 rules fix the 80 mm bore, the 90 degree vee and one turbo; 30 degree split crankpins make it fire evenly. Compression ratio, boost and mixture are estimates, since teams do not publish them. Drawn with a split turbo (turbine behind, compressor in front, the MGU-H between them in the vee) and the MGU-K geared to the crank; pneumatic valve springs are drawn as coil springs."
+  }
+ },
+ {
   "id": "ej257",
   "name": "Subaru EJ257",
   "car": "Impreza WRX STI",

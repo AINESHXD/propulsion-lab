@@ -913,7 +913,8 @@ export function buildEngine(E) {
   }
 
   // ------------------------------------------------------------ accessory drive: crank pulley, water pump, alternator
-  {
+  // (a Formula 1 engine drives its pumps by gears and has no alternator or belt; its MGU-K is drawn with the turbo)
+  if (!hw.f1) {
     const zA = zFront + 0.62 * B;
     const g = worldGroup('accessory', new V3(0, 0, 2.6 * B));
     const topY = Math.max(...banks.map((bk) => W(bk, 0, E.deck).y));
@@ -1098,14 +1099,18 @@ export function buildEngine(E) {
   // ------------------------------------------------------------ intake
   const ports = (bk, side) => bk.cs.map((c) => ({c, inside: W(bk, side * 0.35 * B, E.deck + 0.22 * B, c.z), exit: W(bk, side * headHalf, E.deck + 0.3 * B, c.z)}));
   let throttle = null;
+  let plenY = 0;
   {
     const exV = multi ? new V3(0, 2.2 * B, 0) : W(banks[0], banks[0].sIn * 1.6 * B, 0.4 * B);
     const g = worldGroup('intake', exV);
     const plenR = 0.5 * B;
+    // a Formula 1 plenum and its trumpets are carbon fibre
+    const plenM = hw.f1 ? alloy('cfrp', {repeat: [3, 3]}) : M.plenum;
     let plenumAt;
     const allPorts = banks.flatMap((bk) => ports(bk, bk.sIn).map((p) => ({...p, bk})));
     if (multi) {
       const yTop = Math.max(...allPorts.map((p) => p.exit.y)) + 1.0 * B;
+      plenY = yTop;
       plenumAt = (z) => new V3(0, yTop, z);
     } else {
       const bk = banks[0];
@@ -1115,7 +1120,7 @@ export function buildEngine(E) {
       const n = new V3().subVectors(p.exit, p.inside).normalize();
       const end = plenumAt(p.c.z);
       const mid = p.exit.clone().addScaledVector(n, 0.5 * B).lerp(end, 0.35);
-      const runner = part(new THREE.Mesh(tube([p.inside, p.exit, mid, end], 0.2 * B), M.plenum), 'runner', {cyl: p.c.n});
+      const runner = part(new THREE.Mesh(tube([p.inside, p.exit, mid, end], 0.2 * B), plenM), 'runner', {cyl: p.c.n});
       g.add(runner);
       p.injAt = p.exit.clone().addScaledVector(n, 0.3 * B);
       p.n = n;
@@ -1127,12 +1132,12 @@ export function buildEngine(E) {
     // a cast plenum: broad and low over a V's valley, tall and narrow beside an inline head, banded by ribs
     const pw = (multi ? 1.7 : 1.05) * B;
     const ph = (multi ? 0.85 : 1.15) * B;
-    const plen = part(new THREE.Mesh(roundedBox(pw, ph, z1 - z0, 0.28 * B, 4), M.plenum), 'plenum');
+    const plen = part(new THREE.Mesh(roundedBox(pw, ph, z1 - z0, 0.28 * B, 4), plenM), 'plenum');
     plen.position.copy(a.clone().lerp(b, 0.5));
     g.add(plen);
     const nr = Math.max(2, Math.round((z1 - z0) / (1.1 * B)));
     for (let i = 1; i < nr; i++) {
-      const band = part(new THREE.Mesh(roundedBox(pw + 0.05 * B, ph + 0.05 * B, 0.06 * B, 0.29 * B, 4), M.plenum), 'plenum');
+      const band = part(new THREE.Mesh(roundedBox(pw + 0.05 * B, ph + 0.05 * B, 0.06 * B, 0.29 * B, 4), plenM), 'plenum');
       band.position.copy(a.clone().lerp(b, i / nr));
       g.add(band);
     }
@@ -1190,8 +1195,9 @@ export function buildEngine(E) {
       box.position.copy(t2).addScaledVector(away, 0.3 * B).add(new V3(0, 0, 0.35 * B));
       g.add(box);
     }
-    // port fuel injection with a rail (petrol); diesels inject in the head
-    if (!hw.diesel) {
+    // port fuel injection with a rail (petrol); diesels inject in the head, and so does a Formula 1 engine (direct
+    // injection at up to 500 bar), so neither has port injectors
+    if (!hw.diesel && !hw.f1) {
       const ig = worldGroup('ignition', exV);
       for (const bk of banks) {
         const ps = allPorts.filter((p) => p.bk === bk);
@@ -1345,7 +1351,167 @@ export function buildEngine(E) {
     collectors.push({bk, end: W(bk, colP, colB, zb), g});
     vBand(g, W(bk, colP, colB, zb + 0.15 * B), new V3(0, 0, 1), 0.24 * B);
   }
-  if (hw.turbo) {
+  if (hw.f1) {
+    // A Formula 1 power unit's split turbo: the turbine behind the engine, the compressor in front, joined by a long
+    // shaft through the vee with the MGU-H (a motor-generator) on it. Exhaust from both banks merges into the turbine;
+    // the compressor draws from the airbox overhead and blows through an intercooler to the throttle.
+    const g = worldGroup('exhaust', new V3(0, 1.4 * B, 0));
+    const yS = 1.9 * B;
+    const zT = zRear - 1.0 * B;
+    const zC = zFront + 1.0 * B;
+    const carbon = alloy('cfrp', {repeat: [3, 3]});
+    const orange = std('#e8762a', 0.1, 0.45);
+    const housing = (z, rr, tr, mat, id, face) => {
+      const h = part(new THREE.Group(), id);
+      h.add(new THREE.Mesh(new THREE.TorusGeometry(rr, tr, 16, 48), mat));
+      // the eye (compressor inlet) or exducer (turbine outlet): a short bell on the outer face
+      const eye = new THREE.Mesh(new THREE.CylinderGeometry(rr * 0.55, rr * 0.75, 0.3 * B, 32, 1, true).rotateX((face * Math.PI) / 2), mat);
+      eye.material = mat.clone();
+      eye.material.side = THREE.DoubleSide;
+      eye.position.z = face * 0.2 * B;
+      h.add(eye);
+      h.position.set(0, yS, z);
+      g.add(h);
+      return h;
+    };
+    housing(zT, 0.55 * B, 0.24 * B, M.turbine, 'turbo', -1);
+    housing(zC, 0.5 * B, 0.21 * B, M.compressor, 'turbo', 1);
+    // the wheels and the shaft between them turn together; shaft speed is not modelled, they turn so it reads as rotating
+    const wheel = (z) => {
+      const w = new THREE.Group();
+      for (let i = 0; i < 11; i++) {
+        const h = new THREE.Group();
+        const blade = new THREE.Mesh(bevBox(0.02 * B, 0.3 * B, 0.16 * B), M.steel);
+        blade.position.y = 0.16 * B;
+        blade.rotation.y = 0.5;
+        h.rotation.z = (i / 11) * Math.PI * 2;
+        h.add(blade);
+        w.add(h);
+      }
+      w.add(new THREE.Mesh(new THREE.ConeGeometry(0.1 * B, 0.2 * B, 16).rotateX(z > 0 ? Math.PI / 2 : -Math.PI / 2), M.steel));
+      w.position.set(0, yS, z);
+      return part(w, 'turbo');
+    };
+    const tw = wheel(zT);
+    const cw = wheel(zC);
+    const shaft = part(new THREE.Mesh(new THREE.CylinderGeometry(0.07 * B, 0.07 * B, zC - zT, 16).rotateX(Math.PI / 2), M.pin), 'turbo-shaft');
+    shaft.position.set(0, yS, (zC + zT) / 2);
+    g.add(tw, cw, shaft);
+    movers.push((th) => (tw.rotation.z = cw.rotation.z = shaft.rotation.z = th * 6 * D2R));
+    // the MGU-H on the shaft in the vee: a finned motor case with its three-phase lead and coolant lines
+    {
+      const L = Math.min(2.2 * B, (zFront - zRear) * 0.45);
+      const m = part(new THREE.Group(), 'mgu-h');
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * B, 0.4 * B, L, 40).rotateX(Math.PI / 2), M.aluMachined);
+      m.add(body);
+      for (let i = 0; i <= 6; i++) {
+        const fin = new THREE.Mesh(new THREE.TorusGeometry(0.41 * B, 0.025 * B, 6, 40), M.alu);
+        fin.position.z = -L / 2 + 0.12 * B + (i * (L - 0.24 * B)) / 6;
+        m.add(fin);
+      }
+      for (const s of [-1, 1]) {
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * B, 0.42 * B, 0.12 * B, 40).rotateX(Math.PI / 2), M.black);
+        cap.position.z = s * (L / 2 + 0.05 * B);
+        m.add(cap);
+      }
+      const box = new THREE.Mesh(roundedBox(0.36 * B, 0.2 * B, 0.5 * B, 0.04 * B), M.black);
+      box.position.set(0, 0.45 * B, -L * 0.2);
+      m.add(box);
+      m.position.set(0, yS, zMid);
+      g.add(m);
+      const p0 = new V3(0, yS + 0.55 * B, zMid - L * 0.2);
+      for (const dx of [-0.1, 0, 0.1]) hose(g, [p0.clone().add(new V3(dx * B, 0, 0)), p0.clone().add(new V3(dx * B, 0.35 * B, -0.4 * B)), new V3(dx * B - 0.9 * B, yS + 0.8 * B, zRear - 0.4 * B), new V3(dx * B - 1.6 * B, yS + 0.4 * B, zRear - 1.4 * B)], 0.045 * B, 'hv-cable', {}, orange, false);
+      for (const s of [-1, 1]) hose(g, [new V3(s * 0.38 * B, yS + 0.1 * B, zMid + L * 0.35), new V3(s * 0.6 * B, yS + 0.25 * B, zMid + L * 0.45), new V3(s * 0.75 * B, yS + 0.45 * B, zFront)], 0.04 * B, 'mgu-h', {}, braid, false);
+    }
+    // each bank's collector sweeps up behind the block into the turbine's scroll
+    for (const c of collectors) {
+      const sx = Math.sign(c.end.x) || 1;
+      const inlet = new V3(sx * 0.62 * B, yS - 0.2 * B, zT);
+      g.add(part(new THREE.Mesh(ctube([c.end, c.end.clone().add(new V3(0, 0.2 * B, -0.45 * B)), new V3(sx * 1.0 * B, yS - 0.5 * B, zT + 0.15 * B), inlet], 0.22 * B), M.header), 'collector'));
+    }
+    // two wastegates off the scroll, venting through small pipes beside the tailpipe
+    for (const sx of [-1, 1]) {
+      const a = new V3(sx * 0.5 * B, yS + 0.45 * B, zT - 0.1 * B);
+      const wg = part(new THREE.Group(), 'wastegate');
+      const can = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * B, 0.16 * B, 0.3 * B, 24), M.forged);
+      const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * B, 0.2 * B, 0.12 * B, 24), M.aluMachined);
+      dome.position.y = 0.2 * B;
+      wg.add(can, dome);
+      wg.position.copy(a);
+      g.add(wg);
+      g.add(part(new THREE.Mesh(ctube([a.clone().add(new V3(0, -0.1 * B, -0.15 * B)), a.clone().add(new V3(sx * 0.15 * B, 0.15 * B, -0.8 * B)), a.clone().add(new V3(sx * 0.3 * B, 0.35 * B, -2.0 * B))], 0.09 * B), M.header), 'wastegate'));
+    }
+    // the tailpipe: one pipe straight out of the turbine, angled up at the rear wing as in the car
+    g.add(part(new THREE.Mesh(ctube([new V3(0, yS, zT - 0.3 * B), new V3(0, yS + 0.05 * B, zT - 1.2 * B), new V3(0, yS + 0.3 * B, zT - 2.4 * B)], 0.3 * B), M.header), 'tailpipe'));
+    // the airbox overhead: a carbon intake above the engine feeding down to the compressor's eye
+    const yAir = Math.max(yS + 2.6 * B, plenY + 1.4 * B);
+    {
+      const mouth = new V3(0, yAir, zC + 0.6 * B);
+      const ab = part(new THREE.Mesh(ctube([new V3(0, yS, zC + 0.35 * B), new V3(0, yS + 0.2 * B, zC + 1.0 * B), new V3(0, yAir - 0.7 * B, zC + 1.1 * B), mouth], 0.36 * B), carbon), 'airbox');
+      g.add(ab);
+      const lip = part(new THREE.Mesh(new THREE.TorusGeometry(0.5 * B, 0.08 * B, 12, 40).rotateX(Math.PI / 2), carbon), 'airbox');
+      lip.position.copy(mouth).add(new V3(0, 0.05 * B, 0));
+      g.add(lip);
+      const bell = part(new THREE.Mesh(new THREE.CylinderGeometry(0.5 * B, 0.37 * B, 0.3 * B, 40, 1, true), carbon), 'airbox');
+      bell.material = carbon.clone();
+      bell.material.side = THREE.DoubleSide;
+      bell.position.copy(mouth).add(new V3(0, -0.12 * B, 0));
+      g.add(bell);
+    }
+    // compressor outlet to an air-to-water intercooler beside the engine, then forward to the throttle
+    {
+      const ic = part(new THREE.Group(), 'intercooler');
+      const core = new THREE.Mesh(roundedBox(0.5 * B, 1.6 * B, 2.6 * B, 0.06 * B), std('#b9bec4', 0.85, 0.45));
+      ic.add(core);
+      for (let i = 0; i < 18; i++) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.52 * B, 1.5 * B, 0.012 * B), M.aluMachined);
+        fin.position.z = -1.2 * B + (i * 2.4 * B) / 17;
+        ic.add(fin);
+      }
+      for (const s of [-1, 1]) {
+        const tank = new THREE.Mesh(roundedBox(0.56 * B, 1.7 * B, 0.3 * B, 0.1 * B), M.alu);
+        tank.position.z = s * 1.45 * B;
+        ic.add(tank);
+      }
+      const icAt = new V3(caseR + 2.0 * B, yS - 0.3 * B, zMid + 0.4 * B);
+      ic.position.copy(icAt);
+      g.add(ic);
+      const out = new V3(0.7 * B, yS + 0.1 * B, zC);
+      g.add(part(new THREE.Mesh(tube([out, out.clone().add(new V3(0.6 * B, 0, -0.1 * B)), new V3(icAt.x, icAt.y + 0.4 * B, icAt.z + 2.3 * B), new V3(icAt.x, icAt.y + 0.4 * B, icAt.z + 1.6 * B)], 0.2 * B, false, 64), std('#9aa3ad', 0.7, 0.35)), 'charge-pipe'));
+      if (throttle) {
+        const a = new V3(icAt.x - 0.1 * B, icAt.y + 0.6 * B, icAt.z - 1.6 * B);
+        g.add(part(new THREE.Mesh(tube([a, a.clone().add(new V3(-0.2 * B, 0.6 * B, -0.2 * B)), new V3(throttle.x + 1.2 * B, throttle.y + 0.3 * B, throttle.z + 0.9 * B), throttle.clone().add(new V3(0, 0, 0.3 * B))], 0.18 * B, false, 96), std('#9aa3ad', 0.7, 0.35)), 'charge-pipe'));
+      }
+    }
+    // the MGU-K, low on the left beside the crankcase, geared to the crank nose; its three-phase lead runs aft
+    {
+      const mg = worldGroup('accessory', new V3(-1.8 * B, 0, 0));
+      const x = -(caseR + 0.75 * B);
+      const z = zFront - 0.9 * B;
+      const k = part(new THREE.Group(), 'mgu-k');
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.62 * B, 0.62 * B, 1.7 * B, 40).rotateX(Math.PI / 2), M.aluMachined);
+      k.add(body);
+      for (let i = 0; i < 5; i++) {
+        const fin = new THREE.Mesh(new THREE.TorusGeometry(0.63 * B, 0.03 * B, 6, 40), M.alu);
+        fin.position.z = -0.65 * B + i * 0.32 * B;
+        k.add(fin);
+      }
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * B, 0.64 * B, 0.14 * B, 40).rotateX(Math.PI / 2), M.black);
+      cap.position.z = -0.9 * B;
+      k.add(cap);
+      k.position.set(x, -0.1 * B, z);
+      mg.add(k);
+      // the drive: a gear case from the crank nose across to the motor's shaft
+      const gc = part(new THREE.Mesh(roundedBox(-x + 0.5 * B, 0.9 * B, 0.36 * B, 0.15 * B), M.castShell('#8d9196')), 'mgu-k');
+      gc.position.set(x / 2, -0.05 * B, zFront + 0.25 * B);
+      mg.add(gc);
+      const sh = part(new THREE.Mesh(new THREE.CylinderGeometry(0.12 * B, 0.12 * B, zFront + 0.25 * B - z - 0.85 * B, 16).rotateX(Math.PI / 2), M.pin), 'mgu-k');
+      sh.position.set(x, -0.1 * B, (zFront + 0.25 * B + z + 0.85 * B) / 2);
+      mg.add(sh);
+      const p0 = new V3(x, 0.55 * B, z - 0.3 * B);
+      for (const dz of [-0.1, 0, 0.1]) hose(mg, [p0.clone().add(new V3(dz * B, 0, 0)), p0.clone().add(new V3(dz * B - 0.3 * B, 0.4 * B, -0.4 * B)), new V3(x - 0.5 * B + dz * B, 0.6 * B, zRear - 0.2 * B), new V3(x - 0.6 * B + dz * B, 0.4 * B, zRear - 1.4 * B)], 0.045 * B, 'hv-cable', {}, orange, false);
+    }
+  } else if (hw.turbo) {
     const g = worldGroup('exhaust', new V3(0, 0, -1.6 * B));
     const c0 = collectors[0];
     const tc = c0.end.clone().add(new V3(0, 0, -0.7 * B));
@@ -1523,7 +1689,8 @@ export function buildEngine(E) {
     }
     bolts(g, fb);
     // the starter on the bell flange, its pinion reaching in to the ring gear
-    if (!flat) {
+    // (a Formula 1 car is started by an external starter, and its engine bolts rigidly to the chassis, without mounts)
+    if (!flat && !hw.f1) {
       const sg = worldGroup('accessory', new V3(-1.4 * B, 0, 0));
       const st = part(new THREE.Group(), 'starter');
       const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * B, 0.3 * B, 0.85 * B, 28).rotateX(Math.PI / 2), M.alu);
@@ -1539,7 +1706,7 @@ export function buildEngine(E) {
       sg.add(st);
     }
     // engine mounts either side of the crankcase: a bracket, a rubber bush, a plate for the chassis
-    if (!flat) for (const sx of [-1, 1]) {
+    if (!flat && !hw.f1) for (const sx of [-1, 1]) {
       const mg = worldGroup('block', new V3(sx * 1.2 * B, 0, 0));
       const mt = part(new THREE.Group(), 'mount');
       const br = new THREE.Mesh(roundedBox(0.34 * B, 0.5 * B, 0.6 * B, 0.08 * B), M.castShell('#4a4f56'));

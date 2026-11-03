@@ -144,6 +144,8 @@ function hardware(hw, vg, input) {
     // grey cast iron or a sand-cast aluminium alloy; a custom engine is drawn in aluminium
     block: hw.block === 'iron' ? 'iron' : 'aluminium',
     turbo: input.aspiration === 'turbocharged',
+    // a Formula 1 power unit: split turbo with MGU-H, MGU-K, carbon intake, no belt drive (see engine.js)
+    f1: hw.power_unit === 'f1',
     diesel: input.fuel === 'diesel',
   };
 }

@@ -486,7 +486,7 @@ export function runLive() {
   };
   // the parts worth naming; for the per-cylinder ones the tracked cylinder's part is named
   const LABEL_IDS = ['crank', 'flywheel', 'timing-cover', 'bellhousing', 'starter', 'catalyst', 'ac-compressor', 'piston', 'rod', 'cam-in', 'cam-ex', 'cam-sohc', 'cam-block', 'valve-in', 'rocker', 'sprockets', 'tensioner',
-    'oil-pump', 'filter', 'sump-wet', 'sump-dry', 'oil-tank', 'plenum', 'throttle', 'collector', 'turbo', 'water-pump', 'alternator', 'plug', 'diesel-injector', 'balance'];
+    'oil-pump', 'filter', 'sump-wet', 'sump-dry', 'oil-tank', 'plenum', 'throttle', 'collector', 'turbo', 'water-pump', 'alternator', 'plug', 'diesel-injector', 'balance', 'mgu-h', 'mgu-k', 'intercooler', 'airbox', 'wastegate', 'tailpipe'];
   let anchorPool = {};
   const collectAnchors = () => {
     anchorPool = {};
