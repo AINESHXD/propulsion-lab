@@ -218,7 +218,8 @@ export function runLive() {
   let explodeTo = 0;
   let selected = null;
   const shownLayers = Object.fromEntries(LAYERS.map((l) => [l.id, true]));
-  const K0 = 0.62;
+  // embedded in a narrower 5:4 panel the long engine needs the camera further back, or the inlet leaves the frame
+  const K0 = embed ? 0.98 : 0.62;
   const cam = {...VIEWS['3/4'], k: K0, target: null};
   const camTo = {...cam};
   let current = null;
