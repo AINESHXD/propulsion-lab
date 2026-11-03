@@ -1443,20 +1443,28 @@ export function buildEngine(E) {
     }
     // the tailpipe: one pipe straight out of the turbine, angled up at the rear wing as in the car
     g.add(part(new THREE.Mesh(ctube([new V3(0, yS, zT - 0.3 * B), new V3(0, yS + 0.05 * B, zT - 1.2 * B), new V3(0, yS + 0.3 * B, zT - 2.4 * B)], 0.3 * B), M.header), 'tailpipe'));
-    // the airbox overhead: a carbon intake above the engine feeding down to the compressor's eye
+    // the airbox overhead: an open intake facing forward (it sits above the driver's head in the car), its duct running
+    // back and down into the compressor's eye
     const yAir = Math.max(yS + 2.6 * B, plenY + 1.4 * B);
     {
-      const mouth = new V3(0, yAir, zC + 0.6 * B);
-      const ab = part(new THREE.Mesh(ctube([new V3(0, yS, zC + 0.35 * B), new V3(0, yS + 0.2 * B, zC + 1.0 * B), new V3(0, yAir - 0.7 * B, zC + 1.1 * B), mouth], 0.36 * B), carbon), 'airbox');
-      g.add(ab);
-      const lip = part(new THREE.Mesh(new THREE.TorusGeometry(0.5 * B, 0.08 * B, 12, 40).rotateX(Math.PI / 2), carbon), 'airbox');
-      lip.position.copy(mouth).add(new V3(0, 0.05 * B, 0));
-      g.add(lip);
-      const bell = part(new THREE.Mesh(new THREE.CylinderGeometry(0.5 * B, 0.37 * B, 0.3 * B, 40, 1, true), carbon), 'airbox');
-      bell.material = carbon.clone();
-      bell.material.side = THREE.DoubleSide;
-      bell.position.copy(mouth).add(new V3(0, -0.12 * B, 0));
+      const carbonDS = Object.assign(carbon.clone(), {side: THREE.DoubleSide});
+      const mouthZ = zC + 1.7 * B;
+      const path = [new V3(0, yAir, mouthZ), new V3(0, yAir, zC + 1.1 * B), new V3(0, yS + 1.0 * B, zC + 0.95 * B), new V3(0, yS + 0.15 * B, zC + 0.9 * B), new V3(0, yS, zC + 0.3 * B)];
+      g.add(part(new THREE.Mesh(tube(path, 0.36 * B, false, 96), carbonDS), 'airbox'));
+      // the mouth: a flared, slightly tall oval bell with a rolled lip
+      const flare = [];
+      for (let i = 0; i <= 8; i++) {
+        const u = i / 8;
+        flare.push(new THREE.Vector2(0.36 * B + 0.2 * B * u * u, -0.35 * B * u));
+      }
+      const bell = part(new THREE.Mesh(new THREE.LatheGeometry(flare, 40).rotateX(-Math.PI / 2), carbonDS), 'airbox');
+      bell.scale.set(1, 1.3, 1);
+      bell.position.set(0, yAir, mouthZ);
       g.add(bell);
+      const lip = part(new THREE.Mesh(new THREE.TorusGeometry(0.57 * B, 0.05 * B, 12, 48), carbon), 'airbox');
+      lip.scale.set(1, 1.3, 1);
+      lip.position.set(0, yAir, mouthZ + 0.35 * B);
+      g.add(lip);
     }
     // compressor outlet to an air-to-water intercooler beside the engine, then forward to the throttle
     {
