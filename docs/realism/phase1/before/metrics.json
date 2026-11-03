@@ -1,0 +1,92 @@
+[
+  {
+    "kind": "jet",
+    "id": "cfm56",
+    "blackPct": 7.129411764705883,
+    "whitePct": 0.16470588235294117,
+    "frameMs": 16.39344262295082,
+    "calls": 1,
+    "errors": 2,
+    "firstError": "THREE.WebGLProgram: Program Info Log: (210,81-129): warning X4122: sum of 0.996094 and -2.98545e-017 cannot be represented accurately in double precision\n(209,3"
+  },
+  {
+    "kind": "jet",
+    "id": "trentxwb",
+    "blackPct": 2.5583014270797078,
+    "whitePct": 0.2320454809142592,
+    "frameMs": 16.52892561983471,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  },
+  {
+    "kind": "jet",
+    "id": "j85",
+    "blackPct": 0,
+    "whitePct": 0,
+    "frameMs": 16.52892561983471,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  },
+  {
+    "kind": "jet",
+    "id": "turboprop",
+    "blackPct": 4.712932820361053,
+    "whitePct": 0,
+    "frameMs": 16.52892561983471,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  },
+  {
+    "kind": "jet",
+    "id": "ramjet",
+    "blackPct": 0,
+    "whitePct": 0,
+    "frameMs": 16.39344262295082,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  },
+  {
+    "kind": "jet",
+    "id": "scramjet",
+    "blackPct": 0.11535425900066784,
+    "whitePct": 0,
+    "frameMs": 16.39344262295082,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  },
+  {
+    "kind": "piston",
+    "id": "k20a",
+    "blackPct": 8.402480565988295,
+    "whitePct": 0.1572189710891781,
+    "frameMs": 16.52892561983471,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  },
+  {
+    "kind": "piston",
+    "id": "ls3",
+    "blackPct": 9.020360480640855,
+    "whitePct": 0.05841121495327103,
+    "frameMs": 16.52892561983471,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  },
+  {
+    "kind": "piston",
+    "id": "f136",
+    "blackPct": 8.03305785123967,
+    "whitePct": 0.049586776859504134,
+    "frameMs": 16.52892561983471,
+    "calls": 1,
+    "errors": 0,
+    "firstError": ""
+  }
+]
