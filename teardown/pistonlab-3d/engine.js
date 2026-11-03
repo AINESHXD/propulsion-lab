@@ -8,6 +8,7 @@
 // pulleys turn at the ratio of their drawn radii, so the chain and belt never slip.
 import * as THREE from 'three';
 import {alloy} from '../shared/alloys.js';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {blackbody, boltGeometry, roundedBox, bossGeometry, chainPlateGeometry, filterGeometry, gasketGeometry, glowIntensity, instances, makeMaterials, pistonGeometry, plugGeometries, polyVGeometry, ringGeometries, rodGeometry} from './detail.js';
 import {chargeOf, mod} from './kin.js';
 
@@ -33,6 +34,19 @@ export const LAYERS = [
 const std = (color, metalness, roughness, extra = {}) => new THREE.MeshStandardMaterial({color, metalness, roughness, envMapIntensity: 0.7, ...extra});
 const lathe = (pts, seg = 36) => new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg);
 const tube = (pts, r, closed = false, seg = 64) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed, 'centripetal'), seg, r, 12, closed);
+// a pipe with a domed cap on each end, so an end never shows as an open, paper-thin ring (exhaust headers, collectors)
+const ctube = (pts, r, seg = 64) => {
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  const geos = [new THREE.TubeGeometry(curve, seg, r, 12, false)];
+  for (const [t, s] of [[0, -1], [1, 1]]) {
+    const cap = new THREE.SphereGeometry(r, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+    cap.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), curve.getTangentAt(t).multiplyScalar(s)));
+    const at = curve.getPointAt(t);
+    cap.translate(at.x, at.y, at.z);
+    geos.push(cap);
+  }
+  return mergeGeometries(geos);
+};
 /** a cylinder of unit length along +y from 0 to 1 */
 const rod01 = (r, seg = 16) => new THREE.CylinderGeometry(r, r, 1, seg).translate(0, 0.5, 0);
 const along = (mesh, a, b) => {
@@ -1240,8 +1254,10 @@ export function buildEngine(E) {
     E.portTemp = Tport;
     const Tw = Tport - 150;
     const k = glowIntensity(Tw, 1200);
-    blackbody(Tw, M.header.emissive);
-    M.header.emissiveIntensity = Math.min(0.35, 0.3 * k);
+    // The headers always carry a dull red heat shade (a look choice: a cooler-running engine would read as plain
+    // steel); hotter walls still glow brighter and more orange from the black-body colour of the estimated wall.
+    blackbody(Math.max(Tw, 1050), M.header.emissive);
+    M.header.emissiveIntensity = Math.min(0.35, Math.max(0.1, 0.3 * k));
     E.wallTemp = Tw;
     // service-state inputs: headers and turbine tint by their wall temperature; the exhaust valves carry carbon
     M.header.userData.T = Tw;
@@ -1297,7 +1313,7 @@ export function buildEngine(E) {
     const colP = bk.sEx * (headHalf + 0.75 * B);
     for (const p of ports(bk, bk.sEx)) {
       const pts = [p.inside, p.exit, W(bk, bk.sEx * (headHalf + 0.45 * B), E.deck + 0.15 * B, p.c.z), W(bk, colP, (E.deck + colB) / 2 + 0.1 * B, p.c.z - 0.15 * B), W(bk, colP, colB, p.c.z - 0.35 * B)];
-      g.add(part(new THREE.Mesh(tube(pts, 0.15 * B), M.header), 'header', {cyl: p.c.n}));
+      g.add(part(new THREE.Mesh(ctube(pts, 0.15 * B), M.header), 'header', {cyl: p.c.n}));
       const tEnd = new V3().subVectors(pts[4], pts[3]).normalize();
       const collar = part(new THREE.Mesh(new THREE.CylinderGeometry(0.175 * B, 0.175 * B, 0.12 * B, 24), M.header), 'header', {cyl: p.c.n});
       collar.position.copy(pts[3]).lerp(pts[4], 0.75);
@@ -1325,7 +1341,7 @@ export function buildEngine(E) {
     }
     const za = bk.z1 + 0.2 * B;
     const zb = zRear - 0.5 * B;
-    const col = part(new THREE.Mesh(tube([W(bk, colP, colB, za), W(bk, colP, colB, (za + zb) / 2), W(bk, colP, colB, zb)], 0.24 * B), M.header), 'collector', {bank: bk.id});
+    const col = part(new THREE.Mesh(ctube([W(bk, colP, colB, za), W(bk, colP, colB, (za + zb) / 2), W(bk, colP, colB, zb)], 0.24 * B), M.header), 'collector', {bank: bk.id});
     g.add(col);
     collectors.push({bk, end: W(bk, colP, colB, zb), g});
     vBand(g, W(bk, colP, colB, zb + 0.15 * B), new V3(0, 0, 1), 0.24 * B);
@@ -1369,9 +1385,9 @@ export function buildEngine(E) {
     }
     // the shaft speed is not modelled; the wheels turn only so the part reads as rotating
     movers.push((th) => (tw.rotation.x = cw.rotation.x = th * 6 * D2R));
-    for (const c of collectors.slice(1)) g.add(part(new THREE.Mesh(tube([c.end, c.end.clone().add(new V3(0, -0.8 * B, -0.4 * B)), tc.clone().add(new V3(0, -0.6 * B, 0))], 0.2 * B), M.header), 'collector'));
-    g.add(part(new THREE.Mesh(tube([c0.end, tc], 0.22 * B), M.header), 'collector'));
-    g.add(part(new THREE.Mesh(tube([tc.clone().add(new V3(-0.2 * B, -0.3 * B, 0)), tc.clone().add(new V3(-0.3 * B, -1.2 * B, -0.4 * B)), tc.clone().add(new V3(-0.3 * B, -1.5 * B, -1.4 * B))], 0.22 * B), M.header), 'downpipe'));
+    for (const c of collectors.slice(1)) g.add(part(new THREE.Mesh(ctube([c.end, c.end.clone().add(new V3(0, -0.8 * B, -0.4 * B)), tc.clone().add(new V3(0, -0.6 * B, 0))], 0.2 * B), M.header), 'collector'));
+    g.add(part(new THREE.Mesh(ctube([c0.end, tc], 0.22 * B), M.header), 'collector'));
+    g.add(part(new THREE.Mesh(ctube([tc.clone().add(new V3(-0.2 * B, -0.3 * B, 0)), tc.clone().add(new V3(-0.3 * B, -1.2 * B, -0.4 * B)), tc.clone().add(new V3(-0.3 * B, -1.5 * B, -1.4 * B))], 0.22 * B), M.header), 'downpipe'));
     g.add(catalyst(tc.clone().add(new V3(-0.3 * B, -1.25 * B, -0.5 * B)), tc.clone().add(new V3(-0.3 * B, -1.5 * B, -1.4 * B))));
     if (throttle) {
       const out = tc.clone().add(new V3(0.75 * B, 0.5 * B, 0));
@@ -1381,7 +1397,7 @@ export function buildEngine(E) {
   } else {
     for (const c of collectors) {
       const g = worldGroup('exhaust', new V3(0, 0, -1.2 * B));
-      g.add(part(new THREE.Mesh(tube([c.end, c.end.clone().add(new V3(0, -0.6 * B, -0.6 * B)), c.end.clone().add(new V3(0, -0.9 * B, -1.6 * B))], 0.22 * B), M.header), 'downpipe'));
+      g.add(part(new THREE.Mesh(ctube([c.end, c.end.clone().add(new V3(0, -0.6 * B, -0.6 * B)), c.end.clone().add(new V3(0, -0.9 * B, -1.6 * B))], 0.22 * B), M.header), 'downpipe'));
       g.add(catalyst(c.end.clone().add(new V3(0, -0.65 * B, -0.75 * B)), c.end.clone().add(new V3(0, -0.9 * B, -1.6 * B))));
     }
   }
