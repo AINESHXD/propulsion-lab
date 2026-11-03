@@ -509,16 +509,29 @@ export function runLive() {
         }
       }
     }
-    $('ov-svg').innerHTML = lines;
-    $('ov-labels').innerHTML = html;
+    // rewritten only when something changed, so a tag is not swapped out from under a click or the keyboard focus
+    if (lines !== ovLast[0]) $('ov-svg').innerHTML = ovLast[0] = lines;
+    if (html !== ovLast[1]) $('ov-labels').innerHTML = ovLast[1] = html;
   };
-  $('ov-labels').addEventListener('click', (e) => {
+  // The tags follow the engine, so while it turns they are redrawn between a press and its release, and a click (which
+  // needs both on the same element) never arrives. Act on the press instead; Enter on a focused tag still works.
+  const ovLast = ['', ''];
+  $('ov-labels').addEventListener('pointerdown', (e) => {
+    if (e.button === 0) tagPick(e);
+  });
+  $('ov-labels').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tagPick(e);
+    }
+  });
+  function tagPick(e) {
     const tg = e.target.closest('.tag');
     if (!tg) return;
     takeOver();
     const a = anchors.find((x) => x.id === tg.dataset.id);
     if (a) select({obj: a.obj, id: a.id, meta: a.meta});
-  });
+  }
 
   // ------------------------------------------------------------ solve and build
   let loadSeq = 0;

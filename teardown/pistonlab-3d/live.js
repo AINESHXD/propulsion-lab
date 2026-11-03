@@ -572,17 +572,30 @@ export function runLive() {
       dim(new THREE_V3(0, 0, c.z), new THREE_V3(P[0], P[1], c.z), `throw ${fmt(E.r * 1e3, 1)}`);
       dim(new THREE_V3(P[0], P[1], c.z), at(sNow), `rod ${fmt(E.L * 1e3, 1)}`);
     }
-    $('ov-svg').innerHTML = lines;
-    $('ov-labels').innerHTML = html;
+    // rewritten only when something changed, so a tag is not swapped out from under a click or the keyboard focus
+    if (lines !== ovLast[0]) $('ov-svg').innerHTML = ovLast[0] = lines;
+    if (html !== ovLast[1]) $('ov-labels').innerHTML = ovLast[1] = html;
   };
-  $('ov-labels').addEventListener('click', (e) => {
+  // The tags follow the engine, so while it turns they are redrawn between a press and its release, and a click (which
+  // needs both on the same element) never arrives. Act on the press instead; Enter on a focused tag still works.
+  const ovLast = ['', ''];
+  $('ov-labels').addEventListener('pointerdown', (e) => {
+    if (e.button === 0) tagPick(e);
+  });
+  $('ov-labels').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tagPick(e);
+    }
+  });
+  function tagPick(e) {
     const t = e.target.closest('.tag');
     if (!t) return;
     takeOver();
     const pool = anchorPool[t.dataset.id] || [];
     const a = pool.find((x) => String(x.meta.cyl ?? '') === t.dataset.cyl) || pool[0];
     if (a) select(a);
-  });
+  }
 
   // live kinematics for the selected part, from the same slider-crank that moves it
   const nowRows = () => {

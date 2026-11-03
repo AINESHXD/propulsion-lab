@@ -12,13 +12,13 @@ export function partInfo(id, meta, J) {
   const ex = o.extra ?? {};
   const st = (sid) => J.stations.find((s) => s.id === sid);
   const mod = J.modules.find((m) => m.kind === (meta.module ?? id)) ?? J.modules.find((m) => m.kind === id);
-  const rpm = (sp) => J.spools[sp]?.rpm;
+  const rpm = (sp) => J.spools?.[sp]?.rpm;
   // rotor rows: tip speed, and the tip's Mach number relative to the blade (axial flow plus blade speed)
   const rotorRows = (m) => {
     if (!m) return [];
     const s0 = m.stages[0];
     const s1 = m.stages[m.stages.length - 1];
-    const sp = J.spools[m.spool];
+    const sp = J.spools?.[m.spool];
     const U = sp ? sp.w * s0.rt : 0;
     const g = m.kind.endsWith('t') ? 1.33 : 1.4;
     const at = J.at((s0.z + (m.z0 ?? s0.z)) / 2);
@@ -36,7 +36,9 @@ export function partInfo(id, meta, J) {
   };
   const fanRows = () => {
     const F = J.fan;
-    const sp = J.spools[J.hw.gear_ratio ? 'fan' : 'lp'];
+    const sp = J.spools?.[J.hw.gear_ratio ? 'fan' : 'lp'];
+    // every card is built for every part, so engines without a fan or spools (ramjet, scramjet) must not trip here
+    if (!F || !sp) return [];
     const U = sp.w * F.rt;
     const a0 = Math.sqrt(1.4 * 287 * (st('fan')?.T || 250));
     return [
@@ -124,8 +126,8 @@ export function partInfo(id, meta, J) {
       ['Thrust', `${f(o.thrust_kN, 1)} kN`], ['Swirl after the first core rotor', `${f(J.vtheta((J.modules.find((m) => m.kind !== 'fan')?.stages[0].zr ?? 0) - 0.001))} m/s`],
       ['Turbulence intensity, combustor', `${f(J.tu(J.combustor ? (J.combustor.z0 + J.combustor.z1) / 2 : 0) * 100)} %`]],
       'Axial speeds use assumed axial Mach numbers at each station (typical design values). Turbulence intensities are typical values by region, drawn three times larger than life so the eddies read.')],
-    abradable: ['Abradable liner', 'casing', card('A honeycomb-backed liner over the fan tips. The blades cut their own track in it, so the tip gap stays as small as the first run makes it.', [['Fan tip speed', `${f((J.spools[J.hw.gear_ratio ? 'fan' : 'lp']?.w ?? 0) * J.R)} m/s`]], NOT_MODELLED)],
-    'acoustic-liner': ['Acoustic liner', 'nacelle', card('A perforated skin over honeycomb cells, each a small resonator tuned to absorb the fan’s blade-passing tone.', [['Blade-passing frequency', `${f((J.fan?.blades ?? 0) * (J.spools[J.hw.gear_ratio ? 'fan' : 'lp']?.rpm ?? 0) / 60)} Hz`]], NOT_MODELLED)],
+    abradable: ['Abradable liner', 'casing', card('A honeycomb-backed liner over the fan tips. The blades cut their own track in it, so the tip gap stays as small as the first run makes it.', [['Fan tip speed', `${f((J.spools?.[J.hw.gear_ratio ? 'fan' : 'lp']?.w ?? 0) * J.R)} m/s`]], NOT_MODELLED)],
+    'acoustic-liner': ['Acoustic liner', 'nacelle', card('A perforated skin over honeycomb cells, each a small resonator tuned to absorb the fan’s blade-passing tone.', [['Blade-passing frequency', `${f((J.fan?.blades ?? 0) * (J.spools?.[J.hw.gear_ratio ? 'fan' : 'lp']?.rpm ?? 0) / 60)} Hz`]], NOT_MODELLED)],
     seal: ['Labyrinth seal', 'rotor', card('Knife-edge teeth on the drum run against a honeycomb land under each stator. Each tooth throttles the leakage round the vane row; the honeycomb lets the teeth cut in without damage.', [], NOT_MODELLED)],
     cavity: ['Cavity flameholder', 'combustor', card('A recess in the wall with a sloped aft ramp. Air recirculates in it slowly enough for the flame to anchor, then spills into the supersonic stream.', [['Length to depth', '5 (typical)'], ['Aft ramp', '22.5°']], NOT_MODELLED)],
     'cooled-panel': ['Regeneratively cooled panel', 'combustor', card('The combustor walls are cooled by the fuel itself, pumped through channels in the wall before injection; manifolds across the width feed and collect it. The heat it picks up goes back into the cycle.', [['Combustor exit (total)', `${f(J.scram?.T)} K`]], NOT_MODELLED)],

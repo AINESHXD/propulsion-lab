@@ -113,3 +113,17 @@ def test_homepages_embed_the_new_viewers() -> None:
     assert 'src="/piston/3d/?embed=1#g=f136"' in piston and 'href="/piston/3d/#g=f136"' in piston
     for page in ("jet/3d/index.html", "piston/3d/index.html"):
         assert ".embed .ui" in (static / page).read_text(encoding="utf-8")
+
+
+def test_part_cards_survive_engines_without_fan_or_spools() -> None:
+    # partInfo builds every card for every part, so the fan card must not read a spool the ramjet and scramjet lack
+    info = (Path(__file__).resolve().parents[1] / "teardown" / "jetlab-3d" / "info.js").read_text(encoding="utf-8")
+    assert "if (!F || !sp) return [];" in info
+    assert "J.spools[" not in info
+
+
+def test_label_tags_are_picked_on_press() -> None:
+    # the tags are redrawn as the engine turns, so a click (press and release on one element) never lands
+    for v in ("jetlab-3d", "pistonlab-3d"):
+        live = (Path(__file__).resolve().parents[1] / "teardown" / v / "live.js").read_text(encoding="utf-8")
+        assert "addEventListener('pointerdown'" in live and "ovLast" in live
