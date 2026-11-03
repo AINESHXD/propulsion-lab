@@ -72,4 +72,5 @@ def test_viewer_html_shell_is_self_hosted() -> None:
 
 def test_console_links_to_viewer() -> None:
     index = (STATIC / "index.html").read_text(encoding="utf-8")
-    assert "/lab/viewer3d.html" in index
+    assert "/jet/3d/" in index
+    assert "/lab/viewer3d.html" not in index

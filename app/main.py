@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Body, FastAPI, HTTPException, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from app.piston_feasibility import FeasibilityReport, analyse as analyse_feasibility
 from starlette.middleware.gzip import GZipMiddleware
@@ -197,6 +197,18 @@ app = FastAPI(
         "side-by-side comparison."
     ),
 )
+# The old Blender-model viewer is replaced by the JetLab 3D page; old links and bookmarks land on the same engine
+# family there. Registered before the /lab mount so it wins over the static file.
+_VIEWER3D_ENGINE = {"turbofan": "cfm56", "turbojet": "j85", "turboprop": "turboprop", "ramjet": "ramjet", "scramjet": "scramjet"}
+
+
+@app.get("/lab/viewer3d.html", include_in_schema=False)
+def viewer3d_moved(engine: str = "turbofan") -> RedirectResponse:
+    """Send the retired 3D viewer to the JetLab 3D page."""
+
+    return RedirectResponse(f"/jet/3d/#g={_VIEWER3D_ENGINE.get(engine, 'cfm56')}", status_code=301)
+
+
 app.mount("/lab", StaticFiles(directory=STATIC_PATH, html=True), name="lab")
 
 # Nothing compressed responses before this: three.module.js alone was leaving

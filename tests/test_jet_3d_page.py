@@ -92,3 +92,24 @@ def test_gallery_hardware_is_drawable(engine: dict) -> None:
             assert abs(hw["gear_ratio"] - (1 + 66 / 32)) < 1e-9
     if family == "turboprop":
         assert hw["pt"] >= 1 and hw["spools"]["pt"] > 0
+
+
+def test_old_viewer_redirects_to_jet_3d() -> None:
+    from app.main import app, viewer3d_moved
+
+    # registered ahead of the /lab static mount, so it wins over the old file
+    paths = [getattr(r, "path", None) for r in app.routes]
+    assert paths.index("/lab/viewer3d.html") < paths.index("/lab")
+    for engine, gid in (("turbofan", "cfm56"), ("turbojet", "j85"), ("ramjet", "ramjet"), ("nonsense", "cfm56")):
+        r = viewer3d_moved(engine)
+        assert r.status_code == 301 and r.headers["location"] == f"/jet/3d/#g={gid}"
+
+
+def test_homepages_embed_the_new_viewers() -> None:
+    static = Path(__file__).resolve().parents[1] / "app" / "static"
+    lab = (static / "index.html").read_text(encoding="utf-8")
+    assert 'src="/jet/3d/?embed=1#g=cfm56"' in lab
+    piston = (static / "piston" / "index.html").read_text(encoding="utf-8")
+    assert 'src="/piston/3d/?embed=1#g=f136"' in piston and 'href="/piston/3d/#g=f136"' in piston
+    for page in ("jet/3d/index.html", "piston/3d/index.html"):
+        assert ".embed .ui" in (static / page).read_text(encoding="utf-8")

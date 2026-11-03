@@ -51,6 +51,7 @@ export function renderBOM(box, rows, onPick, esc) {
 
 export const SHARED_CSS = `
 .photo .ui { visibility: hidden; }
+.embed .ui { display: none; }
 .photo-panel { position: fixed; right: 16px; top: 16px; width: 280px; max-height: calc(100vh - 32px); overflow: auto; z-index: 30; padding: 12px; }
 .photo-panel .phead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .photo-panel .quick { flex-wrap: wrap; margin-bottom: 8px; }

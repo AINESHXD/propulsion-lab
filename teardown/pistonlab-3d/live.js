@@ -176,7 +176,10 @@ export function runLive() {
     {samples: 0, ao: false, shadow: 1024, pr: 1, glow: false, every: 0},
   ];
   const coarse = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 700;
-  let tier = coarse ? 1 : 0;
+  // ?embed=1: a showcase inside another page's iframe. No controls, one quality tier down, the auto tour runs.
+  const embed = new URLSearchParams(location.search).has('embed');
+  if (embed) document.body.classList.add('embed');
+  let tier = coarse || embed ? 1 : 0;
   const fit = () => st.resize(innerWidth, innerHeight, Math.min(devicePixelRatio || 1, TIERS[tier].pr));
   const applyTier = () => {
     const {pr, every, ...q} = TIERS[tier];
@@ -924,6 +927,8 @@ export function runLive() {
 
   // the part of the screen the overlay leaves free: the engine is centred and sized in it
   const freeArea = () => {
+    // embedded: no panels, the whole frame is free
+    if (embed) return {sx: 0, sy: 0, fill: 1, l: 0, rt: 0, t: 0, b: 0};
     const Wd = innerWidth;
     const H = innerHeight;
     const narrow = Wd <= 700;
@@ -948,7 +953,8 @@ export function runLive() {
       requestAnimationFrame(loop);
       return;
     }
-    const dt = Math.min(0.1, (now - last) / 1000);
+    // a frame timestamp can predate the start time (first frame inside an iframe), so never step backwards
+    const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
     last = now;
     T += dt;
     if (!tourOn && T - lastInput > IDLE) startTour();

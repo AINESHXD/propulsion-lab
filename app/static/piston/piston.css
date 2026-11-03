@@ -1975,3 +1975,22 @@ canvas { display: block; width: 100%; }
   .info, .etype-sub, .hint, .row-group, .concept-eyebrow,
   .ignition-badge, .stroke-pill { font-size: 11px; }
 }
+
+/* Hero engine card: the Ferrari F136 in the 3D viewer, embedded as a calm showcase (the link opens the full viewer) */
+.hero-band { grid-template-columns: minmax(0, 0.95fr) minmax(400px, 1.05fr); }
+.hero-engine { min-width: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.hero-engine-frame { aspect-ratio: 5 / 4; }
+.hero-engine-frame iframe { width: 100%; height: 100%; border: 0; display: block; pointer-events: none; background: var(--surface); }
+.hero-engine-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.hero-engine-name { font-weight: 600; font-size: 0.92rem; color: var(--text); }
+.hero-engine-sub { font-size: 0.78rem; color: var(--text-3); margin-top: 2px; }
+.hero-engine-link { flex: none; font-size: 0.82rem; color: var(--text); text-decoration: none; border: 1px solid var(--line-strong); border-radius: 9px; padding: 7px 14px; transition: border-color .15s, color .15s; }
+.hero-engine-link:hover, .hero-engine-link:focus-visible { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 980px) {
+  .hero-band { grid-template-columns: minmax(0, 1fr); }
+}
+/* the live 3D embed is too heavy for a phone: keep the card's link, drop the iframe */
+@media (max-width: 760px) {
+  .hero-engine-frame { display: none; }
+  .hero-engine-foot { border-top: 0; }
+}
