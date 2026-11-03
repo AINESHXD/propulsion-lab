@@ -212,31 +212,62 @@ export function makeJet(family, input, out, hw) {
     }
     J.zEnd = J.nozzle.z1;
   } else if (family === 'ramjet') {
-    // axisymmetric: a conical spike, the cowl, a subsonic diffuser, flame holders, a convergent-divergent nozzle
+    // Axisymmetric, in the classic layout: a long double-cone spike at the front of a centre body that runs the
+    // length of the engine, a short cowl round it, an annular burner between the centre body and the liner, and the
+    // centre body's tail cone as the plug of the nozzle. Sizes follow the solver's flow areas, scaled so the burner
+    // annulus fits the published-class diameter.
     const s0 = st(0);
     const s2 = st(2);
     const s3 = st(3);
     const s4 = st(4);
     const s9 = st(9);
+    const half = (hw.spike_half_angle_deg ?? 22) * (Math.PI / 180);
+    const half1 = half * 0.5;
+    const rHub = R * 0.5;
+    const rLiner = R * 0.92;
     const A3 = area(s3, mTot, s3?.M ?? 0.25);
-    const k = (Math.PI * R * R * 0.75) / A3;
+    const k = (Math.PI * (rLiner * rLiner - rHub * rHub)) / A3;
     J.scale = k;
-    const spikeHalf = (hw.spike_half_angle_deg ?? 22) * (Math.PI / 180);
-    const Lspike = (R * 0.62) / Math.tan(spikeHalf);
-    J.spike = {zTip: 0.2 * D + Lspike * 0.55, zCowl: 0.2 * D, half: spikeHalf, rMax: R * 0.62, L: Lspike};
-    J.shock = {beta: obliqueBeta(J.mach, spikeHalf * 0.8)};
-    pt('inlet', J.spike.zTip, 0, R, s0, J.mach, 1.4, 'Freestream');
-    pt('cowl', 0.2 * D, R * 0.6, R, s2, Math.max(1, J.mach * 0.6), 1.4, 'Cowl lip');
-    pt('diffuser', -0.6 * D, R * 0.3, R, s3, s3?.M ?? 0.25, 1.4, 'Combustor inlet');
-    J.combustor = {z0: -0.75 * D, z1: -2.4 * D, r0: 0, r1: R * 0.98, T: s4.Tt, Tin: s3.Tt, gutters: hw.gutters ?? 2, nozzles: hw.fuel_nozzles ?? 16};
-    pt('comb-exit', -2.4 * D, 0, R, s4, 0.4, 1.3, 'Combustor exit');
-    const A9 = area(s9, mTot * (1 + f), Math.min(1, s9?.M ?? 1), 1.3) * k;
-    const rT = Math.sqrt((A9 / Math.PI) * (s9?.M > 1 ? 1 / areaRatio(s9.M, 1.3) : 1));
-    J.nozzle = {z0: -2.45 * D, zt: -2.8 * D, z1: -3.2 * D, rIn: R, rT: Math.min(rT, R * 0.85), rOut: Math.max(Math.sqrt(A9 / Math.PI), rT * Math.sqrt(input.nozzle_divergent_area_ratio ?? 1)), choked: out.nozzle_choked};
-    pt('throat', J.nozzle.zt, 0, J.nozzle.rT, s9, 1, 1.3, 'Nozzle throat');
-    pt('nozzle', -3.2 * D, 0, J.nozzle.rOut, s9, s9?.M ?? 1, 1.3, 'Nozzle exit');
-    J.zInlet = J.spike.zTip;
-    J.zEnd = -3.2 * D;
+    // the spike: a slender first cone, then the solver's cone angle out to the centre body, ending just inside the lip
+    const zCowl = 0.3 * D;
+    const r1 = rHub * 0.5;
+    const zShoulder = zCowl - 0.14 * D;
+    const zKnee = zShoulder + (rHub - r1) / Math.tan(half);
+    const zTip = zKnee + r1 / Math.tan(half1);
+    const beta1 = obliqueBeta(J.mach, half1 * 0.8);
+    // shock on lip: the cowl lip sits where the tip shock meets it, so the inlet swallows the whole captured stream
+    const rLip = clamp((zTip - zCowl) * Math.tan(beta1), rHub * 1.35, R * 0.86);
+    // behind the first shock the air turns again at the knee; that second shock is aimed at the lip as well
+    const Mn1 = J.mach * Math.sin(beta1);
+    const Mn2 = Math.sqrt((1 + 0.2 * Mn1 * Mn1) / Math.max(1e-3, 1.4 * Mn1 * Mn1 - 0.2));
+    const M1 = Math.max(1.05, Mn2 / Math.sin(beta1 - half1 * 0.8));
+    const beta2 = Math.atan2(rLip - r1, zKnee - zCowl);
+    J.spike = {zTip, zKnee, zShoulder, zCowl, half, half1, r1, rMax: rHub, rLip, L: zTip - zShoulder};
+    J.shock = {beta: beta1, beta2, M1};
+    const spikeR = (z) => (z >= zKnee ? (zTip - z) * Math.tan(half1) : z >= zShoulder ? r1 + (zKnee - z) * Math.tan(half) : rHub);
+    J.spikeR = spikeR;
+    pt('inlet', zTip, 0, rLip, s0, J.mach, 1.4, 'Freestream');
+    pt('cowl', zCowl, spikeR(zCowl), rLip, s2, Math.max(1, J.mach * 0.6), 1.4, 'Cowl lip');
+    pt('diffuser', -0.62 * D, rHub, rLiner, s3, s3?.M ?? 0.25, 1.4, 'Burner inlet');
+    J.combustor = {z0: -0.7 * D, z1: -1.95 * D, r0: rHub, r1: rLiner, T: s4.Tt, Tin: s3.Tt, gutters: hw.gutters ?? 2, nozzles: hw.fuel_nozzles ?? 16};
+    pt('comb-exit', -1.95 * D, rHub, rLiner, s4, 0.4, 1.3, 'Burner exit');
+    // the nozzle: the cowl closes down onto the tail cone; the throat is the annulus between the cowl's exit lip and
+    // the plug, with the solver's throat area; the gas then expands round the rest of the plug in the open
+    const zPlug0 = -2.0 * D;
+    const zPlugTip = -3.05 * D;
+    const zt = -2.42 * D;
+    const plugR = (z) => (z >= zPlug0 ? rHub : z <= zPlugTip ? 0 : rHub * Math.pow((z - zPlugTip) / (zPlug0 - zPlugTip), 0.85));
+    J.plugR = plugR;
+    const At = area(s9, mTot * (1 + f), 1, 1.3) * k;
+    const rp = plugR(zt);
+    const rc = Math.min(R * 0.97, Math.sqrt(rp * rp + At / Math.PI));
+    const A9 = area(s9, mTot * (1 + f), Math.max(1, s9?.M ?? 1), 1.3) * k;
+    const rOut = Math.max(Math.sqrt(A9 / Math.PI), Math.sqrt(At / Math.PI));
+    J.nozzle = {z0: -1.95 * D, zt, z1: zPlugTip, zPlug0, rIn: R, rT: rc, rp, rOut, choked: out.nozzle_choked};
+    pt('throat', zt, rp, rc, s9, 1, 1.3, 'Nozzle throat');
+    pt('nozzle', zPlugTip, 0, rOut, s9, s9?.M ?? 1, 1.3, 'Plug tip');
+    J.zInlet = zTip;
+    J.zEnd = zPlugTip;
   } else if (family === 'scramjet') {
     // two-dimensional: forebody ramps, cowl, isolator, a strut-injected combustor, a single expansion ramp
     const s0 = st(0);

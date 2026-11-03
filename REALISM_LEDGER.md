@@ -355,3 +355,20 @@ An earlier session said the GM LS3 block was cast iron. It is aluminium (the cas
 **Not done:**
 - A WebGPU path. Three.js's WebGPU renderer would need the post-processing chain rewritten in its node system.
 - Progressive loading. The model builds in tens of milliseconds after the solve returns, so there is no grey-flash state to hide.
+
+## Ramjet redesign (2026-11-03)
+
+The ramjet was rebuilt in the classic axisymmetric layout, against a reference diagram the user supplied:
+
+- A double-cone spike (first cone at half the solver's cone angle) on a centre body that runs the length of the
+  engine, ending in a tail cone that is the nozzle's plug.
+- Shock on lip: the cowl lip radius is placed where the tip shock (oblique-shock relation, flight Mach) meets it;
+  the knee shock is aimed at the lip too; the terminal normal shock stands just inside.
+- An annular burner between the centre body and the liner (burner annulus sized from the solver's combustor-inlet
+  flow), with spray ring, injectors, two V-gutter rings with radial gutters, and an igniter.
+- The throat is the annulus between the cowl's exit lip and the plug, with the solver's throat area; the jet expands
+  round the rest of the plug.
+- Outside: bulged, ribbed burner casing with bolted flanges, fuel ring main and feeds, mounting pylon with hanger
+  lugs, pitot-static boom, thermocouple and pressure bosses, boundary-layer bleed slots on the spike.
+
+Representative, not a specific engine; the plug contour and burner proportions are drawn, not designed.

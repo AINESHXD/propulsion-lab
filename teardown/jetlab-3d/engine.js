@@ -103,6 +103,7 @@ export function buildEngine(J) {
     disc: cut(alloy('inconel718', {repeat: [1, 2]})),
     coldCase: cut(alloy('alCast', {repeat: [24, 3]})),
     hotCase: cut(alloy('stainlessHot', {repeat: [24, 3]})),
+    inlet: cut(alloy('ti64', {repeat: [24, 3]})),
     nacelle: cut(alloy('paintWhite', {repeat: [40, 10]})),
     liner: cut(alloy('cmc', {repeat: [24, 3]})),
     spinner: alloy('paintBlack', {repeat: [8, 4], side: DS}),
@@ -1111,63 +1112,214 @@ export function buildEngine(J) {
     const N = J.nozzle;
     const Cb = J.combustor;
     const g = grp('casing', 'ram', new V3());
-    const gF = grp('combustor', 'comb', new V3(0, 0, -0.4 * D));
-    // spike: a cone, then a curved shoulder, a cylindrical centre body with support struts
-    const sp = [[0, S.zTip]];
-    for (let i = 1; i <= 14; i++) {
-      const u = i / 14;
-      const z = S.zTip - u * S.L * 0.7;
-      sp.push([Math.min(S.rMax, (S.zTip - z) * Math.tan(S.half)) * (1 - 0.1 * u * u), z]);
+    const gB = grp('casing', 'ramBody', new V3(0, 0, 0.35 * D));
+    const gF = grp('combustor', 'comb', new V3(0, 0, -0.3 * D));
+    const gN = grp('casing', 'ramNozzle', new V3(0, 0, -0.55 * D));
+    const gX = grp('dress', 'ramAcc', new V3(0, 0.25 * D, 0));
+    const rHub = S.rMax;
+    const rL = Cb.r1;
+    const tw = 0.012 * D;
+    const rCase = R * 1.04;
+
+    // ---- the centre body: double-cone spike, cylinder through the burner, tail cone as the nozzle plug. It is whole
+    // (not cut), like the centre body of a museum cutaway, so the cones read in full inside the opened duct.
+    {
+      const sp = [[0, S.zTip + 0.004 * D], [0.004 * D, S.zTip]];
+      for (let i = 1; i <= 24; i++) {
+        const z = S.zTip - (i / 24) * (S.zTip - S.zKnee);
+        sp.push([J.spikeR(z), z]);
+      }
+      for (let i = 1; i <= 12; i++) {
+        const z = S.zKnee - (i / 12) * (S.zKnee - S.zShoulder);
+        sp.push([J.spikeR(z), z]);
+      }
+      const cbz0 = S.zShoulder - 0.1 * D;
+      sp.push([rHub, cbz0], [0, cbz0]);
+      add(gB, mesh(revolve(sp, segs(128)), mat.titanium), 'spike');
+      // the centre body proper, with panel joints, through the diffuser and burner
+      add(gB, mesh(revolve([[0, cbz0], [rHub, cbz0], [rHub, N.zPlug0], [0, N.zPlug0]], segs(96)), mat.hotDrum), 'centre-body');
+      for (const z of [cbz0, -0.66 * D, N.zPlug0 + 0.02 * D]) add(gB, mesh(new THREE.TorusGeometry(rHub * 1.004, 0.004 * D, 8, segs(96)).translate(0, 0, z), mat.pipe), 'centre-body');
+      // boundary-layer bleed: a band of slots on the second cone, just ahead of the shoulder
+      const zs = (S.zKnee + S.zShoulder) / 2 - 0.02 * D;
+      const slot = roundedBox(0.012 * D, 0.004 * D, 0.05 * D, 0.002 * D).translate(0, J.spikeR(zs) + 0.0005 * D, zs);
+      add(gB, ringOf(slot, mat.plastic, 36, 0, null), 'spike');
+      // a pitot-static boom on the nose
+      add(gB, mesh(new THREE.CylinderGeometry(0.004 * D, 0.006 * D, 0.22 * D, 16).rotateX(Math.PI / 2).translate(0, 0, S.zTip + 0.11 * D), mat.pipe), 'pitot');
+      add(gB, mesh(new THREE.CylinderGeometry(0.0015 * D, 0.004 * D, 0.03 * D, 12).rotateX(Math.PI / 2).translate(0, 0, S.zTip + 0.235 * D), mat.pipe), 'pitot');
+      // the tail cone: the nozzle's plug, in a heat-resisting alloy
+      const pl = [[0, N.zPlug0]];
+      for (let i = 0; i <= 30; i++) {
+        const z = N.zPlug0 - (i / 30) * (N.zPlug0 - N.z1);
+        pl.push([Math.max(0.006 * D, J.plugR(z)), z]);
+      }
+      pl.push([0, N.z1 - 0.004 * D]);
+      add(gN, mesh(revolve(pl, segs(128)), mat.hotDrum), 'plug');
+      add(gN, mesh(new THREE.TorusGeometry(rHub * 1.006, 0.006 * D, 8, segs(96)).translate(0, 0, N.zPlug0), mat.pipe), 'plug');
     }
-    sp.push([S.rMax * 0.82, -0.5 * D], [S.rMax * 0.4, -0.75 * D], [0, -0.85 * D]);
-    add(g, mesh(revolve(sp, 96), mat.titanium), 'spike');
-    const strut = bladeGeometry({rh: S.rMax * 0.6, rt: R * 1.0, chordH: 0.3 * D, chordT: 0.3 * D, stagH: 0, stagT: 0, camber: 0, thick: 0.08, nr: 2, nc: 8});
-    strut.translate(0, 0, -0.35 * D);
-    add(g, ringOf(strut, mat.coldCase, 3, Math.PI / 2, keep), 'spike-strut');
-    // cowl: a sharp lip, the diffuser wall growing out to the combustor
-    const cw = [[R * 0.88, S.zCowl], [R * 0.98, S.zCowl - 0.2 * D], [R, Cb.z0], [R, Cb.z1], [N.rT, N.zt], [N.rOut, N.z1], [N.rOut + 0.02 * D, N.z1], [N.rT + 0.04 * D, N.zt], [R * 1.06, Cb.z1], [R * 1.06, Cb.z0], [R * 1.02, S.zCowl - 0.25 * D], [R * 0.885, S.zCowl - 0.005 * D], [R * 0.88, S.zCowl]];
-    add(g, mesh(lc(cw, 128), mat.hotCase), 'cowl');
-    for (const z of [Cb.z0, Cb.z1, N.zt + 0.05 * D]) boltRing(g, R * 1.075, z, 32, 1, smallBolt);
-    // fuel spray ring with injector pegs, then V-gutter rings that hold the flame
-    add(gF, mesh(torusC(R * 0.6, 0.012 * D, 8, 96).translate(0, 0, Cb.z0 + 0.1 * D), mat.pipe), 'spray-ring');
-    const peg = new THREE.CylinderGeometry(0.006 * D, 0.006 * D, 0.05 * D, 6).translate(0, R * 0.6, Cb.z0 + 0.1 * D);
-    add(gF, ringOf(peg, M.steel, Cb.nozzles, 0, keep), 'spray-ring');
-    for (let k = 0; k < Cb.gutters; k++) {
-      const rr = R * (0.38 + 0.32 * k);
-      const zz = Cb.z0 - 0.15 * D - 0.06 * D * k;
-      add(gF, mesh(lc([[rr - 0.04 * D, zz - 0.07 * D], [rr, zz], [rr + 0.04 * D, zz - 0.07 * D]], 96), mat.hotCase), 'flameholder');
+
+    // ---- struts: four airfoil struts hold the centre body in the diffuser
+    {
+      const zS = -0.32 * D;
+      const strut = bladeGeometry({rh: rHub * 0.98, rt: J.at(zS).rt + tw, chordH: 0.26 * D, chordT: 0.22 * D, stagH: 0, stagT: 0, camber: 0, thick: 0.09, nr: 3, nc: 10});
+      strut.translate(0, 0, zS);
+      add(gB, ringOf(strut, mat.titanium, 4, Math.PI / 4, keep), 'spike-strut');
     }
-    // the flame from the gutters to the throat
-    // flame sheets spread from each gutter's wake until they meet and fill the duct, then neck through the throat
-    const zg = Cb.z0 - 0.2 * D;
-    const Tr = (u) => Cb.Tin + (Cb.T - Cb.Tin) * Math.min(1, u / 0.5) ** 0.6;
-    const fm = flameMat(Tr, zg, N.z1, J.at(Cb.z1).V, 0.45);
-    const sheet = [];
-    for (let i = 0; i <= 30; i++) {
-      const u = i / 30;
-      const z = zg - u * (zg - N.z1);
-      const rw = z > Cb.z1 ? R * (0.35 + 0.6 * Math.sqrt((zg - z) / (zg - Cb.z1))) : z > N.zt ? R * 0.95 + (N.rT * 0.95 - R * 0.95) * ((Cb.z1 - z) / (Cb.z1 - N.zt)) : N.rT * 0.95 + (N.rOut * 0.95 - N.rT * 0.95) * ((N.zt - z) / (N.zt - N.z1));
-      sheet.push([rw, z]);
+
+    // ---- the cowl: inlet ring with a sharp lip, a bulged burner casing with stiffening ribs, and the nozzle shroud
+    // closing onto the plug. Each section is built over the kept arc so the cut shows its wall.
+    const zDif = -0.62 * D;
+    const zBur1 = Cb.z1 - 0.02 * D;
+    const bulgeR = (u) => rCase + 0.065 * D * Math.sin(u * Math.PI) ** 0.6;
+    {
+      const inner = [];
+      const outer = [];
+      for (let i = 0; i <= 24; i++) {
+        const u = i / 24;
+        const z = S.zCowl + (zDif - S.zCowl) * u;
+        inner.push([S.rLip + (rL + 0.02 * D - S.rLip) * (u * u * (3 - 2 * u)), z]);
+        // the outer line leaves the lip at a shallow external angle and blends into a constant diameter
+        outer.push([S.rLip + 0.004 * D + (rCase - S.rLip - 0.004 * D) * Math.sin((Math.min(1, u * 2.2) * Math.PI) / 2), z]);
+      }
+      add(g, mesh(lc([...inner, ...outer.reverse(), inner[0]], 128), mat.inlet), 'cowl');
     }
-    addFlame(gF, lc([[0.02 * D, zg], ...sheet, [0.02 * D, N.z1]], 128), fm);
+    {
+      // burner casing: inner wall clear of the liner (the cooling-air gap), outer wall bulged over the burner
+      const inner = [];
+      const outer = [];
+      for (let i = 0; i <= 24; i++) {
+        const u = i / 24;
+        const z = zDif + (zBur1 - zDif) * u;
+        inner.push([rL + 0.02 * D + 0.03 * D * Math.sin(u * Math.PI) ** 0.6, z]);
+        outer.push([bulgeR(u), z]);
+      }
+      add(g, mesh(lc([...inner, ...outer.reverse(), inner[0]], 128), mat.hotCase), 'burner-case');
+      for (let i = 1; i <= 5; i++) {
+        const u = i / 6;
+        add(g, mesh(torusC(bulgeR(u) + 0.004 * D, 0.007 * D, 8, segs(128)).translate(0, 0, zDif + (zBur1 - zDif) * u), mat.hotCase), 'burner-case');
+      }
+      for (const [z, dir] of [[zDif, 1], [zBur1, -1]]) {
+        add(g, mesh(lc([[rCase - 0.005 * D, z - 0.012 * D], [rCase + 0.04 * D, z - 0.012 * D], [rCase + 0.04 * D, z + 0.012 * D], [rCase - 0.005 * D, z + 0.012 * D], [rCase - 0.005 * D, z - 0.012 * D]], 128), mat.hotCase), 'burner-case');
+        boltRing(g, rCase + 0.026 * D, z + dir * 0.012 * D, 40, dir, smallBolt);
+      }
+    }
+    {
+      // the nozzle shroud: from the burner flange the wall converges onto the plug; its sharp exit lip is the throat
+      const inner = [];
+      const outer = [];
+      for (let i = 0; i <= 20; i++) {
+        const u = i / 20;
+        const z = zBur1 + (N.zt - zBur1) * u;
+        inner.push([rL + 0.02 * D + (N.rT - rL - 0.02 * D) * (u * u * (3 - 2 * u)), z]);
+        outer.push([rCase + (N.rT + 0.01 * D - rCase) * Math.pow(u, 1.6), z]);
+      }
+      add(gN, mesh(lc([...inner, ...outer.reverse(), inner[0]], 128), mat.inconel), 'nozzle-shroud');
+    }
+
+    // ---- the burner: a perforated liner, a heat shield on the centre body, the fuel spray ring with its injectors,
+    // two V-gutter rings tied by radial gutters, and an igniter through the casing
+    {
+      add(gF, mesh(lc([[rL, Cb.z0 + 0.02 * D], [rL, Cb.z1], [rL + tw * 0.6, Cb.z1], [rL + tw * 0.6, Cb.z0 + 0.02 * D], [rL, Cb.z0 + 0.02 * D]], 128), mat.inconel), 'liner');
+      add(gF, mesh(revolve([[rHub * 1.006, Cb.z0], [rHub * 1.006, Cb.z1], [rHub * 1.014, Cb.z1], [rHub * 1.014, Cb.z0], [rHub * 1.006, Cb.z0]], segs(96)), mat.liner), 'liner');
+      const rS = (rHub + rL) / 2;
+      const zSp = Cb.z0 + 0.1 * D;
+      add(gF, mesh(torusC(rS, 0.01 * D, 8, segs(128)).translate(0, 0, zSp), mat.pipe), 'spray-ring');
+      const peg = new THREE.CylinderGeometry(0.004 * D, 0.006 * D, 0.03 * D, 8).rotateX(Math.PI / 2).translate(0, rS, zSp - 0.018 * D);
+      add(gF, ringOf(peg, M.steel, Cb.nozzles, 0, keep), 'spray-ring');
+      const zg = Cb.z0 - 0.08 * D;
+      const vg = (rr, zz, w) => lc([[rr - w, zz - 0.05 * D], [rr, zz], [rr + w, zz - 0.05 * D], [rr + w * 0.82, zz - 0.05 * D], [rr, zz - 0.012 * D], [rr - w * 0.82, zz - 0.05 * D], [rr - w, zz - 0.05 * D]], 128);
+      const rG = [rHub + (rL - rHub) * 0.3, rHub + (rL - rHub) * 0.72];
+      rG.forEach((rr, k) => add(gF, mesh(vg(rr, zg - 0.03 * D * k, 0.028 * D), mat.inconel), 'flameholder'));
+      const spoke = new THREE.BoxGeometry(0.026 * D, rG[1] - rG[0], 0.012 * D).translate(0, (rG[0] + rG[1]) / 2, zg - 0.03 * D);
+      add(gF, ringOf(spoke, mat.inconel, 8, Math.PI / 8, keep), 'flameholder');
+      // the igniter: a boss on the casing, the plug through it, and its lead
+      const aI = 0.82 * Math.PI;
+      const cI = new V3(Math.cos(aI), Math.sin(aI), 0);
+      const zI = zg - 0.12 * D;
+      const rI = rCase + 0.05 * D;
+      const boss = add(gX, mesh(new THREE.CylinderGeometry(0.03 * D, 0.034 * D, 0.04 * D, 20), mat.hotCase), 'igniter');
+      boss.position.copy(cI).multiplyScalar(rI).setZ(zI);
+      boss.quaternion.setFromUnitVectors(new V3(0, 1, 0), cI);
+      const plug = add(gX, mesh(new THREE.CylinderGeometry(0.014 * D, 0.014 * D, 0.09 * D, 6), M.steel), 'igniter');
+      plug.position.copy(cI).multiplyScalar(rI + 0.05 * D).setZ(zI);
+      plug.quaternion.copy(boss.quaternion);
+      const lead = [cI.clone().multiplyScalar(rI + 0.095 * D).setZ(zI), cI.clone().multiplyScalar(rI + 0.13 * D).setZ(zI + 0.06 * D), new V3(-0.12 * D, R * 1.25, zI + 0.3 * D)];
+      add(gX, mesh(tube(lead, 0.008 * D, false, 32), mat.braid), 'igniter');
+    }
+
+    // ---- outside: the fuel manifold round the burner with a feed to each injector, the mounting pylon on top,
+    // thermocouple and pressure bosses
+    {
+      const zM = Cb.z0 + 0.1 * D;
+      const rM = rCase + 0.07 * D;
+      add(gX, mesh(torusC(rM, 0.014 * D, 10, segs(128)).translate(0, 0, zM), mat.pipe), 'fuel-manifold');
+      const feed = new THREE.CylinderGeometry(0.005 * D, 0.005 * D, rM - rCase + 0.01 * D, 8).translate(0, (rM + rCase) / 2, zM);
+      add(gX, ringOf(feed, mat.pipe, 8, 0, keep), 'fuel-manifold');
+      const nut = new THREE.CylinderGeometry(0.01 * D, 0.01 * D, 0.012 * D, 6).translate(0, rCase + 0.006 * D, zM);
+      add(gX, ringOf(nut, M.steel, 8, 0, keep), 'fuel-manifold');
+      const aF = 0.62 * Math.PI;
+      const cF = new V3(Math.cos(aF), Math.sin(aF), 0);
+      add(gX, mesh(tube([cF.clone().multiplyScalar(rM).setZ(zM), cF.clone().multiplyScalar(rM + 0.06 * D).setZ(zM + 0.04 * D), new V3(-0.03 * D, R * 1.3, zM + 0.2 * D), new V3(0, R * 1.36, zM + 0.35 * D)], 0.012 * D, false, 48), mat.pipe), 'fuel-manifold');
+      // the pylon: a faired beam on top with two hanger lugs
+      const pz0 = 0.05 * D;
+      const pz1 = Cb.z0 - 0.75 * D;
+      const py = rCase + 0.1 * D;
+      const beam = add(gX, mesh(roundedBox(0.08 * D, 0.12 * D, pz0 - pz1, 0.03 * D), mat.stand), 'mount');
+      beam.position.set(0, py + 0.03 * D, (pz0 + pz1) / 2);
+      for (const z of [pz0 - 0.12 * D, pz1 + 0.12 * D]) {
+        const lug = add(gX, mesh(new THREE.TorusGeometry(0.03 * D, 0.012 * D, 10, 24), M.steel), 'mount');
+        lug.position.set(0, py + 0.12 * D, z);
+        lug.rotation.y = Math.PI / 2;
+        const foot = add(gX, mesh(roundedBox(0.1 * D, 0.03 * D, 0.1 * D, 0.01 * D), mat.stand), 'mount');
+        foot.position.set(0, py - 0.045 * D, z);
+      }
+      // thermocouple and static-pressure bosses along the visible side
+      for (const [a, z, id] of [[1.05 * Math.PI, Cb.z0 - 0.35 * D, 'thermocouple'], [1.05 * Math.PI, Cb.z0 - 0.75 * D, 'thermocouple'], [1.2 * Math.PI, zDif + 0.25 * D, 'pressure-tap']]) {
+        const c = new V3(Math.cos(a), Math.sin(a), 0);
+        const u = (zDif - z) / (zDif - zBur1);
+        const r = (u > 0 && u < 1 ? bulgeR(u) : rCase) + 0.012 * D;
+        const b = add(gX, mesh(new THREE.CylinderGeometry(0.012 * D, 0.016 * D, 0.03 * D, 12), M.steel), id);
+        b.position.copy(c).multiplyScalar(r).setZ(z);
+        b.quaternion.setFromUnitVectors(new V3(0, 1, 0), c);
+        add(gX, mesh(tube([b.position.clone().addScaledVector(c, 0.015 * D), b.position.clone().addScaledVector(c, 0.06 * D).setZ(z + 0.05 * D), new V3(c.x * R * 0.4, R * 1.3, z + 0.12 * D)], 0.004 * D, false, 24), mat.harness), id);
+      }
+    }
+
+    // ---- the flame: sheets spread from each gutter's wake until they fill the annulus, neck through the throat and
+    // hug the plug as the jet expands round it
+    {
+      const zg = Cb.z0 - 0.12 * D;
+      const Tr = (u) => Cb.Tin + (Cb.T - Cb.Tin) * Math.min(1, u / 0.45) ** 0.6;
+      const fm = flameMat(Tr, zg, N.z1, J.at(Cb.z1).V, 1.1);
+      const outer = [];
+      const inner = [];
+      for (let i = 0; i <= 40; i++) {
+        const u = i / 40;
+        const z = zg - u * (zg - N.z1);
+        const a = J.at(z);
+        const grow = Math.min(1, Math.sqrt(Math.max(0, (zg - z) / (zg - Cb.z1 * 0.85))));
+        const mid = (a.rh + a.rt) / 2;
+        const half = (a.rt - a.rh) / 2;
+        const pr = J.plugR(z);
+        outer.push([Math.max(pr + 0.01 * D, mid + half * (0.35 + 0.6 * grow)), z]);
+        inner.push([Math.max(0.004 * D, pr * 1.01, mid - half * (0.35 + 0.6 * grow)), z]);
+      }
+      addFlame(gF, lc([...outer, ...inner.reverse(), outer[0]], 128), fm);
+    }
     const s9 = J.stations.find((x) => x.id === 'nozzle');
     J.plume = plumeOf(s9.Pt, 2 * N.rOut);
     plume(grp('flow', 'plume'), N.z1 - 0.01 * D, N.rOut, s9.Tt * 0.9, s9.V, J.plume, 0.55);
-    // the conical shock off the spike tip, at the angle the oblique-shock relation gives for this Mach number
-    const b = J.shock.beta;
-    const Ls = (R * 0.9) / Math.tan(b);
-    const M0 = J.mach;
-    add(grp('shock', 'shock'), mesh(revolve([[0.001, S.zTip], [R * 0.9, S.zTip - Ls]], 64), schlieren(rhoJump(M0 * Math.sin(b)))), 'shock');
-    // the terminal normal shock: at critical operation it stands at the cowl lip's throat, where the flow behind the
-    // cone shock turns subsonic before the diffuser. Its strength uses the Mach number behind the cone shock.
+
+    // ---- shocks: the tip shock and the knee shock both land on the cowl lip (the design point), then the terminal
+    // normal shock just inside the lip turns the flow subsonic
     {
-      const Mn1 = M0 * Math.sin(b);
-      const M2n = Math.sqrt((1 + 0.2 * Mn1 * Mn1) / (1.4 * Mn1 * Mn1 - 0.2));
-      const M2 = Math.max(1.05, M2n / Math.sin(b - S.half * 0.8));
+      const M0 = J.mach;
+      add(grp('shock', 'shock'), mesh(revolve([[0.001, S.zTip], [S.rLip, S.zCowl]], 96), schlieren(rhoJump(M0 * Math.sin(J.shock.beta)))), 'shock');
+      add(grp('shock', 'shock'), mesh(revolve([[S.r1, S.zKnee], [S.rLip, S.zCowl]], 96), schlieren(rhoJump(Math.max(1.02, J.shock.M1 * Math.sin(J.shock.beta2 + S.half - S.half1))))), 'shock');
+      // the knee shock turns the air a little more and slows it again; the terminal shock stands in what is left
+      const M2 = Math.max(1.05, J.shock.M1 * 0.85);
       J.normalShock = {M: M2, jump: rhoJump(M2)};
-      const zN = S.zCowl - 0.12 * D;
-      const rIn = Math.min(S.rMax, (S.zTip - zN) * Math.tan(S.half)) * 0.98;
-      add(grp('shock', 'shock'), mesh(revolve([[rIn, zN], [R * 0.97, zN - 0.02 * D]], 96), schlieren(rhoJump(M2))), 'normal-shock');
+      const zN = S.zCowl - 0.08 * D;
+      add(grp('shock', 'shock'), mesh(revolve([[J.spikeR(zN) * 1.01, zN], [J.at(zN).rt * 0.995, zN - 0.015 * D]], 96), schlieren(rhoJump(M2))), 'normal-shock');
     }
   }
 
