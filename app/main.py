@@ -12,6 +12,7 @@ from fastapi import Body, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from app.piston_feasibility import FeasibilityReport, analyse as analyse_feasibility
+from app import seo
 from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, ValidationError
 
@@ -491,6 +492,20 @@ def privacy() -> FileResponse:
     """Privacy policy — what is and is not collected, who processes the data."""
 
     return FileResponse(STATIC_PATH / "privacy.html")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots_txt() -> Response:
+    """Crawl rules: everything public is open; API docs, config, CFD jobs and solver endpoints are not."""
+
+    return Response(seo.ROBOTS, media_type="text/plain")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml() -> Response:
+    """The public pages, each at its canonical address (app/seo.py)."""
+
+    return Response(seo.sitemap_xml(), media_type="application/xml")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

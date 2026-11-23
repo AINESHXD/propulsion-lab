@@ -4,8 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#050608" />
-    <meta name="description" content="DAS LABS, interactive engine simulators. PropulsionLab models airbreathing and gas-turbine propulsion; PistonLab models reciprocating internal-combustion engines." />
-    <title>DAS LABS, engine simulators</title>
+    <title>DAS LABS: free jet engine and piston engine simulators</title>
+    <meta name="description" content="Free jet engine and piston engine simulators in your browser. Run real cycle analysis for turbofans, ramjets and car engines, then see every part move in 3D cutaways." />
+    <link rel="canonical" href="https://daslabs.uk/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DAS LABS" />
+    <meta property="og:title" content="DAS LABS: free jet engine and piston engine simulators" />
+    <meta property="og:description" content="Free jet engine and piston engine simulators in your browser. Run real cycle analysis for turbofans, ramjets and car engines, then see every part move in 3D cutaways." />
+    <meta property="og:url" content="https://daslabs.uk/" />
+    <meta property="og:image" content="https://daslabs.uk/lab/assets/og/daslabs.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"DAS LABS","url":"https://daslabs.uk/","description":"Free jet engine and piston engine simulators in your browser. Run real cycle analysis for turbofans, ramjets and car engines, then see every part move in 3D cutaways."},{"@type":"Person","name":"Ainesh Das","sameAs":["https://www.linkedin.com/in/ainesh-das/","https://www.instagram.com/das.labs/"],"url":"https://daslabs.uk/"}]}</script>
     <style>
       :root{
         --bg:#050608; --panel:#0c0e12; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.16);
@@ -29,7 +40,11 @@
       .logo-fallback{font-weight:800;letter-spacing:.22em;font-size:30px}
       .eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:.26em;text-transform:uppercase;
         color:var(--dim);margin-top:14px}
+      h1.eyebrow{font-weight:400}
       .tagline{color:var(--dim);font-size:1.02rem;margin-top:14px;max-width:52ch}
+      .more{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 22px;margin-top:30px;font-size:.86rem}
+      .more a{color:var(--dim);border-bottom:1px solid var(--line-2);padding-bottom:2px}
+      .more a:hover{color:var(--text);border-color:var(--text)}
 
       .grid{display:grid;grid-template-columns:repeat(2,minmax(0,300px));gap:22px;margin-top:48px;width:100%;max-width:640px}
       .card{position:relative;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:14px;
@@ -70,8 +85,8 @@
       <img class="logo" src="/lab/assets/das_labs_logo_dark.png?v=1" alt="DAS LABS"
            onerror="this.style.display='none';document.getElementById('lf').style.display='block'" />
       <div id="lf" class="logo-fallback" style="display:none">DAS&nbsp;LABS</div>
-      <p class="eyebrow">Interactive engine simulators</p>
-      <p class="tagline">We model how engines work. One domain at a time.</p>
+      <h1 class="eyebrow">Free jet engine and piston engine simulators</h1>
+      <p class="tagline">We model how engines work, one domain at a time. Run real cycle analysis in your browser, then see every part move in a 3D cutaway.</p>
 
       <div class="grid">
         <!-- PropulsionLab, live -->
@@ -94,6 +109,13 @@
           <span class="enter">Enter →</span>
         </a>
       </div>
+
+      <nav class="more" aria-label="More from DAS LABS">
+        <a href="/jet/3d/">Jet engines in 3D</a>
+        <a href="/piston/3d/">Piston engines in 3D</a>
+        <a href="/lab/case-studies/">Engine case studies</a>
+        <a href="/validation/">Validation</a>
+      </nav>
     </main>
 
     <footer>

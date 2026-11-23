@@ -12,6 +12,8 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
+from app import seo
+
 CACHE = "20261011-hyphen"
 
 _BRAND = (
@@ -20,6 +22,9 @@ _BRAND = (
     " onerror=\"this.outerHTML='&lt;span class=&quot;brand-mark&quot;&gt;DAS&amp;nbsp;LABS&lt;/span&gt;'\" /></a>"
 )
 OUT_DIR = Path(__file__).resolve().parent / "app" / "static" / "case-studies"
+
+# Engines that also have a model in the JetLab 3D viewer (teardown/jetlab-3d/gallery.json ids)
+IN_3D = {"cfm56", "leap", "gtf", "v2500", "pw4000", "ge90", "trentxwb"}
 
 # Engines whose long-form pages exist, in narrative order (used for the index,
 # cross-links, and the render loop). Day 28 completes the set of ten.
@@ -509,6 +514,16 @@ def _related(engine_id: str) -> str:
     return "".join(links)
 
 
+def _in_3d(engine_id: str, c: dict) -> str:
+    if engine_id not in IN_3D:
+        return ""
+    return f"""<div class="cs-cta">
+        <p>See the {html.escape(c['name'])} in 3D: a cutaway with every part placed and
+           driven by the cycle solver.</p>
+        <a href="/jet/3d/#g={engine_id}">Open in 3D →</a>
+      </div>"""
+
+
 def render(engine_id: str, c: dict) -> str:
     return f"""<!doctype html>
 <html lang="en">
@@ -516,8 +531,7 @@ def render(engine_id: str, c: dict) -> str:
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <meta name="description" content="{html.escape(c['meta'])}" />
-    <title>{html.escape(c['name'])} · PropulsionLab case study</title>
+    {seo.head_tags(f"/lab/case-studies/{engine_id}.html", f"{c['name']} jet engine: architecture, cycle and history | PropulsionLab", c['meta'], "propulsionlab.jpg", og_type="article")}
     <link rel="stylesheet" href="/lab/styles.css?v={CACHE}" />
     <link rel="stylesheet" href="/lab/case-study.css?v={CACHE}" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
@@ -544,6 +558,7 @@ def render(engine_id: str, c: dict) -> str:
            interactive console.</p>
         <a href="/lab/">Open the simulator →</a>
       </div>
+      {_in_3d(engine_id, c)}
       <div class="cs-related">
         <h2>More case studies</h2>
         <div class="cs-related-links">{_related(engine_id)}</div>
@@ -583,8 +598,7 @@ def render_index() -> str:
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <meta name="description" content="Long-form engine case studies: ten landmark jet engines from the JT8D to the Trent XWB, with architecture, cycle and engineering significance." />
-    <title>Engine case studies · PropulsionLab</title>
+    {seo.head_tags("/lab/case-studies/", "Jet engine case studies: ten turbofans that shaped the jet age | PropulsionLab", "Long-form engine case studies: ten landmark jet engines from the JT8D to the Trent XWB, with architecture, cycle and engineering significance.", "propulsionlab.jpg")}
     <link rel="stylesheet" href="/lab/styles.css?v={CACHE}" />
     <link rel="stylesheet" href="/lab/case-study.css?v={CACHE}" />
     <script src="/lab/launch.js?v=20260606-launch" defer></script>
